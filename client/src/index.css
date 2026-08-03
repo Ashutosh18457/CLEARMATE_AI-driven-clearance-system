@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Design Tokens as CSS Variables ─── */
+:root {
+  --bg-canvas: #F7F8FA;
+  --bg-surface: #FFFFFF;
+  --border-subtle: #E4E7EC;
+  --ink-primary: #101828;
+  --ink-secondary: #475467;
+  --ink-muted: #98A2B3;
+  --brand-primary: #2547D0;
+  --brand-primary-hover: #1E3AA8;
+  --status-success: #12B76A;
+  --status-pending: #F79009;
+  --status-rejected: #F04438;
+  --status-info: #2547D0;
+}
+
+/* ─── Base Layer ─── */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    margin: 0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: var(--bg-canvas);
+    color: var(--ink-primary);
+  }
+
+  /* Tabular figures for numeric data alignment */
+  .font-tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Focus visible ring — accessible keyboard focus */
+  :focus-visible {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Remove focus outline for mouse users */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+/* ─── Component Layer ─── */
+@layer components {
+  /* Scrollbar styling */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--ink-muted);
+    border-radius: 3px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--ink-secondary);
+  }
+
+  /* Input base styles */
+  .input-base {
+    @apply w-full px-3 py-2 text-sm border border-border-subtle rounded-md bg-surface
+           text-ink-primary placeholder:text-ink-muted
+           transition-colors duration-150
+           focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand;
+  }
+
+  /* Select base styles */
+  .select-base {
+    @apply input-base appearance-none cursor-pointer bg-no-repeat;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23475467' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 0.5rem center;
+    padding-right: 2rem;
+  }
+
+  /* Label styles */
+  .label-base {
+    @apply block text-sm font-medium text-ink-secondary mb-1;
+  }
+}
+
+/* ─── Utility Layer ─── */
+@layer utilities {
+  /* Reduced motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
