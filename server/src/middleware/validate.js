@@ -1,26 +1,19 @@
-import AppError from '../utils/AppError.js';
+const AppError = require('../utils/AppError');
 
 /**
- * validate — Joi schema validation middleware factory.
- * @param {Object} schema - Joi schema with optional body, params, query keys.
+ * Higher-order middleware function to validate request payload against a Joi schema.
+ * Throws a formatted validation error if it fails, which is caught by the central errorHandler.
  */
-const validate = (schema) => {
-  return (req, res, next) => {
-    const sources = { body: req.body, params: req.params, query: req.query };
-    for (const [key, joiSchema] of Object.entries(schema)) {
-      if (!sources[key]) continue;
-      const { error, value } = joiSchema.validate(sources[key], {
-        abortEarly: false,
-        stripUnknown: true,
-      });
-      if (error) {
-        const message = error.details.map((d) => d.message).join(', ');
-        return next(AppError.badRequest(message, 'VALIDATION_ERROR'));
-      }
-      req[key] = value;
-    }
-    next();
-  };
+const validate = (schema, source = 'body') => (req, res, next) => {
+  const { error } = schema.validate(req[source], { abortEarly: false });
+
+  if (error) {
+    // Map Joi errors into a clean array of strings
+    const errorMessage = error.details.map((detail) => detail.message).join(', ');
+    return next(AppError.validationError(errorMessage));
+  }
+
+  next();
 };
 
-export default validate;
+module.exports = validate;

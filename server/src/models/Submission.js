@@ -1,17 +1,17 @@
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 const submissionSchema = new mongoose.Schema(
   {
     submissionItemId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'SubmissionItem',
-      required: [true, 'Submission item is required'],
+      required: [true, 'Submission Item ID is required'],
       index: true,
     },
     studentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: [true, 'Student is required'],
+      required: [true, 'Student ID is required'],
       index: true,
     },
     verifiedBy: {
@@ -20,11 +20,9 @@ const submissionSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: {
-        values: ['pending', 'submitted', 'verified', 'rejected'],
-        message: '{VALUE} is not a valid submission status',
-      },
+      enum: ['pending', 'submitted', 'verified', 'rejected'],
       default: 'pending',
+      index: true,
     },
     remarks: {
       type: String,
@@ -37,14 +35,16 @@ const submissionSchema = new mongoose.Schema(
       type: Date,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
 
-submissionSchema.index(
-  { submissionItemId: 1, studentId: 1 },
-  { unique: true }
-);
+// A student can only have one submission record per submission item
+submissionSchema.index({ submissionItemId: 1, studentId: 1 }, { unique: true });
 
 const Submission = mongoose.model('Submission', submissionSchema);
 
-export default Submission;
+module.exports = Submission;

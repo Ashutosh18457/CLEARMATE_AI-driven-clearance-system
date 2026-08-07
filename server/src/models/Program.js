@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 const programSchema = new mongoose.Schema(
   {
@@ -12,8 +12,10 @@ const programSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Program code is required'],
       unique: true,
-      uppercase: true,
       trim: true,
+      uppercase: true,
+      maxlength: [20, 'Program code cannot exceed 20 characters'],
+      index: true,
     },
     department: {
       type: String,
@@ -23,11 +25,16 @@ const programSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
+      index: true,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
 
 const Program = mongoose.model('Program', programSchema);
 
-export default Program;
+module.exports = Program;

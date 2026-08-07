@@ -21,6 +21,7 @@ export default function StudentClearance() {
   const [loading, setLoading] = useState(true);
   const [initiating, setInitiating] = useState(false);
   const [noClearance, setNoClearance] = useState(false);
+  const [downloadingCert, setDownloadingCert] = useState(false);
 
   const fetchClearance = useCallback(async () => {
     setLoading(true);
@@ -70,6 +71,174 @@ export default function StudentClearance() {
       toast.error(err.message || 'Failed to re-initiate clearance');
     } finally {
       setInitiating(false);
+    }
+  };
+
+  const handleDownloadCertificate = async () => {
+    setDownloadingCert(true);
+    try {
+      const res = await api.get('/certificate/my');
+      if (res.data.success) {
+        const data = res.data.data;
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Clearance Certificate - ${data.student.name}</title>
+            <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+            <style>
+              body {
+                font-family: 'Inter', sans-serif;
+                margin: 0;
+                padding: 40px;
+                background: white;
+                color: #101828;
+              }
+              .cert-container {
+                border: 8px double #4f46e5;
+                padding: 40px;
+                text-align: center;
+                position: relative;
+                background: #fafbff;
+                border-radius: 8px;
+              }
+              .logo {
+                font-family: 'Outfit', sans-serif;
+                font-size: 24px;
+                font-weight: 800;
+                color: #4f46e5;
+                margin-bottom: 20px;
+              }
+              .title {
+                font-family: 'Outfit', sans-serif;
+                font-size: 32px;
+                font-weight: 700;
+                color: #111827;
+                margin-bottom: 5px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+              }
+              .subtitle {
+                font-size: 14px;
+                color: #4b5563;
+                margin-bottom: 35px;
+              }
+              .certify-text {
+                font-size: 16px;
+                color: #374151;
+                line-height: 1.8;
+                max-width: 600px;
+                margin: 0 auto 35px auto;
+              }
+              .student-name {
+                font-family: 'Outfit', sans-serif;
+                font-size: 24px;
+                font-weight: 700;
+                color: #4f46e5;
+                border-bottom: 2px solid #e5e7eb;
+                display: inline-block;
+                padding-bottom: 4px;
+                margin: 8px 0;
+              }
+              .details-grid {
+                display: grid;
+                grid-template-cols: 1fr 1fr;
+                gap: 12px;
+                max-width: 500px;
+                margin: 0 auto 35px auto;
+                text-align: left;
+                font-size: 13px;
+                color: #4b5563;
+                background: white;
+                padding: 16px;
+                border-radius: 6px;
+                border: 1px solid #e5e7eb;
+              }
+              .details-grid div strong {
+                color: #1f2937;
+              }
+              .footer-signatures {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 50px;
+                font-size: 13px;
+                font-weight: 500;
+                color: #4b5563;
+              }
+              .signature {
+                border-top: 1px solid #9ca3af;
+                padding-top: 8px;
+                width: 130px;
+                text-align: center;
+              }
+              .cert-meta {
+                margin-top: 40px;
+                font-size: 11px;
+                color: #9ca3af;
+                display: flex;
+                justify-content: space-between;
+                border-top: 1px solid #f3f4f6;
+                padding-top: 15px;
+              }
+              @media print {
+                body {
+                  padding: 0;
+                }
+                .cert-container {
+                  border-color: #4f46e5 !important;
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="cert-container">
+              <div class="logo">ClearMate</div>
+              <div class="title">Clearance Certificate</div>
+              <div class="subtitle font-display">${data.institution}</div>
+              
+              <div class="certify-text">
+                This is to certify that the student<br>
+                <div class="student-name">${data.student.name}</div><br>
+                has successfully cleared all dues and completed the academic clearance process.
+              </div>
+
+              <div class="details-grid">
+                <div><strong>Enrollment No:</strong> ${data.student.enrollmentNo}</div>
+                <div><strong>Section:</strong> ${data.student.section}</div>
+                <div><strong>Program:</strong> ${data.program.name}</div>
+                <div><strong>Semester:</strong> Semester ${data.semester.number}</div>
+                <div><strong>Academic Year:</strong> ${data.semester.academicYear}</div>
+                <div><strong>Completed On:</strong> ${new Date(data.clearance.completedAt).toLocaleDateString('en-IN', {day:'numeric', month:'long', year:'numeric'})}</div>
+              </div>
+
+              <div class="footer-signatures">
+                <div class="signature">Class Incharge</div>
+                <div class="signature">HOD, Dept. of ET</div>
+                <div class="signature">Principal / Registrar</div>
+              </div>
+
+              <div class="cert-meta">
+                <div>Certificate No: <strong>${data.certificateNumber}</strong></div>
+                <div>Verification URL: <strong>${data.verificationUrl}</strong></div>
+              </div>
+            </div>
+            <script>
+              window.onload = function() {
+                window.print();
+              };
+            </script>
+          </body>
+          </html>
+        `);
+        printWindow.document.close();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to download certificate');
+    } finally {
+      setDownloadingCert(false);
     }
   };
 
@@ -198,7 +367,8 @@ export default function StudentClearance() {
               size="sm"
               className="ml-auto shrink-0"
               icon={<HiOutlineDocumentArrowDown className="w-4 h-4" />}
-              onClick={() => toast('Certificate generation coming soon', { icon: '📄' })}
+              loading={downloadingCert}
+              onClick={handleDownloadCertificate}
             >
               Download certificate
             </Button>

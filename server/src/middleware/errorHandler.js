@@ -1,44 +1,87 @@
-import logger from '../config/logger.js';
+const AppError = require('../utils/AppError');
+const logger = require('../config/logger');
 
-const errorHandler = (err, req, res, next) => {
-  let statusCode = err.statusCode || 500;
-  let message = err.message || 'Internal server error';
-  let code = err.code || 'INTERNAL_ERROR';
+/**
+ * Centralized error-handling middleware.
+ * ALL errors pass through here — the single source of truth for error responses.
+ *
+ * Design decisions:
+ * - Operational errors (AppError, Mongoose validation) → appropriate status + safe message.
+ * - Programming bugs → generic 500 to client, full stack trace to logs.
+ * - Mongoose-specific errors mapped to user-friendly responses.
+ */
+const errorHandler = (err, req, res, _next) => {
+  // Log full error details server-side
+  logger.error(err.message, {
+    errorCode: err.errorCode,
+    statusCode: err.statusCode,
+    path: req.originalUrl,
+    method: req.method,
+    ip: req.ip,
+    stack: err.stack,
+  });
 
   // Mongoose validation error
   if (err.name === 'ValidationError') {
-    statusCode = 400;
-    message = Object.values(err.errors).map((e) => e.message).join(', ');
-    code = 'VALIDATION_ERROR';
+    const details = Object.values(err.errors).map((e) => e.message);
+    return res.status(422).json({
+      success: false,
+      message: 'Validation failed',
+      error: { code: 'VALIDATION_ERROR', details },
+    });
   }
 
   // Mongoose duplicate key
   if (err.code === 11000) {
-    statusCode = 409;
-    const field = Object.keys(err.keyValue).join(', ');
-    message = `Duplicate value for: ${field}`;
-    code = 'DUPLICATE_KEY';
+    const field = Object.keys(err.keyValue)[0];
+    return res.status(409).json({
+      success: false,
+      message: `A record with this ${field} already exists`,
+      error: { code: 'DUPLICATE_KEY' },
+    });
   }
 
-  // Mongoose cast error (bad ObjectId)
+  // Mongoose bad ObjectId
   if (err.name === 'CastError') {
-    statusCode = 400;
-    message = `Invalid ${err.path}: ${err.value}`;
-    code = 'CAST_ERROR';
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid resource identifier',
+      error: { code: 'INVALID_ID' },
+    });
   }
 
-  // Log server errors
-  if (statusCode >= 500) {
-    logger.error(`${statusCode} - ${message}`, { stack: err.stack, url: req.originalUrl, method: req.method });
-  } else {
-    logger.warn(`${statusCode} - ${message}`, { url: req.originalUrl, method: req.method });
+  // JWT errors
+  if (err.name === 'JsonWebTokenError') {
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid authentication token',
+      error: { code: 'INVALID_TOKEN' },
+    });
   }
 
-  res.status(statusCode).json({
+  if (err.name === 'TokenExpiredError') {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication token has expired',
+      error: { code: 'TOKEN_EXPIRED' },
+    });
+  }
+
+  // Our operational AppError
+  if (err instanceof AppError && err.isOperational) {
+    return res.status(err.statusCode).json({
+      success: false,
+      message: err.message,
+      error: { code: err.errorCode },
+    });
+  }
+
+  // Unknown / programming errors — generic message to client
+  return res.status(500).json({
     success: false,
-    message,
-    error: { code },
+    message: 'An unexpected error occurred',
+    error: { code: 'INTERNAL_ERROR' },
   });
 };
 
-export default errorHandler;
+module.exports = errorHandler;

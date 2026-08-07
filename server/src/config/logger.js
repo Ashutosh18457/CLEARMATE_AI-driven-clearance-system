@@ -1,29 +1,42 @@
-import winston from 'winston';
-import env from './env.js';
+const winston = require('winston');
+const path = require('path');
 
-const { combine, timestamp, printf, colorize, errors } = winston.format;
-
-const logFormat = printf(({ level, message, timestamp, stack }) => {
-  return `${timestamp} [${level}]: ${stack || message}`;
-});
+const logFormat = winston.format.combine(
+  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+  winston.format.errors({ stack: true }),
+  winston.format.printf(({ timestamp, level, message, stack, ...meta }) => {
+    const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
+    return `${timestamp} [${level.toUpperCase()}]: ${stack || message}${metaStr}`;
+  })
+);
 
 const logger = winston.createLogger({
-  level: env.NODE_ENV === 'production' ? 'info' : 'debug',
-  format: combine(
-    timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-    errors({ stack: true }),
-    logFormat
-  ),
+  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  format: logFormat,
   transports: [
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error', maxsize: 5242880, maxFiles: 5 }),
-    new winston.transports.File({ filename: 'logs/combined.log', maxsize: 5242880, maxFiles: 5 }),
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        logFormat
+      ),
+    }),
+    new winston.transports.File({
+      filename: path.join(__dirname, '../../logs/error.log'),
+      level: 'error',
+      maxsize: 5242880,
+      maxFiles: 5,
+    }),
+    new winston.transports.File({
+      filename: path.join(__dirname, '../../logs/combined.log'),
+      maxsize: 5242880,
+      maxFiles: 5,
+    }),
   ],
 });
 
-if (env.NODE_ENV !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: combine(colorize(), logFormat),
-  }));
-}
+// Create a stream for Morgan HTTP logging
+logger.stream = {
+  write: (message) => logger.http(message.trim()),
+};
 
-export default logger;
+module.exports = logger;

@@ -1,34 +1,29 @@
-import app from './src/app.js';
-import connectDB from './src/config/db.js';
-import env from './src/config/env.js';
-import logger from './src/config/logger.js';
+const app = require('./src/app');
+const connectDB = require('./src/config/db');
+const env = require('./src/config/env');
+const logger = require('./src/config/logger');
 
 const startServer = async () => {
-  await connectDB();
+  await connectDB(env.mongoUri);
 
-  const server = app.listen(env.PORT, () => {
-    logger.info(`Server running in ${env.NODE_ENV} mode on port ${env.PORT}`);
-  });
-
-  // Graceful shutdown
-  const shutdown = (signal) => {
-    logger.info(`${signal} received. Shutting down gracefully...`);
-    server.close(() => {
-      logger.info('Server closed');
-      process.exit(0);
+  app.listen(env.port, () => {
+    logger.info(`ClearMate API server started`, {
+      port: env.port,
+      environment: env.nodeEnv,
+      apiUrl: `http://localhost:${env.port}/api`,
+      healthCheck: `http://localhost:${env.port}/api/health`,
     });
-    setTimeout(() => {
-      logger.error('Forced shutdown after timeout');
-      process.exit(1);
-    }, 10000);
-  };
-
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
-  process.on('unhandledRejection', (err) => {
-    logger.error('Unhandled Rejection:', err);
-    shutdown('UNHANDLED_REJECTION');
   });
 };
+
+process.on('unhandledRejection', (err) => {
+  logger.error('UNHANDLED REJECTION — shutting down', { error: err.message, stack: err.stack });
+  process.exit(1);
+});
+
+process.on('uncaughtException', (err) => {
+  logger.error('UNCAUGHT EXCEPTION — shutting down', { error: err.message, stack: err.stack });
+  process.exit(1);
+});
 
 startServer();

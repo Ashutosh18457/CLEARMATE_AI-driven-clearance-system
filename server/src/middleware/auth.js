@@ -1,53 +1,69 @@
-import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
-import AppError from '../utils/AppError.js';
-import env from '../config/env.js';
+const jwt = require('jsonwebtoken');
+const AppError = require('../utils/AppError');
+const env = require('../config/env');
+const User = require('../models/User');
 
 /**
- * protect — verifies JWT, loads user, attaches req.user.
+ * Protect routes: verify JWT token and attach user to request.
  */
-export const protect = async (req, res, next) => {
+const protect = async (req, res, next) => {
   try {
     let token;
-    if (req.headers.authorization?.startsWith('Bearer')) {
+
+    if (req.cookies && req.cookies.clearmate_token) {
+      token = req.cookies.clearmate_token;
+    } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
       token = req.headers.authorization.split(' ')[1];
     }
 
     if (!token) {
-      throw AppError.unauthorized('Please log in to access this resource');
+      return next(AppError.unauthorized('Not authorized to access this route. Please log in.'));
     }
 
-    const decoded = jwt.verify(token, env.JWT_SECRET);
+    try {
+      // Verify token
+      const decoded = jwt.verify(token, env.jwtSecret);
+      
+      // Ensure the user still exists (in case they were deleted after token generation)
+      // Note: We only attach minimal data to req.user to avoid unnecessary DB hits 
+      // if not required, but verifying existence is best practice.
+      const currentUser = await User.findById(decoded.id).select('+isActive');
+      
+      if (!currentUser) {
+        return next(AppError.unauthorized('The user belonging to this token no longer exists.'));
+      }
+      
+      if (!currentUser.isActive) {
+        return next(AppError.forbidden('Your account has been deactivated.'));
+      }
 
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      throw AppError.unauthorized('User no longer exists');
-    }
-    if (!user.isActive) {
-      throw AppError.unauthorized('Your account has been deactivated');
-    }
+      // Attach minimal user info to request
+      req.user = {
+        id: decoded.id,
+        role: decoded.role,
+      };
 
-    req.user = user;
-    next();
+      next();
+    } catch (err) {
+      // Caught by global error handler mapping (JsonWebTokenError, TokenExpiredError)
+      return next(err);
+    }
   } catch (error) {
-    if (error.name === 'JsonWebTokenError') {
-      return next(AppError.unauthorized('Invalid token'));
-    }
-    if (error.name === 'TokenExpiredError') {
-      return next(AppError.unauthorized('Token has expired'));
-    }
     next(error);
   }
 };
 
 /**
- * restrictTo — checks req.user.role against allowed roles.
+ * Restrict routes to specific roles.
+ * Must be used AFTER protect middleware.
  */
-export const restrictTo = (...roles) => {
+const restrictTo = (...roles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    if (!req.user || !roles.includes(req.user.role)) {
       return next(AppError.forbidden('You do not have permission to perform this action'));
     }
     next();
   };
 };
+
+module.exports = { protect, restrictTo };

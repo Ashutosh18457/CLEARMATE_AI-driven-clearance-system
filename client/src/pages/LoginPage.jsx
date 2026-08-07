@@ -121,6 +121,43 @@ export default function LoginPage() {
             </Button>
           </form>
 
+          {/* Quick Demo Login Chips */}
+          <div className="mt-6 pt-5 border-t border-border-subtle space-y-2.5">
+            <div className="text-xs font-semibold text-ink-muted uppercase tracking-wider text-center">
+              💡 Quick Demo Login
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => { setEmail('student@sbjain.edu.in'); setPassword('Password123!'); }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all"
+              >
+                🎓 Student
+              </button>
+              <button
+                type="button"
+                onClick={() => { setEmail('teacher@sbjain.edu.in'); setPassword('Password123!'); }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all"
+              >
+                👩‍🏫 Teacher
+              </button>
+              <button
+                type="button"
+                onClick={() => { setEmail('admin@sbjain.edu.in'); setPassword('Password123!'); }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all"
+              >
+                ⚙️ Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => { setEmail('hod@sbjain.edu.in'); setPassword('Password123!'); }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all"
+              >
+                👨‍💼 HOD
+              </button>
+            </div>
+          </div>
+
           {/* Register Link */}
           <div className="mt-6 text-center text-sm text-ink-muted">
             Don't have an account?{' '}

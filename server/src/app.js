@@ -1,40 +1,105 @@
-import express from 'express';
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
-import morgan from 'morgan';
-import configureCors from './config/cors.js';
-import env from './config/env.js';
-import errorHandler from './middleware/errorHandler.js';
-import routes from './routes/index.js';
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+const crypto = require('crypto');
+const cookieParser = require('cookie-parser');
+const mongoSanitize = require('./middleware/mongoSanitize');
+const xssClean = require('./middleware/xss');
+
+const corsOptions = require('./config/cors');
+const env = require('./config/env');
+const logger = require('./config/logger');
+const routes = require('./routes');
+const errorHandler = require('./middleware/errorHandler');
+const AppError = require('./utils/AppError');
 
 const app = express();
 
-// ─── Security ───
-app.use(helmet());
-app.use(configureCors());
+// ──────────────────────────────────────────────
+// SECURITY
+// ──────────────────────────────────────────────
+app.use((req, res, next) => {
+  req.id = crypto.randomUUID();
+  res.setHeader('X-Request-ID', req.id);
+  next();
+});
 
-// ─── Rate Limiting ───
-if (env.NODE_ENV === 'production') {
-  app.use(rateLimit({
-    windowMs: env.RATE_LIMIT_WINDOW_MS,
-    max: env.RATE_LIMIT_MAX,
-    message: { success: false, message: 'Too many requests, please try again later', error: { code: 'RATE_LIMITED' } },
-  }));
-}
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:"],
+    },
+  },
+  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+  noSniff: true,
+  frameguard: { action: 'deny' },
+}));
+app.use(cors(corsOptions));
 
-// ─── Body Parsing ───
+// ──────────────────────────────────────────────
+// REQUEST PARSING
+// ──────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
+app.use(mongoSanitize());
+app.use(xssClean);
 
-// ─── Logging ───
-if (env.NODE_ENV !== 'test') {
-  app.use(morgan('dev'));
-}
+// ──────────────────────────────────────────────
+// HTTP REQUEST LOGGING
+// ──────────────────────────────────────────────
+app.use(morgan(env.isDev ? 'dev' : 'combined', { stream: logger.stream }));
 
-// ─── Routes ───
+// ──────────────────────────────────────────────
+// RATE LIMITING
+// ──────────────────────────────────────────────
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: {
+    success: false,
+    message: 'Too many requests, please try again later',
+    error: { code: 'RATE_LIMIT' },
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: {
+    success: false,
+    message: 'Too many login attempts, please try again later',
+    error: { code: 'RATE_LIMIT' },
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api', globalLimiter);
+app.use('/api/auth/login', authLimiter);
+
+// ──────────────────────────────────────────────
+// API ROUTES
+// ──────────────────────────────────────────────
 app.use('/api', routes);
 
-// ─── Error Handler ───
+// ──────────────────────────────────────────────
+// 404 HANDLER
+// ──────────────────────────────────────────────
+app.use((req, res, next) => {
+  next(AppError.notFound(`Cannot find ${req.method} ${req.originalUrl}`));
+});
+
+// ──────────────────────────────────────────────
+// CENTRALIZED ERROR HANDLER
+// ──────────────────────────────────────────────
 app.use(errorHandler);
 
-export default app;
+module.exports = app;

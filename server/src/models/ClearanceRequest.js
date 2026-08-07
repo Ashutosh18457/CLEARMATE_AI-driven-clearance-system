@@ -1,50 +1,39 @@
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 const clearanceRequestSchema = new mongoose.Schema(
   {
     studentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: [true, 'Student is required'],
+      required: [true, 'Student ID is required'],
       index: true,
     },
     semesterId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Semester',
-      required: [true, 'Semester is required'],
+      required: [true, 'Semester ID is required'],
       index: true,
     },
     status: {
       type: String,
-      enum: {
-        values: [
-          'initiated',
-          'items_review',
-          'sections_review',
-          'ci_review',
-          'hod_review',
-          'completed',
-          'rejected',
-        ],
-        message: '{VALUE} is not a valid clearance request status',
-      },
+      enum: ['initiated', 'items_review', 'sections_review', 'ci_review', 'hod_review', 'completed', 'rejected'],
       default: 'initiated',
+      index: true,
     },
     currentStage: {
       type: String,
-      enum: {
-        values: ['items', 'sections', 'class_incharge', 'hod', 'completed'],
-        message: '{VALUE} is not a valid stage',
-      },
+      enum: ['items', 'sections', 'class_incharge', 'hod', 'completed'],
       default: 'items',
     },
     certificateUrl: {
-      type: String,
-      trim: true,
+      type: String, // URL to the generated PDF stored in cloud storage
     },
     sentToExamCell: {
       type: Boolean,
       default: false,
+    },
+    sentToExamCellAt: {
+      type: Date,
     },
     initiatedAt: {
       type: Date,
@@ -54,17 +43,16 @@ const clearanceRequestSchema = new mongoose.Schema(
       type: Date,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
 
-clearanceRequestSchema.index(
-  { studentId: 1, semesterId: 1 },
-  { unique: true }
-);
+// A student can only have one active clearance request per semester
+clearanceRequestSchema.index({ studentId: 1, semesterId: 1 }, { unique: true });
 
-const ClearanceRequest = mongoose.model(
-  'ClearanceRequest',
-  clearanceRequestSchema
-);
+const ClearanceRequest = mongoose.model('ClearanceRequest', clearanceRequestSchema);
 
-export default ClearanceRequest;
+module.exports = ClearanceRequest;

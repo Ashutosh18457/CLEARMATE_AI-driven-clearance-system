@@ -1,31 +1,28 @@
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 const notificationSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: [true, 'User is required'],
+      required: [true, 'User ID is required'],
       index: true,
     },
     title: {
       type: String,
-      required: [true, 'Title is required'],
+      required: [true, 'Notification title is required'],
       trim: true,
       maxlength: [200, 'Title cannot exceed 200 characters'],
     },
     message: {
       type: String,
-      required: [true, 'Message is required'],
+      required: [true, 'Notification message is required'],
       trim: true,
       maxlength: [1000, 'Message cannot exceed 1000 characters'],
     },
     type: {
       type: String,
-      enum: {
-        values: ['info', 'success', 'warning', 'error', 'deadline'],
-        message: '{VALUE} is not a valid notification type',
-      },
+      enum: ['info', 'success', 'warning', 'error', 'deadline'],
       default: 'info',
     },
     isRead: {
@@ -37,12 +34,19 @@ const notificationSchema = new mongoose.Schema(
       trim: true,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
 
+// Compound index for efficient querying: user's unread notifications sorted by newest first
 notificationSchema.index({ userId: 1, isRead: 1, createdAt: -1 });
+
+// Auto-delete notifications older than 90 days
 notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 });
 
 const Notification = mongoose.model('Notification', notificationSchema);
 
-export default Notification;
+module.exports = Notification;

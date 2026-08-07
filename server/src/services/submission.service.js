@@ -1,0 +1,403 @@
+const SubmissionItem = require('../models/SubmissionItem');
+const Submission = require('../models/Submission');
+const ClearanceItem = require('../models/ClearanceItem');
+const User = require('../models/User');
+const Batch = require('../models/Batch');
+const AppError = require('../utils/AppError');
+const logger = require('../config/logger');
+const notificationService = require('./notification.service');
+
+const submissionService = {
+  // ══════════════════════════════════════════════
+  // TEACHER OPERATIONS
+  // ══════════════════════════════════════════════
+
+  /**
+   * Creates a submission item (assignment, lab record, etc.).
+   * Verifies the teacher is actually assigned to the referenced ClearanceItem.
+   */
+  async createSubmissionItem(teacherId, data) {
+    const clearanceItem = await ClearanceItem.findById(data.clearanceItemId);
+    if (!clearanceItem) {
+      throw AppError.notFound('Clearance item not found');
+    }
+
+    // Verify the teacher owns this clearance item
+    const isOwner = this._isTeacherOwner(clearanceItem, teacherId);
+    if (!isOwner) {
+      throw AppError.forbidden('You are not assigned to this clearance item');
+    }
+
+    const submissionItem = await SubmissionItem.create({
+      ...data,
+      semesterId: clearanceItem.semesterId,
+    });
+
+    logger.info('SubmissionItem created', {
+      itemId: submissionItem._id,
+      teacherId,
+      clearanceItemId: data.clearanceItemId,
+    });
+
+    return submissionItem;
+  },
+
+  /**
+   * Gets all submission items created by a teacher for a given semester.
+   * Groups them by their parent ClearanceItem for a cleaner UI.
+   */
+  async getSubmissionItemsByTeacher(teacherId, semesterId) {
+    // Find all ClearanceItems this teacher is assigned to in the semester
+    const clearanceItems = await ClearanceItem.find({ semesterId });
+    const ownedItemIds = clearanceItems
+      .filter((item) => this._isTeacherOwner(item, teacherId))
+      .map((item) => item._id);
+
+    if (ownedItemIds.length === 0) {
+      return [];
+    }
+
+    const submissionItems = await SubmissionItem.find({
+      clearanceItemId: { $in: ownedItemIds },
+    })
+      .populate('clearanceItemId', 'title type subjectCode srNo')
+      .sort({ deadline: 1 });
+
+    return submissionItems;
+  },
+
+  /**
+   * Gets all students' submission statuses for a specific submission item.
+   * Used by teacher to see who has submitted, who is pending, etc.
+   */
+  async getStudentSubmissions(teacherId, submissionItemId) {
+    const submissionItem = await SubmissionItem.findById(submissionItemId)
+      .populate('clearanceItemId');
+    if (!submissionItem) {
+      throw AppError.notFound('Submission item not found');
+    }
+
+    const clearanceItem = submissionItem.clearanceItemId;
+    if (!clearanceItem) {
+      throw AppError.notFound('Associated clearance item not found');
+    }
+
+    // Verify teacher ownership
+    const isOwner = this._isTeacherOwner(clearanceItem, teacherId);
+    if (!isOwner) {
+      throw AppError.forbidden('You are not assigned to this clearance item');
+    }
+
+    // Get the relevant students based on clearance item type
+    const studentIds = await this._getRelevantStudentIds(clearanceItem);
+
+    // Fetch all students with their submission status
+    const students = await User.find({ _id: { $in: studentIds } })
+      .select('name email enrollmentNo section');
+
+    // Fetch existing submissions
+    const submissions = await Submission.find({
+      submissionItemId,
+      studentId: { $in: studentIds },
+    });
+
+    // Build a map for quick lookup
+    const submissionMap = {};
+    for (const sub of submissions) {
+      submissionMap[sub.studentId.toString()] = sub;
+    }
+
+    // Combine student data with submission status
+    const result = students.map((student) => {
+      const submission = submissionMap[student._id.toString()];
+      return {
+        student: {
+          _id: student._id,
+          name: student.name,
+          email: student.email,
+          enrollmentNo: student.enrollmentNo,
+          section: student.section,
+        },
+        submission: submission
+          ? {
+              _id: submission._id,
+              status: submission.status,
+              submittedAt: submission.submittedAt,
+              verifiedAt: submission.verifiedAt,
+              remarks: submission.remarks,
+            }
+          : { status: 'pending' },
+      };
+    });
+
+    return {
+      submissionItem: {
+        _id: submissionItem._id,
+        title: submissionItem.title,
+        type: submissionItem.type,
+        deadline: submissionItem.deadline,
+      },
+      students: result,
+    };
+  },
+
+  /**
+   * Teacher verifies or rejects a student's submission.
+   */
+  async verifySubmission(teacherId, submissionId, status, remarks) {
+    const submission = await Submission.findById(submissionId)
+      .populate({
+        path: 'submissionItemId',
+        populate: { path: 'clearanceItemId' },
+      });
+
+    if (!submission) {
+      throw AppError.notFound('Submission not found');
+    }
+
+    if (submission.status !== 'submitted') {
+      throw AppError.badRequest(
+        `Cannot verify a submission with status "${submission.status}". Only "submitted" items can be reviewed.`
+      );
+    }
+
+    const clearanceItem = submission.submissionItemId?.clearanceItemId;
+    if (!clearanceItem) {
+      throw AppError.notFound('Associated clearance item not found');
+    }
+
+    // Verify teacher ownership
+    const isOwner = this._isTeacherOwner(clearanceItem, teacherId);
+    if (!isOwner) {
+      throw AppError.forbidden('You are not authorized to verify this submission');
+    }
+
+    submission.status = status;
+    submission.remarks = remarks || '';
+    submission.verifiedBy = teacherId;
+    submission.verifiedAt = new Date();
+    await submission.save();
+
+    logger.info('Submission verified', {
+      submissionId,
+      teacherId,
+      status,
+      studentId: submission.studentId,
+    });
+
+    // Notify the student
+    const itemTitle = submission.submissionItemId?.title || 'Unknown';
+    if (status === 'verified') {
+      await notificationService.notifySubmissionVerified(submission.studentId, itemTitle);
+    } else if (status === 'rejected') {
+      await notificationService.notifySubmissionRejected(submission.studentId, itemTitle, remarks);
+    }
+
+    return submission;
+  },
+
+  // ══════════════════════════════════════════════
+  // STUDENT OPERATIONS
+  // ══════════════════════════════════════════════
+
+  /**
+   * Gets all submission items relevant to a student for a given semester.
+   * Resolves which ClearanceItems apply based on batch (lab) and elective choice.
+   */
+  async getMySubmissions(studentId, semesterId) {
+    const student = await User.findById(studentId);
+    if (!student) throw AppError.notFound('Student not found');
+
+    // Get all clearance items for this semester
+    const allClearanceItems = await ClearanceItem.find({ semesterId });
+
+    // Filter to only items relevant to this student
+    const relevantItems = allClearanceItems.filter((item) => {
+      if (item.type === 'theory' || item.type === 'special') return true;
+      if (item.type === 'lab') {
+        // Student must be in one of the lab batches
+        return item.labBatchTeachers.some(
+          (lbt) => student.batchId && lbt.batchId.toString() === student.batchId.toString()
+        );
+      }
+      if (item.type === 'elective') {
+        // Student must have selected this elective
+        if (!student.selectedElective) return false;
+        return item.electiveOptions.some(
+          (opt) => opt._id.toString() === student.selectedElective.toString()
+        );
+      }
+      return false;
+    });
+
+    const relevantItemIds = relevantItems.map((item) => item._id);
+
+    // Get all submission items for relevant clearance items
+    const submissionItems = await SubmissionItem.find({
+      clearanceItemId: { $in: relevantItemIds },
+    })
+      .populate('clearanceItemId', 'title type subjectCode srNo')
+      .sort({ deadline: 1 });
+
+    // Get existing submissions for this student
+    const submissions = await Submission.find({
+      studentId,
+      submissionItemId: { $in: submissionItems.map((si) => si._id) },
+    });
+
+    const submissionMap = {};
+    for (const sub of submissions) {
+      submissionMap[sub.submissionItemId.toString()] = sub;
+    }
+
+    // Combine submission items with student's status
+    const result = submissionItems.map((si) => {
+      const submission = submissionMap[si._id.toString()];
+      return {
+        submissionItem: {
+          _id: si._id,
+          title: si.title,
+          type: si.type,
+          description: si.description,
+          deadline: si.deadline,
+          isRequired: si.isRequired,
+          clearanceItem: si.clearanceItemId,
+        },
+        myStatus: submission
+          ? {
+              _id: submission._id,
+              status: submission.status,
+              submittedAt: submission.submittedAt,
+              verifiedAt: submission.verifiedAt,
+              remarks: submission.remarks,
+            }
+          : { status: 'pending' },
+        isOverdue: !submission && new Date(si.deadline) < new Date(),
+      };
+    });
+
+    return result;
+  },
+
+  /**
+   * Student marks their work as submitted.
+   * Creates a Submission record on-demand (lazy creation pattern).
+   */
+  async submitWork(studentId, submissionItemId) {
+    const submissionItem = await SubmissionItem.findById(submissionItemId)
+      .populate('clearanceItemId');
+    if (!submissionItem) {
+      throw AppError.notFound('Submission item not found');
+    }
+
+    // Check if submission already exists
+    let submission = await Submission.findOne({ submissionItemId, studentId });
+
+    if (submission) {
+      if (submission.status === 'verified') {
+        throw AppError.badRequest('This submission has already been verified');
+      }
+      if (submission.status === 'submitted') {
+        throw AppError.badRequest('This submission is already marked as submitted and awaiting verification');
+      }
+      // If rejected, allow re-submission
+      submission.status = 'submitted';
+      submission.submittedAt = new Date();
+      submission.remarks = '';
+      submission.verifiedBy = undefined;
+      submission.verifiedAt = undefined;
+      await submission.save();
+    } else {
+      // Create new submission record (on-demand)
+      submission = await Submission.create({
+        submissionItemId,
+        studentId,
+        status: 'submitted',
+        submittedAt: new Date(),
+      });
+    }
+
+    logger.info('Student submitted work', {
+      studentId,
+      submissionItemId,
+      submissionId: submission._id,
+    });
+
+    return submission;
+  },
+
+  // ══════════════════════════════════════════════
+  // PRIVATE HELPERS
+  // ══════════════════════════════════════════════
+
+  /**
+   * Checks if a teacher is assigned to a ClearanceItem.
+   * Works for theory, lab (batch-specific), elective, and special types.
+   */
+  _isTeacherOwner(clearanceItem, teacherId) {
+    const tid = teacherId.toString();
+
+    if (clearanceItem.type === 'theory' || clearanceItem.type === 'special') {
+      return clearanceItem.theoryTeacherId?.toString() === tid;
+    }
+
+    if (clearanceItem.type === 'lab') {
+      return clearanceItem.labBatchTeachers.some(
+        (lbt) => lbt.teacherId.toString() === tid
+      );
+    }
+
+    if (clearanceItem.type === 'elective') {
+      return clearanceItem.electiveOptions.some(
+        (opt) => opt.teacherId.toString() === tid
+      );
+    }
+
+    return false;
+  },
+
+  /**
+   * Resolves which students are relevant for a given ClearanceItem.
+   * - Theory/Special: All students in the semester's program + semester number.
+   * - Lab: Only students in the specific batches.
+   * - Elective: Only students who selected this elective.
+   */
+  async _getRelevantStudentIds(clearanceItem) {
+    if (clearanceItem.type === 'theory' || clearanceItem.type === 'special') {
+      // All students in the semester (we need to find the semester's program + sem number)
+      const Semester = require('../models/Semester');
+      const semester = await Semester.findById(clearanceItem.semesterId);
+      if (!semester) return [];
+
+      const students = await User.find({
+        role: 'student',
+        programId: semester.programId,
+        currentSemester: semester.semNumber,
+        isActive: true,
+      }).select('_id');
+
+      return students.map((s) => s._id);
+    }
+
+    if (clearanceItem.type === 'lab') {
+      const batchIds = clearanceItem.labBatchTeachers.map((lbt) => lbt.batchId);
+      const batches = await Batch.find({ _id: { $in: batchIds } });
+      const studentIds = batches.flatMap((b) => b.studentIds);
+      return studentIds;
+    }
+
+    if (clearanceItem.type === 'elective') {
+      const optionIds = clearanceItem.electiveOptions.map((opt) => opt._id);
+      const students = await User.find({
+        role: 'student',
+        selectedElective: { $in: optionIds },
+        isActive: true,
+      }).select('_id');
+      return students.map((s) => s._id);
+    }
+
+    return [];
+  },
+};
+
+module.exports = submissionService;

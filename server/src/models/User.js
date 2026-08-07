@@ -1,5 +1,8 @@
-import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+
+const ROLES = ['student', 'teacher', 'section_head', 'class_incharge', 'hod', 'admin'];
+const SECTION_TYPES = ['library', 'accounts', 'bus', 'student_section'];
 
 const userSchema = new mongoose.Schema(
   {
@@ -15,94 +18,118 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
-      validate: {
-        validator: function (value) {
-          return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-        },
-        message: 'Please provide a valid email address',
-      },
+      match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please provide a valid email'],
+      index: true,
     },
     password: {
       type: String,
       required: [true, 'Password is required'],
       minlength: [8, 'Password must be at least 8 characters'],
-      select: false,
+      select: false, // Don't return password in queries by default
     },
     role: {
       type: String,
-      enum: {
-        values: [
-          'student',
-          'teacher',
-          'section_head',
-          'class_incharge',
-          'hod',
-          'admin',
-        ],
-        message: '{VALUE} is not a valid role',
-      },
+      enum: ROLES,
       required: [true, 'Role is required'],
+      index: true,
     },
     isActive: {
       type: Boolean,
       default: true,
     },
-
-    // ── Student-only fields ──
+    loginAttempts: {
+      type: Number,
+      default: 0
+    },
+    lockUntil: {
+      type: Date
+    },
+    
+    // ----------------------------------------------------
+    // STUDENT-SPECIFIC FIELDS
+    // ----------------------------------------------------
     programId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Program',
+      required: function () { return this.role === 'student'; },
     },
     enrollmentNo: {
       type: String,
-      trim: true,
+      required: function () { return this.role === 'student'; },
+      sparse: true, // Only enforce uniqueness where it exists
+      unique: true,
     },
     currentSemester: {
       type: Number,
+      required: function () { return this.role === 'student'; },
     },
     section: {
       type: String,
-      trim: true,
+      required: function () { return this.role === 'student'; },
     },
     batchId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Batch',
+      // Optional initially, assigned by admin later
     },
     selectedElective: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId, // Will link to the sub-document ID in ClearanceItem
+      // Optional, selected by student during semester
     },
 
-    // ── Section head field ──
+    // ----------------------------------------------------
+    // SECTION HEAD-SPECIFIC FIELDS
+    // ----------------------------------------------------
     sectionType: {
       type: String,
-      enum: {
-        values: ['library', 'accounts', 'bus', 'student_section'],
-        message: '{VALUE} is not a valid section type',
-      },
-      required: function () {
-        return this.role === 'section_head';
-      },
+      enum: SECTION_TYPES,
+      required: function () { return this.role === 'section_head'; },
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
 
-// ── Indexes ──
-userSchema.index({ enrollmentNo: 1 }, { unique: true, sparse: true });
-userSchema.index({ role: 1, programId: 1, currentSemester: 1 });
+userSchema.statics.validatePasswordStrength = function (password) {
+  const minLength = 8;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  return password.length >= minLength && hasUpper && hasLower && hasNumber && hasSpecial;
+};
 
-// ── Pre-save: hash password ──
+userSchema.pre('validate', function() {
+  if (this.isModified('password')) {
+    if (!this.constructor.validatePasswordStrength(this.password)) {
+      this.invalidate('password', 'Password must have min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special character');
+    }
+  }
+});
+
+// Hash password before saving
 userSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
+  
   const salt = await bcrypt.genSalt(12);
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-// ── Instance method: compare password ──
-userSchema.methods.comparePassword = async function (candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
+// Method to check password validity
+userSchema.methods.matchPassword = async function (enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
 };
+
+userSchema.methods.isLocked = function () {
+  return !!(this.lockUntil && this.lockUntil > Date.now());
+};
+
+// Compound index for querying students by program and semester
+userSchema.index({ role: 1, programId: 1, currentSemester: 1 });
 
 const User = mongoose.model('User', userSchema);
 
-export default User;
+module.exports = User;

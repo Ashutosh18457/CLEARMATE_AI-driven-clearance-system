@@ -1,17 +1,18 @@
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 const semesterSchema = new mongoose.Schema(
   {
     programId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Program',
-      required: [true, 'Program is required'],
+      required: [true, 'Program ID is required'],
       index: true,
     },
     name: {
       type: String,
       required: [true, 'Semester name is required'],
       trim: true,
+      example: 'Semester 5',
     },
     semNumber: {
       type: Number,
@@ -23,13 +24,11 @@ const semesterSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Academic year is required'],
       trim: true,
+      example: '2024-25',
     },
     type: {
       type: String,
-      enum: {
-        values: ['ODD', 'EVEN'],
-        message: '{VALUE} is not a valid semester type',
-      },
+      enum: ['ODD', 'EVEN'],
       required: [true, 'Semester type is required'],
     },
     startDate: {
@@ -39,12 +38,6 @@ const semesterSchema = new mongoose.Schema(
     endDate: {
       type: Date,
       required: [true, 'End date is required'],
-      validate: {
-        validator: function (value) {
-          return value > this.startDate;
-        },
-        message: 'End date must be after start date',
-      },
     },
     clearanceDeadline: {
       type: Date,
@@ -53,16 +46,19 @@ const semesterSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
+      index: true,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
 
-semesterSchema.index(
-  { programId: 1, semNumber: 1, academicYear: 1 },
-  { unique: true }
-);
+// Compound index to ensure uniqueness of semester number per program per academic year
+semesterSchema.index({ programId: 1, semNumber: 1, academicYear: 1 }, { unique: true });
 
 const Semester = mongoose.model('Semester', semesterSchema);
 
-export default Semester;
+module.exports = Semester;
