@@ -76,9 +76,15 @@ const startMemoryServer = async () => {
 };
 
 const connectDB = async (uri) => {
-  if (!uri || uri.includes('placeholder') || uri.includes('inmemory')) {
+  if (process.env.USE_MEMORY_DB === 'true' || uri === 'inmemory') {
     await startMemoryServer();
     return;
+  }
+
+  const isInvalidScheme = !uri || (!uri.startsWith('mongodb://') && !uri.startsWith('mongodb+srv://'));
+  if (isInvalidScheme || uri.includes('placeholder') || uri.includes('your_mongodb_connection_string')) {
+    logger.error('❌ MONGODB_URI in server/.env is missing or invalid. Expected a connection string starting with "mongodb://" or "mongodb+srv://".');
+    throw new Error('Invalid or missing MONGODB_URI in server/.env');
   }
 
   try {
@@ -86,11 +92,11 @@ const connectDB = async (uri) => {
     logger.info(`✅ MongoDB connected: ${conn.connection.host}`);
     await autoSeed();
   } catch (error) {
-    logger.warn(`⚠️ Cloud MongoDB connection failed (${error.message}). Falling back to In-Memory Database...`);
+    logger.error(`❌ MongoDB Atlas connection failed: ${error.message}`);
     try {
       await mongoose.disconnect();
     } catch (e) {}
-    await startMemoryServer();
+    throw new Error(`MongoDB Atlas connection failed: ${error.message}`);
   }
 };
 

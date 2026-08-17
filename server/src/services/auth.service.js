@@ -72,6 +72,51 @@ const authService = {
   /**
    * Fetches the current user's profile data.
    */
+  /**
+   * Registers a new user.
+   */
+  async register(data, ip, userAgent) {
+    const existing = await User.findOne({ email: data.email });
+    if (existing) {
+      throw AppError.conflict(`User with email "${data.email}" already exists`);
+    }
+
+    const payload = { ...data };
+
+    if (payload.role === 'student') {
+      if (!payload.programId) {
+        const Program = require('../models/Program');
+        const prog = await Program.findOne();
+        if (prog) payload.programId = prog._id;
+      }
+      if (!payload.enrollmentNo) {
+        payload.enrollmentNo = 'EN' + Date.now().toString().slice(-6);
+      }
+      if (!payload.currentSemester) {
+        payload.currentSemester = 6;
+      }
+      if (!payload.section) {
+        payload.section = 'A';
+      }
+    }
+
+    if (payload.role === 'section_head' && !payload.sectionType) {
+      payload.sectionType = 'library';
+    }
+
+    const user = await User.create(payload);
+    const AuditLog = require('../models/AuditLog');
+    new AuditLog({ userId: user._id, action: 'register_success', resource: 'Auth', ip, userAgent }).save().catch(()=>{});
+
+    const token = generateToken(user._id, user.role);
+    user.password = undefined;
+
+    return { user, token };
+  },
+
+  /**
+   * Fetches the current user's profile data.
+   */
   async getMe(userId) {
     const user = await User.findById(userId);
     if (!user) {

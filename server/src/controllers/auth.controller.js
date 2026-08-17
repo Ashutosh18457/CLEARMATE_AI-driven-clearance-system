@@ -1,5 +1,5 @@
 const authService = require('../services/auth.service');
-const { sendSuccess } = require('../utils/response');
+const { sendSuccess, sendCreated } = require('../utils/response');
 
 const authController = {
   /**
@@ -25,6 +25,31 @@ const authController = {
       });
     } catch (error) {
       next(error); // Pass to centralized error handler
+    }
+  },
+
+  /**
+   * @route POST /api/auth/register
+   * @desc Register a new user & get token
+   * @access Public
+   */
+  async register(req, res, next) {
+    try {
+      const { user, token } = await authService.register(req.body, req.ip || req.connection.remoteAddress, req.headers['user-agent']);
+
+      res.cookie('clearmate_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      sendCreated(res, {
+        data: { user, token },
+        message: 'Registration successful',
+      });
+    } catch (error) {
+      next(error);
     }
   },
 

@@ -6,7 +6,10 @@ const { protect, restrictTo } = require('../middleware/auth');
 
 const router = express.Router();
 
-// All admin routes require authentication + admin role
+// Clearance items list (accessible by both Admin and Teacher)
+router.get('/clearance-items', protect, restrictTo('admin', 'teacher'), adminController.getClearanceItems);
+
+// All other admin routes require authentication + admin role
 router.use(protect, restrictTo('admin'));
 
 // ──────────────────────────────────────────────
@@ -46,7 +49,6 @@ router.patch('/users/:id/deactivate', adminController.deactivateUser);
 // CLEARANCE ITEMS
 // ──────────────────────────────────────────────
 router.post('/clearance-items', validate(v.createClearanceItemSchema), adminController.createClearanceItem);
-router.get('/clearance-items', adminController.getClearanceItems);
 router.put('/clearance-items/:id', validate(v.updateClearanceItemSchema), adminController.updateClearanceItem);
 router.delete('/clearance-items/:id', adminController.deleteClearanceItem);
 

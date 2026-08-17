@@ -10,6 +10,7 @@ const router = express.Router();
 
 // Public routes
 router.post('/login', validate(authValidator.loginSchema), auditLogger('login_attempt', 'Auth'), authController.login);
+router.post('/register', validate(authValidator.registerSchema), auditLogger('register_attempt', 'Auth'), authController.register);
 router.post('/logout', authController.logout);
 
 // Protected routes
