@@ -6,6 +6,9 @@ const riskController = {
   async getAtRiskStudents(req, res, next) {
     try {
       const { semesterId, ...filters } = req.query;
+      if (!semesterId) {
+        throw require('../utils/AppError').badRequest('semesterId query parameter is required');
+      }
       const data = await riskService.getAtRiskStudents(semesterId, filters);
       sendSuccess(res, { data, message: 'At-risk students retrieved' });
     } catch (error) { next(error); }

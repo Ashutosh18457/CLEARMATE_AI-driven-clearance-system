@@ -39,6 +39,8 @@ export default function Users() {
   // Bulk upload modal
   const [bulkOpen, setBulkOpen] = useState(false);
   const [csvData, setCsvData] = useState('');
+  const [fileName, setFileName] = useState('');
+  const [previewRows, setPreviewRows] = useState([]);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkResults, setBulkResults] = useState(null);
 
@@ -144,27 +146,77 @@ export default function Users() {
     }
   };
 
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv') && file.type !== 'text/csv') {
+      toast.error('Please select a valid .csv file');
+      return;
+    }
+
+    setFileName(file.name);
+    setBulkResults(null);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result || '';
+      setCsvData(text);
+
+      // Parse preview rows (first 10)
+      const lines = text.split(/\r?\n/).filter((l) => l.trim());
+      if (lines.length > 1) {
+        const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''));
+        const rows = lines.slice(1, 11).map((line, idx) => {
+          const cells = line.split(',').map((c) => c.trim().replace(/^"|"$/g, ''));
+          return { rowNo: idx + 2, cells };
+        });
+        setPreviewRows({ headers, rows });
+      } else {
+        setPreviewRows({ headers: [], rows: [] });
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await api.get('/admin/students/sample-csv', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'sample_students_template.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch {
+      // Fallback client-side generation
+      const csvStr = 'student_id,full_name,email,department,semester,section\nEN2024CSE001,Aarav Sharma,aarav.sharma@sbjain.edu.in,CSE,6,A\nEN2024CSE002,Ananya Patel,ananya.patel@sbjain.edu.in,CSE,6,A\nEN2024ECE001,Rohan Verma,rohan.verma@sbjain.edu.in,ECE,4,B\n';
+      const blob = new Blob([csvStr], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'sample_students_template.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+  };
+
   const handleBulkUpload = async () => {
     if (!csvData.trim()) {
-      toast.error('Please enter CSV data');
+      toast.error('Please select or paste CSV data');
       return;
     }
     setBulkLoading(true);
     setBulkResults(null);
     try {
-      const lines = csvData.trim().split('\n').filter((l) => l.trim());
-      const users = lines.map((line) => {
-        const [name, email, password, enrollmentNo, programId, currentSemester, section] =
-          line.split(',').map((s) => s.trim());
-        return {
-          name, email, password, enrollmentNo, programId,
-          currentSemester: Number(currentSemester), section,
-          role: 'student',
-        };
+      const res = await api.post('/admin/students/bulk-upload', {
+        csvContent: csvData,
+        filename: fileName || 'students_upload.csv',
       });
-      const res = await api.post('/admin/users/bulk', { users });
       setBulkResults(res.data.data);
-      toast.success(res.data.message || 'Bulk upload completed');
+      toast.success(res.data.message || 'Bulk CSV upload completed');
       fetchUsers();
     } catch (err) {
       toast.error(err.message || 'Bulk upload failed');
@@ -377,59 +429,172 @@ export default function Users() {
       {/* Bulk Upload Modal */}
       <Modal
         isOpen={bulkOpen}
-        onClose={() => setBulkOpen(false)}
-        title="Bulk Upload Students"
+        onClose={() => {
+          setBulkOpen(false);
+          setBulkResults(null);
+          setCsvData('');
+          setFileName('');
+          setPreviewRows([]);
+        }}
+        title="Bulk Upload Students via CSV"
         size="lg"
         footer={
           <>
-            <Button variant="secondary" size="sm" onClick={() => setBulkOpen(false)}>Close</Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setBulkOpen(false);
+                setBulkResults(null);
+                setCsvData('');
+                setFileName('');
+                setPreviewRows([]);
+              }}
+            >
+              {bulkResults ? 'Close' : 'Cancel'}
+            </Button>
             {!bulkResults && (
-              <Button variant="primary" size="sm" onClick={handleBulkUpload} loading={bulkLoading}>
-                Upload
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleBulkUpload}
+                loading={bulkLoading}
+                disabled={!csvData.trim()}
+              >
+                Confirm & Upload Students
               </Button>
             )}
           </>
         }
       >
         {!bulkResults ? (
-          <div className="space-y-3">
-            <p className="text-sm text-ink-secondary">
-              Enter one student per line in CSV format:
-            </p>
-            <p className="text-xs font-mono text-ink-muted bg-canvas px-3 py-2 rounded-md">
-              name,email,password,enrollmentNo,programId,currentSemester,section
-            </p>
-            <textarea
-              className="input-base min-h-[200px] font-mono text-xs"
-              value={csvData}
-              onChange={(e) => setCsvData(e.target.value)}
-              placeholder="John Doe,john@example.com,Pass@123,EN001,programId,3,A"
-            />
+          <div className="space-y-4">
+            {/* Header Action Bar */}
+            <div className="flex items-center justify-between bg-canvas p-3 rounded-md border border-border-subtle">
+              <div>
+                <p className="text-xs font-semibold text-ink-primary">Expected Columns:</p>
+                <p className="text-[11px] font-mono text-ink-muted">
+                  student_id, full_name, email, department, semester, section
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleDownloadTemplate}
+                className="px-2.5 py-1 bg-surface hover:bg-surface-hover border border-border-subtle text-brand text-xs font-medium rounded transition-all flex items-center gap-1.5"
+              >
+                📥 Download Template
+              </button>
+            </div>
+
+            {/* File Drop Area */}
+            <div>
+              <label className="block text-xs font-semibold text-ink-primary mb-1">
+                Select CSV File from PC
+              </label>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleFileSelect}
+                className="block w-full text-xs text-ink-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-brand file:text-white hover:file:bg-brand-hover cursor-pointer border border-border-subtle rounded-md p-1"
+              />
+              {fileName && (
+                <p className="text-xs text-status-success mt-1 font-medium">
+                  📄 Loaded: {fileName}
+                </p>
+              )}
+            </div>
+
+            {/* Manual CSV Textarea / Preview toggle */}
+            <div>
+              <label className="block text-xs font-semibold text-ink-primary mb-1">
+                Raw CSV Data (or Paste CSV)
+              </label>
+              <textarea
+                className="input-base min-h-[100px] font-mono text-xs"
+                value={csvData}
+                onChange={(e) => {
+                  setCsvData(e.target.value);
+                  const lines = e.target.value.split(/\r?\n/).filter((l) => l.trim());
+                  if (lines.length > 1) {
+                    const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''));
+                    const rows = lines.slice(1, 11).map((line, idx) => {
+                      const cells = line.split(',').map((c) => c.trim().replace(/^"|"$/g, ''));
+                      return { rowNo: idx + 2, cells };
+                    });
+                    setPreviewRows({ headers, rows });
+                  } else {
+                    setPreviewRows({ headers: [], rows: [] });
+                  }
+                }}
+                placeholder="student_id,full_name,email,department,semester,section&#10;EN2024CSE001,Aarav Sharma,aarav.sharma@sbjain.edu.in,CSE,6,A"
+              />
+            </div>
+
+            {/* Row Preview Table */}
+            {previewRows?.rows?.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-ink-primary mb-1.5">
+                  🔍 Data Preview (First 10 rows):
+                </p>
+                <div className="border border-border-subtle rounded-md overflow-x-auto max-h-44 custom-scrollbar">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-canvas border-b border-border-subtle text-ink-secondary">
+                      <tr>
+                        <th className="px-2.5 py-1.5 font-semibold">Row</th>
+                        {previewRows.headers.map((h, i) => (
+                          <th key={i} className="px-2.5 py-1.5 font-semibold">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-subtle">
+                      {previewRows.rows.map((rowItem) => (
+                        <tr key={rowItem.rowNo} className="hover:bg-surface-hover">
+                          <td className="px-2.5 py-1 font-mono text-ink-muted text-[11px]">{rowItem.rowNo}</td>
+                          {rowItem.cells.map((cell, cIdx) => (
+                            <td key={cIdx} className="px-2.5 py-1 text-ink-primary truncate max-w-[120px]">
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="flex gap-4">
-              <div className="px-4 py-3 bg-green-50 rounded-md flex-1">
-                <p className="text-2xl font-semibold text-status-success font-tabular">
-                  {bulkResults.successCount || bulkResults.created || 0}
+              <div className="px-4 py-3 bg-green-50 border border-green-200 rounded-md flex-1 text-center">
+                <p className="text-2xl font-bold text-status-success font-tabular">
+                  {bulkResults.createdCount ?? bulkResults.created?.length ?? 0}
                 </p>
-                <p className="text-xs text-green-700">Created</p>
+                <p className="text-xs font-semibold text-green-800">Students Created</p>
               </div>
-              <div className="px-4 py-3 bg-red-50 rounded-md flex-1">
-                <p className="text-2xl font-semibold text-status-rejected font-tabular">
-                  {bulkResults.errorCount || bulkResults.errors?.length || 0}
+              <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-md flex-1 text-center">
+                <p className="text-2xl font-bold text-status-rejected font-tabular">
+                  {bulkResults.failedCount ?? bulkResults.errors?.length ?? 0}
                 </p>
-                <p className="text-xs text-red-700">Errors</p>
+                <p className="text-xs font-semibold text-red-800">Failed / Invalid Rows</p>
               </div>
             </div>
+
             {bulkResults.errors?.length > 0 && (
-              <div className="mt-3 max-h-48 overflow-y-auto custom-scrollbar">
-                {bulkResults.errors.map((err, i) => (
-                  <div key={i} className="text-xs text-status-rejected py-1 border-b border-border-subtle last:border-0">
-                    <span className="font-medium">Row {err.row || err.line || i + 1}:</span>{' '}
-                    {err.message || err.error || JSON.stringify(err)}
-                  </div>
-                ))}
+              <div>
+                <p className="text-xs font-semibold text-status-rejected mb-1.5">
+                  ⚠️ Row Validation Failures ({bulkResults.errors.length}):
+                </p>
+                <div className="border border-red-200 bg-red-50/50 rounded-md max-h-56 overflow-y-auto custom-scrollbar p-2 space-y-1.5">
+                  {bulkResults.errors.map((err, i) => (
+                    <div key={i} className="text-xs text-status-rejected py-1 border-b border-red-200/60 last:border-0 flex items-start gap-2">
+                      <span className="font-bold px-1.5 py-0.5 bg-red-100 rounded text-[10px]">Row {err.row}</span>
+                      <div className="flex-1">
+                        <span className="font-medium text-ink-primary">{err.email}</span>: {err.reason}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

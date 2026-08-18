@@ -109,7 +109,7 @@ const adminController = {
   /** @route POST /api/admin/users */
   async createUser(req, res, next) {
     try {
-      const user = await adminService.createUser(req.body);
+      const user = await adminService.createUser(req.body, req.user);
       sendCreated(res, { data: { user }, message: 'User created successfully' });
     } catch (error) { next(error); }
   },
@@ -117,7 +117,7 @@ const adminController = {
   /** @route POST /api/admin/users/bulk */
   async bulkCreateStudents(req, res, next) {
     try {
-      const results = await adminService.bulkCreateStudents(req.body);
+      const results = await adminService.bulkCreateStudents(req.body, req.user);
       sendCreated(res, {
         data: { results },
         message: `Bulk creation complete. Created: ${results.created.length}, Failed: ${results.failed.length}`,
@@ -125,10 +125,31 @@ const adminController = {
     } catch (error) { next(error); }
   },
 
+  /** @route POST /api/admin/students/bulk-upload */
+  async bulkUploadStudentsCsv(req, res, next) {
+    try {
+      const result = await adminService.bulkUploadStudentsCsv(req.body, req.user);
+      sendCreated(res, {
+        data: result,
+        message: `Bulk CSV upload completed. Processed: ${result.totalRows}, Created: ${result.createdCount}, Failed: ${result.failedCount}`,
+      });
+    } catch (error) { next(error); }
+  },
+
+  /** @route GET /api/admin/students/sample-csv */
+  async downloadSampleCsv(req, res, next) {
+    try {
+      const csv = adminService.getSampleCsvTemplate();
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="sample_students_template.csv"');
+      res.status(200).send(csv);
+    } catch (error) { next(error); }
+  },
+
   /** @route GET /api/admin/users */
   async getUsers(req, res, next) {
     try {
-      const { users, pagination } = await adminService.getUsers(req.query);
+      const { users, pagination } = await adminService.getUsers(req.query, req.user);
       sendSuccess(res, { data: { users, pagination }, message: 'Users retrieved' });
     } catch (error) { next(error); }
   },
@@ -136,7 +157,7 @@ const adminController = {
   /** @route GET /api/admin/users/:id */
   async getUserById(req, res, next) {
     try {
-      const user = await adminService.getUserById(req.params.id);
+      const user = await adminService.getUserById(req.params.id, req.user);
       sendSuccess(res, { data: { user } });
     } catch (error) { next(error); }
   },
@@ -144,7 +165,7 @@ const adminController = {
   /** @route PUT /api/admin/users/:id */
   async updateUser(req, res, next) {
     try {
-      const user = await adminService.updateUser(req.params.id, req.body);
+      const user = await adminService.updateUser(req.params.id, req.body, req.user);
       sendSuccess(res, { data: { user }, message: 'User updated successfully' });
     } catch (error) { next(error); }
   },
@@ -152,7 +173,7 @@ const adminController = {
   /** @route PATCH /api/admin/users/:id/deactivate */
   async deactivateUser(req, res, next) {
     try {
-      const user = await adminService.deactivateUser(req.params.id);
+      const user = await adminService.deactivateUser(req.params.id, req.user);
       sendSuccess(res, { data: { user }, message: 'User deactivated successfully' });
     } catch (error) { next(error); }
   },

@@ -240,6 +240,11 @@ const clearanceService = {
     const sectionClearance = await SectionClearance.findById(sectionClearanceId);
     if (!sectionClearance) throw AppError.notFound('Section clearance not found');
 
+    const reviewer = await User.findById(reviewerId);
+    if (reviewer && reviewer.role === 'section_head' && reviewer.sectionType !== sectionClearance.department) {
+      throw AppError.forbidden(`You are only authorized to review ${reviewer.sectionType} section clearances`);
+    }
+
     if (sectionClearance.status !== 'pending') {
       throw AppError.badRequest(`This section has already been ${sectionClearance.status}`);
     }

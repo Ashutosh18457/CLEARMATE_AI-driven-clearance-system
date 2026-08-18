@@ -10,8 +10,8 @@ const auditLogger = (action, resource) => {
         userId: req.user ? req.user.id : null,
         action,
         resource,
-        ip: req.ip || req.connection.remoteAddress,
-        userAgent: req.headers['user-agent']
+        ip: req.ip || req.socket?.remoteAddress || '127.0.0.1',
+        userAgent: req.headers['user-agent'] || ''
       });
       log.save().catch(console.error);
     } catch (e) {

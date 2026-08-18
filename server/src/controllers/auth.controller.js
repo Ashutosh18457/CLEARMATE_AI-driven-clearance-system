@@ -10,7 +10,9 @@ const authController = {
   async login(req, res, next) {
     try {
       const { email, password } = req.body;
-      const { user, token } = await authService.login(email, password, req.ip || req.connection.remoteAddress, req.headers['user-agent']);
+      const ip = req.ip || req.socket?.remoteAddress || '127.0.0.1';
+      const userAgent = req.headers['user-agent'] || '';
+      const { user, token } = await authService.login(email, password, ip, userAgent);
 
       res.cookie('clearmate_token', token, {
         httpOnly: true,
@@ -25,6 +27,41 @@ const authController = {
       });
     } catch (error) {
       next(error); // Pass to centralized error handler
+    }
+  },
+
+  /**
+   * @route POST /api/auth/forgot-password
+   * @desc Request password reset token via email
+   * @access Public
+   */
+  async forgotPassword(req, res, next) {
+    try {
+      const result = await authService.forgotPassword(req.body.email);
+      sendSuccess(res, {
+        data: result,
+        message: result.message,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * @route POST /api/auth/reset-password
+   * @desc Reset user password with token
+   * @access Public
+   */
+  async resetPassword(req, res, next) {
+    try {
+      const { token, password } = req.body;
+      const result = await authService.resetPassword(token, password);
+      sendSuccess(res, {
+        data: result,
+        message: result.message,
+      });
+    } catch (error) {
+      next(error);
     }
   },
 

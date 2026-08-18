@@ -10,7 +10,6 @@ import { lazy, Suspense } from 'react';
 
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
-const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 
 // Student
@@ -105,15 +104,6 @@ export default function App() {
               </AuthRedirect>
             }
           />
-          <Route
-            path="/register"
-            element={
-              <AuthRedirect>
-                <RegisterPage />
-              </AuthRedirect>
-            }
-          />
-
           {/* ─── Notifications (any authenticated user) ─── */}
           <Route
             path="/notifications"

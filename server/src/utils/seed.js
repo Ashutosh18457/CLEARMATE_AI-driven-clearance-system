@@ -52,19 +52,19 @@ const seedDatabase = async () => {
       {
         name: 'Admin User',
         email: 'admin@sbjain.edu.in',
-        password: 'Password123',
+        password: 'Password123!',
         role: 'admin',
       },
       {
         name: 'Prof. Sharma (Teacher)',
         email: 'teacher@sbjain.edu.in',
-        password: 'Password123',
+        password: 'Password123!',
         role: 'teacher',
       },
       {
         name: 'Rahul Verma (Student)',
         email: 'student@sbjain.edu.in',
-        password: 'Password123',
+        password: 'Password123!',
         role: 'student',
         programId: program._id,
         enrollmentNo: 'EN2021CSE042',
@@ -74,20 +74,20 @@ const seedDatabase = async () => {
       {
         name: 'Library Head',
         email: 'library@sbjain.edu.in',
-        password: 'Password123',
+        password: 'Password123!',
         role: 'section_head',
         sectionType: 'library',
       },
       {
         name: 'Class Incharge (Sec A)',
         email: 'ci@sbjain.edu.in',
-        password: 'Password123',
+        password: 'Password123!',
         role: 'class_incharge',
       },
       {
         name: 'Dr. Kulkarni (HOD)',
         email: 'hod@sbjain.edu.in',
-        password: 'Password123',
+        password: 'Password123!',
         role: 'hod',
       },
     ];
@@ -99,7 +99,7 @@ const seedDatabase = async () => {
 
     console.log('\n🎉 Database Seeding Complete!');
     console.log('-------------------------------------------');
-    console.log('Demo Login Credentials (Password for all: Password123):');
+    console.log('Demo Login Credentials (Password for all: Password123!):');
     console.log('-------------------------------------------');
     console.log('⚙️ Admin:          admin@sbjain.edu.in');
     console.log('🎓 Student:        student@sbjain.edu.in');
