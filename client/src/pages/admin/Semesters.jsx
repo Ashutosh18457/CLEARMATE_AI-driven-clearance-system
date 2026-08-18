@@ -13,21 +13,90 @@ import {
   HiOutlineAcademicCap,
   HiOutlineClock,
   HiOutlineMagnifyingGlass,
+  HiOutlineFunnel,
+  HiOutlineCheck,
+  HiOutlineSparkles,
+  HiOutlineArrowRight,
 } from 'react-icons/hi2';
 
 const YEAR_CATEGORIES = [
-  { id: 'ALL', label: 'All Semesters', sems: [] },
-  { id: '1', label: '1st Year (FY)', sub: 'Sem 1 & 2', sems: [1, 2], color: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
-  { id: '2', label: '2nd Year (SY)', sub: 'Sem 3 & 4', sems: [3, 4], color: 'bg-purple-50 text-purple-700 border-purple-200', dot: 'bg-purple-500' },
-  { id: '3', label: '3rd Year (TY)', sub: 'Sem 5 & 6', sems: [5, 6], color: 'bg-cyan-50 text-cyan-700 border-cyan-200', dot: 'bg-cyan-500' },
-  { id: '4', label: '4th Year (Final Year)', sub: 'Sem 7 & 8', sems: [7, 8], color: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
-  { id: '5', label: '5th Year (Ext)', sub: 'Sem 9 & 10', sems: [9, 10], color: 'bg-slate-50 text-slate-700 border-slate-200', dot: 'bg-slate-500' },
+  {
+    id: 'ALL',
+    icon: '🎓',
+    label: 'All Semesters',
+    sub: 'All Terms (Sem 1 to 10)',
+    desc: 'View all academic semesters across all years',
+    sems: [],
+    badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    cardBg: 'hover:border-brand hover:bg-brand/5',
+    activeBg: 'border-brand bg-brand/10 ring-2 ring-brand/30',
+  },
+  {
+    id: '1',
+    icon: '📘',
+    label: '1st Year (FY)',
+    sub: 'Semester 1 & 2',
+    desc: 'Freshman Year foundation & basic engineering semesters',
+    sems: [1, 2],
+    badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
+    dot: 'bg-blue-500',
+    cardBg: 'hover:border-blue-500 hover:bg-blue-50/50',
+    activeBg: 'border-blue-500 bg-blue-50 ring-2 ring-blue-500/30',
+  },
+  {
+    id: '2',
+    icon: '🔬',
+    label: '2nd Year (SY)',
+    sub: 'Semester 3 & 4',
+    desc: 'Sophomore Year core departmental course semesters',
+    sems: [3, 4],
+    badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
+    dot: 'bg-purple-500',
+    cardBg: 'hover:border-purple-500 hover:bg-purple-50/50',
+    activeBg: 'border-purple-500 bg-purple-50 ring-2 ring-purple-500/30',
+  },
+  {
+    id: '3',
+    icon: '🧪',
+    label: '3rd Year (TY)',
+    sub: 'Semester 5 & 6',
+    desc: 'Junior Year advanced technical & elective subject semesters',
+    sems: [5, 6],
+    badgeColor: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+    dot: 'bg-cyan-500',
+    cardBg: 'hover:border-cyan-500 hover:bg-cyan-50/50',
+    activeBg: 'border-cyan-500 bg-cyan-50 ring-2 ring-cyan-500/30',
+  },
+  {
+    id: '4',
+    icon: '🏆',
+    label: '4th Year (Final Year)',
+    sub: 'Semester 7 & 8',
+    desc: 'Senior Year capstone projects & final clearance semesters',
+    sems: [7, 8],
+    badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
+    dot: 'bg-amber-500',
+    cardBg: 'hover:border-amber-500 hover:bg-amber-50/50',
+    activeBg: 'border-amber-500 bg-amber-50 ring-2 ring-amber-500/30',
+  },
+  {
+    id: '5',
+    icon: '📚',
+    label: '5th Year (Ext)',
+    sub: 'Semester 9 & 10',
+    desc: 'Dual-degree / extended architecture program semesters',
+    sems: [9, 10],
+    badgeColor: 'bg-slate-50 text-slate-700 border-slate-200',
+    dot: 'bg-slate-500',
+    cardBg: 'hover:border-slate-500 hover:bg-slate-50/50',
+    activeBg: 'border-slate-500 bg-slate-50 ring-2 ring-slate-500/30',
+  },
 ];
 
 const getYearConfig = (semNumber) => {
   const yr = Math.ceil(semNumber / 2);
   const found = YEAR_CATEGORIES.find((c) => c.id === String(yr));
-  return found || { label: `Year ${yr}`, color: 'bg-slate-50 text-slate-700 border-slate-200', dot: 'bg-slate-400' };
+  return found || { label: `Year ${yr}`, badgeColor: 'bg-slate-50 text-slate-700 border-slate-200', dot: 'bg-slate-400' };
 };
 
 const EMPTY_FORM = {
@@ -50,6 +119,7 @@ export default function Semesters() {
 
   // Filters
   const [selectedYearCategory, setSelectedYearCategory] = useState('ALL');
+  const [yearPopupOpen, setYearPopupOpen] = useState(false);
   const [filterProgram, setFilterProgram] = useState('');
   const [filterAcademicYear, setFilterAcademicYear] = useState('');
   const [filterType, setFilterType] = useState('');
@@ -104,7 +174,7 @@ export default function Semesters() {
     return Array.from(years).sort().reverse();
   }, [semesters]);
 
-  // Year counts calculation for tabs
+  // Year counts calculation for popup and tabs
   const yearCounts = useMemo(() => {
     const counts = { ALL: semesters.length };
     YEAR_CATEGORIES.forEach((cat) => {
@@ -137,6 +207,10 @@ export default function Semesters() {
       return matchesYear && matchesSearch;
     });
   }, [semesters, selectedYearCategory, search]);
+
+  const activeCategoryObj = useMemo(() => {
+    return YEAR_CATEGORIES.find((c) => c.id === selectedYearCategory) || YEAR_CATEGORIES[0];
+  }, [selectedYearCategory]);
 
   const formatDate = (d) => {
     if (!d) return '—';
@@ -268,7 +342,7 @@ export default function Semesters() {
         const cfg = getYearConfig(row.semNumber);
         return (
           <span
-            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${cfg.color}`}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${cfg.badgeColor}`}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`}></span>
             {cfg.label}
@@ -379,44 +453,48 @@ export default function Semesters() {
             Organize academic terms categorized by study year (1st Year FY, 2nd Year SY, 3rd Year TY, 4th Year Final) and session.
           </p>
         </div>
-        <Button
-          variant="primary"
-          size="md"
-          onClick={openCreate}
-          icon={<HiOutlinePlusCircle className="w-5 h-5" />}
-        >
-          Create Semester
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Year Categorization Popup Trigger Button */}
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={() => setYearPopupOpen(true)}
+            icon={<HiOutlineFunnel className="w-5 h-5 text-brand" />}
+          >
+            🎓 Categorize by Year ({activeCategoryObj.label})
+          </Button>
+
+          <Button
+            variant="primary"
+            size="md"
+            onClick={openCreate}
+            icon={<HiOutlinePlusCircle className="w-5 h-5" />}
+          >
+            Create Semester
+          </Button>
+        </div>
       </div>
 
-      {/* Year-Based Category Filter Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-4 border-b border-border-subtle scrollbar-none">
-        {YEAR_CATEGORIES.map((cat) => {
-          const isSelected = selectedYearCategory === cat.id;
-          const count = yearCounts[cat.id] || 0;
-          return (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedYearCategory(cat.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-150 ${
-                isSelected
-                  ? 'bg-brand text-white shadow-sm'
-                  : 'bg-surface hover:bg-surface-hover text-ink-secondary border border-border-subtle'
-              }`}
-            >
-              <span>{cat.id === 'ALL' ? '🎓 All Semesters' : cat.label}</span>
-              {cat.sub && <span className="text-[10px] opacity-80">({cat.sub})</span>}
-              <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                  isSelected ? 'bg-white/20 text-white' : 'bg-canvas text-ink-muted'
-                }`}
-              >
-                {count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Quick Active Filter Pill */}
+      {selectedYearCategory !== 'ALL' && (
+        <div className="flex items-center justify-between bg-brand/5 border border-brand/20 px-3.5 py-2 rounded-md mb-4 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-brand">Active Year Filter:</span>
+            <span className="px-2 py-0.5 bg-brand text-white font-medium rounded-full text-[11px]">
+              {activeCategoryObj.icon} {activeCategoryObj.label} ({activeCategoryObj.sub})
+            </span>
+            <span className="text-ink-muted">
+              — Showing {filteredSemesters.length} semester{filteredSemesters.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <button
+            onClick={() => setSelectedYearCategory('ALL')}
+            className="text-xs font-semibold text-brand hover:underline"
+          >
+            Reset to All Semesters &times;
+          </button>
+        </div>
+      )}
 
       {/* Filter & Search Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-5">
@@ -495,7 +573,88 @@ export default function Semesters() {
         emptyIcon={<HiOutlineCalendarDays className="w-10 h-10 text-ink-muted" />}
       />
 
-      {/* Create / Edit Modal */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/* 🎓 YEAR-WISE CATEGORIZATION POPUP MODAL                          */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      <Modal
+        isOpen={yearPopupOpen}
+        onClose={() => setYearPopupOpen(false)}
+        title="🎓 Categorize Semesters by Year"
+        size="lg"
+        footer={
+          <div className="flex items-center justify-between w-full">
+            <span className="text-xs text-ink-muted">
+              Total <strong>{semesters.length}</strong> configured semesters
+            </span>
+            <Button variant="secondary" size="sm" onClick={() => setYearPopupOpen(false)}>
+              Close
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-xs text-ink-secondary">
+            Select an academic year level below to view, filter, and organize semesters:
+          </p>
+
+          <div className="grid grid-cols-1 gap-2.5">
+            {YEAR_CATEGORIES.map((cat) => {
+              const isSelected = selectedYearCategory === cat.id;
+              const count = yearCounts[cat.id] || 0;
+
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedYearCategory(cat.id);
+                    setYearPopupOpen(false);
+                    toast.success(`Showing ${cat.label}`);
+                  }}
+                  className={`w-full text-left p-3.5 rounded-lg border transition-all flex items-center justify-between group ${
+                    isSelected ? cat.activeBg : `bg-surface border-border-subtle ${cat.cardBg}`
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl p-2 bg-canvas rounded-md border border-border-subtle shrink-0">
+                      {cat.icon}
+                    </span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-ink-primary group-hover:text-brand transition-colors">
+                          {cat.label}
+                        </h4>
+                        <span className="text-xs font-semibold text-brand flex items-center gap-1">
+                          <HiOutlineArrowRight className="w-3 h-3" />
+                          {cat.sub}
+                        </span>
+                      </div>
+                      <p className="text-xs text-ink-muted mt-0.5">{cat.desc}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span
+                      className={`px-2.5 py-1 rounded-full text-xs font-bold border ${cat.badgeColor}`}
+                    >
+                      {count} {count === 1 ? 'Semester' : 'Semesters'}
+                    </span>
+                    {isSelected && (
+                      <span className="w-6 h-6 rounded-full bg-brand text-white flex items-center justify-center text-xs shadow-sm">
+                        <HiOutlineCheck className="w-4 h-4 stroke-2" />
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </Modal>
+
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/* CREATE / EDIT SEMESTER MODAL                                       */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
