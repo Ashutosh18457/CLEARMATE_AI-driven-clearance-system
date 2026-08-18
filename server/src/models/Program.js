@@ -17,6 +17,23 @@ const programSchema = new mongoose.Schema(
       maxlength: [20, 'Program code cannot exceed 20 characters'],
       index: true,
     },
+    degree: {
+      type: String,
+      default: 'B.Tech',
+      trim: true,
+      index: true,
+    },
+    branch: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    totalSemesters: {
+      type: Number,
+      default: 8,
+      min: 1,
+      max: 12,
+    },
     department: {
       type: String,
       required: [true, 'Department is required'],

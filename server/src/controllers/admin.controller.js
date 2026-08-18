@@ -17,7 +17,7 @@ const adminController = {
   /** @route GET /api/admin/programs */
   async getPrograms(req, res, next) {
     try {
-      const programs = await adminService.getAllPrograms();
+      const programs = await adminService.getAllPrograms(req.query);
       sendSuccess(res, { data: programs, message: 'Programs retrieved' });
     } catch (error) { next(error); }
   },

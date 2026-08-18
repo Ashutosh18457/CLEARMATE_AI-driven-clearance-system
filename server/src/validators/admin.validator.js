@@ -18,6 +18,9 @@ const adminValidator = {
       .messages({ 'any.required': 'Program name is required' }),
     code: Joi.string().trim().uppercase().max(20).required()
       .messages({ 'any.required': 'Program code is required' }),
+    degree: Joi.string().trim().optional().default('B.Tech'),
+    branch: Joi.string().trim().optional().allow('', null),
+    totalSemesters: Joi.number().integer().min(1).max(12).optional().default(8),
     department: Joi.string().trim().required()
       .messages({ 'any.required': 'Department is required' }),
   }),
@@ -25,6 +28,9 @@ const adminValidator = {
   updateProgramSchema: Joi.object({
     name: Joi.string().trim().max(100),
     code: Joi.string().trim().uppercase().max(20),
+    degree: Joi.string().trim().optional(),
+    branch: Joi.string().trim().optional().allow('', null),
+    totalSemesters: Joi.number().integer().min(1).max(12).optional(),
     department: Joi.string().trim(),
     isActive: Joi.boolean(),
   }).min(1).messages({ 'object.min': 'At least one field must be provided for update' }),

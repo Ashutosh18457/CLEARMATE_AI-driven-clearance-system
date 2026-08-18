@@ -21,8 +21,23 @@ const adminService = {
     return program;
   },
 
-  async getAllPrograms() {
-    return await Program.find().sort({ name: 1 });
+  async getAllPrograms(filters = {}) {
+    const query = {};
+    if (filters.degree && filters.degree !== 'ALL') {
+      query.degree = filters.degree;
+    }
+    if (filters.isActive !== undefined) {
+      query.isActive = filters.isActive === 'true' || filters.isActive === true;
+    }
+    if (filters.search) {
+      query.$or = [
+        { name: { $regex: filters.search, $options: 'i' } },
+        { code: { $regex: filters.search, $options: 'i' } },
+        { branch: { $regex: filters.search, $options: 'i' } },
+        { department: { $regex: filters.search, $options: 'i' } },
+      ];
+    }
+    return await Program.find(query).sort({ degree: 1, name: 1 });
   },
 
   async getProgramById(id) {
