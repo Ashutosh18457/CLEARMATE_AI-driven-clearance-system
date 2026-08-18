@@ -29,15 +29,26 @@ api.interceptors.response.use(
   },
   (error) => {
     const status = error.response?.status;
-    const message = error.response?.data?.message || error.message || 'Something went wrong';
+    let message = error.response?.data?.message;
 
     // 401 Unauthorized — token expired or invalid
     if (status === 401) {
       localStorage.removeItem('clearmate_token');
       localStorage.removeItem('clearmate_user');
-      // Only redirect if not already on login page
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
+      }
+    }
+
+    if (!message) {
+      if (status === 500) {
+        message = 'Internal server error. Please try again or check server logs.';
+      } else if (status === 404) {
+        message = 'Requested API resource was not found.';
+      } else if (!status) {
+        message = 'Network error: Cannot reach the backend server. Please ensure the backend is running.';
+      } else {
+        message = error.message || 'Something went wrong';
       }
     }
 

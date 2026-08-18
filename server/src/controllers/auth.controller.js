@@ -10,13 +10,15 @@ const authController = {
   async login(req, res, next) {
     try {
       const { email, password } = req.body;
-      const { user, token } = await authService.login(email, password, req.ip || req.connection.remoteAddress, req.headers['user-agent']);
+      const ip = req.ip || req.socket?.remoteAddress || '127.0.0.1';
+      const userAgent = req.headers['user-agent'] || '';
+      const { user, token } = await authService.login(email, password, ip, userAgent);
 
       res.cookie('clearmate_token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000
+        maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
       sendSuccess(res, {
@@ -35,7 +37,9 @@ const authController = {
    */
   async register(req, res, next) {
     try {
-      const { user, token } = await authService.register(req.body, req.ip || req.connection.remoteAddress, req.headers['user-agent']);
+      const ip = req.ip || req.socket?.remoteAddress || '127.0.0.1';
+      const userAgent = req.headers['user-agent'] || '';
+      const { user, token } = await authService.register(req.body, ip, userAgent);
 
       res.cookie('clearmate_token', token, {
         httpOnly: true,
@@ -54,6 +58,41 @@ const authController = {
   },
 
   /**
+   * @route POST /api/auth/forgot-password
+   * @desc Request password reset token via email
+   * @access Public
+   */
+  async forgotPassword(req, res, next) {
+    try {
+      const result = await authService.forgotPassword(req.body.email);
+      sendSuccess(res, {
+        data: result,
+        message: result.message,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * @route POST /api/auth/reset-password
+   * @desc Reset user password with token
+   * @access Public
+   */
+  async resetPassword(req, res, next) {
+    try {
+      const { token, password } = req.body;
+      const result = await authService.resetPassword(token, password);
+      sendSuccess(res, {
+        data: result,
+        message: result.message,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
    * @route POST /api/auth/logout
    * @desc Logout user & clear token
    * @access Public
@@ -63,7 +102,7 @@ const authController = {
       res.clearCookie('clearmate_token', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax'
+        sameSite: 'lax',
       });
       sendSuccess(res, {
         message: 'Logout successful',
@@ -81,7 +120,7 @@ const authController = {
   async getMe(req, res, next) {
     try {
       const user = await authService.getMe(req.user.id);
-      
+
       sendSuccess(res, {
         data: { user },
         message: 'User profile retrieved successfully',

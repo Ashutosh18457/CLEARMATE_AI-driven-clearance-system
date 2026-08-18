@@ -14,8 +14,9 @@ const authService = {
    * Authenticates a user and generates a JWT.
    */
   async login(email, password, ip, userAgent) {
+    const cleanEmail = email ? email.toLowerCase().trim() : '';
     // 1. Find user by email and explicitly select the password field
-    const user = await User.findOne({ email }).select('+password +loginAttempts +lockUntil');
+    const user = await User.findOne({ email: cleanEmail }).select('+password +loginAttempts +lockUntil');
     
     // Using generic error messages for both cases to prevent user enumeration
     if (!user) {
@@ -67,6 +68,65 @@ const authService = {
     user.lockUntil = undefined;
 
     return { user, token };
+  },
+
+  /**
+   * Request password reset token via email.
+   */
+  async forgotPassword(email) {
+    const cleanEmail = email ? email.toLowerCase().trim() : '';
+    const user = await User.findOne({ email: cleanEmail });
+    if (!user) {
+      // Return ambiguous message to prevent user enumeration
+      return { message: 'If an account exists with this email, password reset instructions have been sent.' };
+    }
+
+    if (!user.isActive) {
+      throw AppError.forbidden('Your account has been deactivated.');
+    }
+
+    const resetToken = jwt.sign({ id: user._id, type: 'password_reset' }, env.jwtSecret, {
+      expiresIn: '1h',
+    });
+
+    const AuditLog = require('../models/AuditLog');
+    new AuditLog({ userId: user._id, action: 'password_reset_requested', resource: 'Auth' }).save().catch(() => {});
+
+    return {
+      message: 'If an account exists with this email, password reset instructions have been sent.',
+      resetToken, // Included for development/testing ease
+    };
+  },
+
+  /**
+   * Resets user password using reset token.
+   */
+  async resetPassword(token, newPassword) {
+    let decoded;
+    try {
+      decoded = jwt.verify(token, env.jwtSecret);
+    } catch (err) {
+      throw AppError.badRequest('Invalid or expired password reset token');
+    }
+
+    if (decoded.type !== 'password_reset') {
+      throw AppError.badRequest('Invalid reset token type');
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user || !user.isActive) {
+      throw AppError.notFound('User account not found or deactivated');
+    }
+
+    user.password = newPassword;
+    user.loginAttempts = 0;
+    user.lockUntil = undefined;
+    await user.save();
+
+    const AuditLog = require('../models/AuditLog');
+    new AuditLog({ userId: user._id, action: 'password_reset_completed', resource: 'Auth' }).save().catch(() => {});
+
+    return { message: 'Password has been successfully reset. You can now log in.' };
   },
 
   /**

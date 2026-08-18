@@ -15,6 +15,31 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Forgot password modal state
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotMsg, setForgotMsg] = useState('');
+
+  const handleForgotSubmit = async () => {
+    if (!forgotEmail.trim()) return;
+    setForgotLoading(true);
+    setForgotMsg('');
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail.trim() }),
+      });
+      const data = await res.json();
+      setForgotMsg(data.message || 'Password reset request sent.');
+    } catch {
+      setForgotMsg('Password reset request sent.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -102,6 +127,17 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {/* Forgot password modal trigger */}
+            <div className="flex items-center justify-end mt-2">
+              <button
+                type="button"
+                onClick={() => setForgotOpen(true)}
+                className="text-xs font-medium text-brand hover:underline"
+              >
+                Forgot password?
+              </button>
+            </div>
+
             {/* Error */}
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-status-rejected">
@@ -158,15 +194,43 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Register Link */}
-          <div className="mt-6 text-center text-sm text-ink-muted">
-            Don't have an account?{' '}
-            <Link to="/register" className="font-semibold text-brand hover:underline">
-              Create an account
-            </Link>
+          <div className="mt-6 text-center text-xs text-ink-muted border-t border-border-subtle pt-4">
+            Account registration is restricted to Institution Administrators.
           </div>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {forgotOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-surface border border-border-subtle rounded-md shadow-lg p-6 max-w-md w-full space-y-4">
+            <h2 className="text-base font-semibold text-ink-primary">Reset Password</h2>
+            <p className="text-xs text-ink-secondary">
+              Enter your registered institutional email address to receive password reset instructions.
+            </p>
+            {forgotMsg && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-md text-xs text-green-700">
+                {forgotMsg}
+              </div>
+            )}
+            <input
+              type="email"
+              className="input-base"
+              placeholder="you@institution.edu"
+              value={forgotEmail}
+              onChange={(e) => setForgotEmail(e.target.value)}
+            />
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button variant="secondary" size="sm" onClick={() => setForgotOpen(false)}>
+                Close
+              </Button>
+              <Button variant="primary" size="sm" loading={forgotLoading} onClick={handleForgotSubmit}>
+                Send Reset Link
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
