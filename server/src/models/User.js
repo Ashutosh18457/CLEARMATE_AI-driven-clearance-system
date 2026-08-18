@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const ROLES = ['student', 'teacher', 'section_head', 'class_incharge', 'hod', 'admin'];
 const SECTION_TYPES = ['library', 'accounts', 'bus', 'student_section'];
@@ -39,10 +40,18 @@ const userSchema = new mongoose.Schema(
     },
     loginAttempts: {
       type: Number,
-      default: 0
+      default: 0,
     },
     lockUntil: {
-      type: Date
+      type: Date,
+    },
+    resetPasswordToken: {
+      type: String,
+      select: false,
+    },
+    resetPasswordExpire: {
+      type: Date,
+      select: false,
     },
     
     // ----------------------------------------------------
@@ -125,6 +134,24 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 
 userSchema.methods.isLocked = function () {
   return !!(this.lockUntil && this.lockUntil > Date.now());
+};
+
+// Generate and hash password reset token
+userSchema.methods.getResetPasswordToken = function () {
+  // 1. Generate 32-byte secure random token
+  const resetToken = crypto.randomBytes(32).toString('hex');
+
+  // 2. Hash token using SHA-256 and set to resetPasswordToken field
+  this.resetPasswordToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+
+  // 3. Set token expiration (15 minutes from now)
+  this.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
+
+  // 4. Return the unhashed token for email dispatch
+  return resetToken;
 };
 
 // Compound index for querying students by program and semester

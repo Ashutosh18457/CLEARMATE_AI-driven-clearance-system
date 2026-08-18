@@ -183,6 +183,8 @@ export default function Semesters() {
       <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
         <div className="flex items-center gap-3">
           <select
+            id="sem-filter-program"
+            name="filterProgram"
             className="select-base w-56"
             value={filterProgram}
             onChange={(e) => setFilterProgram(e.target.value)}
@@ -235,8 +237,10 @@ export default function Semesters() {
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
-            <label className="label-base">Program</label>
+            <label htmlFor="sem-program" className="label-base">Program</label>
             <select
+              id="sem-program"
+              name="programId"
               className="select-base"
               value={form.programId}
               onChange={(e) => setForm({ ...form, programId: e.target.value })}
@@ -248,8 +252,10 @@ export default function Semesters() {
             </select>
           </div>
           <div>
-            <label className="label-base">Name</label>
+            <label htmlFor="sem-name" className="label-base">Name</label>
             <input
+              id="sem-name"
+              name="name"
               className="input-base"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -257,8 +263,10 @@ export default function Semesters() {
             />
           </div>
           <div>
-            <label className="label-base">Semester Number</label>
+            <label htmlFor="sem-number" className="label-base">Semester Number</label>
             <input
+              id="sem-number"
+              name="semNumber"
               type="number"
               className="input-base"
               value={form.semNumber}
@@ -268,8 +276,10 @@ export default function Semesters() {
             />
           </div>
           <div>
-            <label className="label-base">Academic Year</label>
+            <label htmlFor="sem-academic-year" className="label-base">Academic Year</label>
             <input
+              id="sem-academic-year"
+              name="academicYear"
               className="input-base"
               value={form.academicYear}
               onChange={(e) => setForm({ ...form, academicYear: e.target.value })}
@@ -277,8 +287,10 @@ export default function Semesters() {
             />
           </div>
           <div>
-            <label className="label-base">Type</label>
+            <label htmlFor="sem-type" className="label-base">Type</label>
             <select
+              id="sem-type"
+              name="type"
               className="select-base"
               value={form.type}
               onChange={(e) => setForm({ ...form, type: e.target.value })}
@@ -288,8 +300,10 @@ export default function Semesters() {
             </select>
           </div>
           <div>
-            <label className="label-base">Start Date</label>
+            <label htmlFor="sem-start-date" className="label-base">Start Date</label>
             <input
+              id="sem-start-date"
+              name="startDate"
               type="date"
               className="input-base"
               value={form.startDate}
@@ -297,8 +311,10 @@ export default function Semesters() {
             />
           </div>
           <div>
-            <label className="label-base">End Date</label>
+            <label htmlFor="sem-end-date" className="label-base">End Date</label>
             <input
+              id="sem-end-date"
+              name="endDate"
               type="date"
               className="input-base"
               value={form.endDate}
@@ -306,8 +322,10 @@ export default function Semesters() {
             />
           </div>
           <div>
-            <label className="label-base">Clearance Deadline</label>
+            <label htmlFor="sem-clearance-deadline" className="label-base">Clearance Deadline</label>
             <input
+              id="sem-clearance-deadline"
+              name="clearanceDeadline"
               type="date"
               className="input-base"
               value={form.clearanceDeadline}
@@ -319,6 +337,7 @@ export default function Semesters() {
               <input
                 type="checkbox"
                 id="semActive"
+                name="isActive"
                 checked={form.isActive}
                 onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
                 className="rounded border-border-subtle text-brand focus:ring-brand"

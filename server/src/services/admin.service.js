@@ -152,6 +152,7 @@ const adminService = {
     }
 
     const payload = { ...data };
+    payload.password = payload.password || 'Pass@123';
 
     if (payload.role === 'student') {
       if (!payload.programId) {
@@ -212,7 +213,7 @@ const adminService = {
           name: student.name,
           email: student.email,
           enrollmentNo: student.enrollmentNo,
-          password: defaultPassword || 'clearmate@123',
+          password: defaultPassword || 'Pass@123',
           role: 'student',
           programId,
           currentSemester,
@@ -363,7 +364,7 @@ const adminService = {
           name,
           email,
           enrollmentNo,
-          password: defaultPassword || 'Password123!',
+          password: defaultPassword || 'Pass@123',
           role: 'student',
           programId,
           currentSemester: semesterNum,
@@ -494,6 +495,10 @@ const adminService = {
       }
     }
 
+    if (targetUser.role === 'admin' && data.isActive === false) {
+      throw AppError.badRequest('Admin accounts cannot be deactivated.');
+    }
+
     delete data.password;
     if (requester && requester.role !== 'admin') {
       delete data.role;
@@ -517,24 +522,26 @@ const adminService = {
   },
 
   async deactivateUser(id, requester) {
-    const user = await User.findByIdAndUpdate(
-      id,
-      { isActive: false },
-      { new: true }
-    ).select('-password');
+    const targetUser = await User.findById(id);
+    if (!targetUser) throw AppError.notFound('User not found');
 
-    if (!user) throw AppError.notFound('User not found');
+    if (targetUser.role === 'admin') {
+      throw AppError.badRequest('Admin accounts cannot be deactivated.');
+    }
+
+    targetUser.isActive = false;
+    await targetUser.save({ validateBeforeSave: false });
 
     const AuditLog = require('../models/AuditLog');
     new AuditLog({
       userId: requester ? requester.id : null,
       action: 'account_deactivated',
       resource: 'User',
-      details: { targetUserId: id, role: user.role },
+      details: { targetUserId: id, role: targetUser.role },
     }).save().catch(() => {});
 
-    logger.info('User deactivated', { userId: id, role: user.role });
-    return user;
+    logger.info('User deactivated', { userId: id, role: targetUser.role });
+    return targetUser;
   },
 
   // ══════════════════════════════════════════════

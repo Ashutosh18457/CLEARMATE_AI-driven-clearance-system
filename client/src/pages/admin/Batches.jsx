@@ -154,6 +154,8 @@ export default function Batches() {
       {/* Filters */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
         <select
+          id="batch-filter-program"
+          name="filterProgram"
           className="select-base w-56"
           value={filterProgram}
           onChange={(e) => setFilterProgram(e.target.value)}
@@ -164,6 +166,8 @@ export default function Batches() {
           ))}
         </select>
         <select
+          id="batch-filter-semester"
+          name="filterSemester"
           className="select-base w-56"
           value={filterSemester}
           onChange={(e) => setFilterSemester(e.target.value)}
@@ -215,8 +219,10 @@ export default function Batches() {
       >
         <div className="space-y-4">
           <div>
-            <label className="label-base">Batch Name</label>
+            <label htmlFor="create-batch-name" className="label-base">Batch Name</label>
             <input
+              id="create-batch-name"
+              name="name"
               className="input-base"
               value={createForm.name}
               onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}

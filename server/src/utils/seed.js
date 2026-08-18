@@ -51,19 +51,19 @@ const seedDatabase = async () => {
     const users = [
       {
         name: 'Admin User',
-        email: 'admin@sbjain.edu.in',
+        email: 'admin@sbjit.edu.in',
         password: 'Password123!',
         role: 'admin',
       },
       {
         name: 'Prof. Sharma (Teacher)',
-        email: 'teacher@sbjain.edu.in',
+        email: 'teacher@sbjit.edu.in',
         password: 'Password123!',
         role: 'teacher',
       },
       {
         name: 'Rahul Verma (Student)',
-        email: 'student@sbjain.edu.in',
+        email: 'student@sbjit.edu.in',
         password: 'Password123!',
         role: 'student',
         programId: program._id,
@@ -73,20 +73,20 @@ const seedDatabase = async () => {
       },
       {
         name: 'Library Head',
-        email: 'library@sbjain.edu.in',
+        email: 'library@sbjit.edu.in',
         password: 'Password123!',
         role: 'section_head',
         sectionType: 'library',
       },
       {
         name: 'Class Incharge (Sec A)',
-        email: 'ci@sbjain.edu.in',
+        email: 'ci@sbjit.edu.in',
         password: 'Password123!',
         role: 'class_incharge',
       },
       {
         name: 'Dr. Kulkarni (HOD)',
-        email: 'hod@sbjain.edu.in',
+        email: 'hod@sbjit.edu.in',
         password: 'Password123!',
         role: 'hod',
       },
@@ -101,12 +101,12 @@ const seedDatabase = async () => {
     console.log('-------------------------------------------');
     console.log('Demo Login Credentials (Password for all: Password123!):');
     console.log('-------------------------------------------');
-    console.log('⚙️ Admin:          admin@sbjain.edu.in');
-    console.log('🎓 Student:        student@sbjain.edu.in');
-    console.log('👩‍🏫 Teacher:        teacher@sbjain.edu.in');
-    console.log('📚 Section Head:   library@sbjain.edu.in');
-    console.log('👔 Class Incharge: ci@sbjain.edu.in');
-    console.log('👨‍💼 HOD:            hod@sbjain.edu.in');
+    console.log('⚙️ Admin:          admin@sbjit.edu.in');
+    console.log('🎓 Student:        student@sbjit.edu.in');
+    console.log('👩‍🏫 Teacher:        teacher@sbjit.edu.in');
+    console.log('📚 Section Head:   library@sbjit.edu.in');
+    console.log('👔 Class Incharge: ci@sbjit.edu.in');
+    console.log('👨‍💼 HOD:            hod@sbjit.edu.in');
     console.log('-------------------------------------------');
 
     process.exit(0);

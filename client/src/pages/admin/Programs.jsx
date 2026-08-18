@@ -159,8 +159,10 @@ export default function Programs() {
       >
         <div className="space-y-4">
           <div>
-            <label className="label-base">Program Name</label>
+            <label htmlFor="program-name" className="label-base">Program Name</label>
             <input
+              id="program-name"
+              name="name"
               className="input-base"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -168,8 +170,10 @@ export default function Programs() {
             />
           </div>
           <div>
-            <label className="label-base">Code</label>
+            <label htmlFor="program-code" className="label-base">Code</label>
             <input
+              id="program-code"
+              name="code"
               className="input-base uppercase"
               value={form.code}
               onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
@@ -177,8 +181,10 @@ export default function Programs() {
             />
           </div>
           <div>
-            <label className="label-base">Department</label>
+            <label htmlFor="program-department" className="label-base">Department</label>
             <input
+              id="program-department"
+              name="department"
               className="input-base"
               value={form.department}
               onChange={(e) => setForm({ ...form, department: e.target.value })}
@@ -189,12 +195,13 @@ export default function Programs() {
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
-                id="isActive"
+                id="program-isActive"
+                name="isActive"
                 checked={form.isActive}
                 onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
                 className="rounded border-border-subtle text-brand focus:ring-brand"
               />
-              <label htmlFor="isActive" className="text-sm text-ink-secondary">
+              <label htmlFor="program-isActive" className="text-sm text-ink-secondary">
                 Active
               </label>
             </div>

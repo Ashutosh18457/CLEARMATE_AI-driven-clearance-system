@@ -16,7 +16,7 @@ import {
 } from 'react-icons/hi2';
 
 const EMPTY_FORM = {
-  name: '', email: '', password: '', role: 'student',
+  name: '', email: '', password: 'Pass@123', role: 'student',
   enrollmentNo: '', programId: '', currentSemester: '', section: '',
   sectionType: '',
 };
@@ -99,14 +99,15 @@ export default function Users() {
       toast.error('Name, email, and role are required');
       return;
     }
-    if (!editing && !form.password) {
-      toast.error('Password is required for new users');
-      return;
-    }
     setSaving(true);
     try {
       const payload = { ...form };
-      if (!payload.password) delete payload.password;
+      if (!editing && !payload.password) {
+        payload.password = 'Pass@123';
+      }
+      if (editing && !payload.password) {
+        delete payload.password;
+      }
       if (payload.role !== 'student') {
         delete payload.enrollmentNo;
         delete payload.programId;
@@ -137,12 +138,17 @@ export default function Users() {
   };
 
   const handleDeactivate = async (id) => {
+    const target = users.find((u) => u._id === id);
+    if (target?.role === 'admin') {
+      toast.error('Admin accounts cannot be deactivated');
+      return;
+    }
     try {
       await api.patch(`/admin/users/${id}/deactivate`);
       toast.success('User deactivated');
       fetchUsers();
     } catch (err) {
-      toast.error(err.message || 'Failed to deactivate user');
+      toast.error(err.message || 'Failed to deactivate');
     }
   };
 
@@ -270,7 +276,7 @@ export default function Users() {
           <Button variant="ghost" size="sm" onClick={() => openEdit(row)}>
             <HiOutlinePencilSquare className="w-4 h-4" />
           </Button>
-          {row.isActive !== false && (
+          {row.isActive !== false && row.role !== 'admin' && (
             <Button variant="ghost" size="sm" onClick={() => handleDeactivate(row._id)}>
               <HiOutlineNoSymbol className="w-4 h-4 text-status-rejected" />
             </Button>
@@ -291,6 +297,8 @@ export default function Users() {
       <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">
           <select
+            id="filter-role"
+            name="filterRole"
             className="select-base w-44"
             value={filterRole}
             onChange={(e) => setFilterRole(e.target.value)}
@@ -300,6 +308,9 @@ export default function Users() {
             ))}
           </select>
           <input
+            id="filter-search"
+            name="search"
+            type="search"
             className="input-base w-64"
             placeholder="Search by name or email..."
             value={search}
@@ -352,24 +363,26 @@ export default function Users() {
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="label-base">Name</label>
-            <input className="input-base" value={form.name}
+            <label htmlFor="user-form-name" className="label-base">Name</label>
+            <input id="user-form-name" name="name" className="input-base" value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </div>
           <div>
-            <label className="label-base">Email</label>
-            <input className="input-base" type="email" value={form.email}
+            <label htmlFor="user-form-email" className="label-base">Email</label>
+            <input id="user-form-email" name="email" className="input-base" type="email" value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </div>
           <div>
-            <label className="label-base">Password {editing && <span className="text-ink-muted">(leave blank to keep)</span>}</label>
-            <input className="input-base" type="password" value={form.password}
+            <label htmlFor="user-form-password" className="label-base">
+              Password {editing ? <span className="text-ink-muted">(leave blank to keep)</span> : <span className="text-brand text-xs">(default: Pass@123)</span>}
+            </label>
+            <input id="user-form-password" name="password" className="input-base" type="password" value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder={editing ? '••••••••' : 'Min 8 characters'} />
+              placeholder={editing ? '••••••••' : 'Pass@123'} />
           </div>
           <div>
-            <label className="label-base">Role</label>
-            <select className="select-base" value={form.role}
+            <label htmlFor="user-form-role" className="label-base">Role</label>
+            <select id="user-form-role" name="role" className="select-base" value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value })}>
               {Object.entries(ROLE_LABELS).map(([key, label]) => (
                 <option key={key} value={key}>{label}</option>
@@ -381,13 +394,13 @@ export default function Users() {
           {form.role === 'student' && (
             <>
               <div>
-                <label className="label-base">Enrollment No</label>
-                <input className="input-base" value={form.enrollmentNo}
+                <label htmlFor="user-form-enrollment" className="label-base">Enrollment No</label>
+                <input id="user-form-enrollment" name="enrollmentNo" className="input-base" value={form.enrollmentNo}
                   onChange={(e) => setForm({ ...form, enrollmentNo: e.target.value })} />
               </div>
               <div>
-                <label className="label-base">Program</label>
-                <select className="select-base" value={form.programId}
+                <label htmlFor="user-form-program" className="label-base">Program</label>
+                <select id="user-form-program" name="programId" className="select-base" value={form.programId}
                   onChange={(e) => setForm({ ...form, programId: e.target.value })}>
                   <option value="">Select program</option>
                   {programs.map((p) => (
@@ -396,14 +409,14 @@ export default function Users() {
                 </select>
               </div>
               <div>
-                <label className="label-base">Current Semester</label>
-                <input className="input-base" type="number" min="1" max="10"
+                <label htmlFor="user-form-semester" className="label-base">Current Semester</label>
+                <input id="user-form-semester" name="currentSemester" className="input-base" type="number" min="1" max="10"
                   value={form.currentSemester}
                   onChange={(e) => setForm({ ...form, currentSemester: e.target.value })} />
               </div>
               <div>
-                <label className="label-base">Section</label>
-                <input className="input-base" value={form.section}
+                <label htmlFor="user-form-section" className="label-base">Section</label>
+                <input id="user-form-section" name="section" className="input-base" value={form.section}
                   onChange={(e) => setForm({ ...form, section: e.target.value })}
                   placeholder="e.g. A, B" />
               </div>
@@ -413,8 +426,8 @@ export default function Users() {
           {/* Section head fields */}
           {form.role === 'section_head' && (
             <div>
-              <label className="label-base">Section Type</label>
-              <select className="select-base" value={form.sectionType}
+              <label htmlFor="user-form-section-type" className="label-base">Section Type</label>
+              <select id="user-form-section-type" name="sectionType" className="select-base" value={form.sectionType}
                 onChange={(e) => setForm({ ...form, sectionType: e.target.value })}>
                 <option value="">Select type</option>
                 {Object.entries(DEPARTMENT_LABELS).map(([key, label]) => (
@@ -488,10 +501,12 @@ export default function Users() {
 
             {/* File Drop Area */}
             <div>
-              <label className="block text-xs font-semibold text-ink-primary mb-1">
+              <label htmlFor="bulk-file-upload" className="block text-xs font-semibold text-ink-primary mb-1">
                 Select CSV File from PC
               </label>
               <input
+                id="bulk-file-upload"
+                name="csvFile"
                 type="file"
                 accept=".csv"
                 onChange={handleFileSelect}
@@ -506,10 +521,12 @@ export default function Users() {
 
             {/* Manual CSV Textarea / Preview toggle */}
             <div>
-              <label className="block text-xs font-semibold text-ink-primary mb-1">
+              <label htmlFor="bulk-raw-csv" className="block text-xs font-semibold text-ink-primary mb-1">
                 Raw CSV Data (or Paste CSV)
               </label>
               <textarea
+                id="bulk-raw-csv"
+                name="rawCsv"
                 className="input-base min-h-[100px] font-mono text-xs"
                 value={csvData}
                 onChange={(e) => {

@@ -200,8 +200,10 @@ const SubmissionReview = () => {
             <h3 className="font-display font-bold text-lg text-white">Create Submission Requirement</h3>
             <form onSubmit={handleCreateSubmissionItem} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-surface-300 uppercase mb-1">Clearance Item ID</label>
+                <label htmlFor="sr-clearance-id" className="block text-xs font-semibold text-surface-300 uppercase mb-1">Clearance Item ID</label>
                 <input
+                  id="sr-clearance-id"
+                  name="clearanceItemId"
                   type="text"
                   required
                   value={clearanceItemId}
@@ -211,8 +213,10 @@ const SubmissionReview = () => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-surface-300 uppercase mb-1">Title</label>
+                <label htmlFor="sr-title" className="block text-xs font-semibold text-surface-300 uppercase mb-1">Title</label>
                 <input
+                  id="sr-title"
+                  name="title"
                   type="text"
                   required
                   value={title}
@@ -222,8 +226,10 @@ const SubmissionReview = () => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-surface-300 uppercase mb-1">Type</label>
+                <label htmlFor="sr-type" className="block text-xs font-semibold text-surface-300 uppercase mb-1">Type</label>
                 <select
+                  id="sr-type"
+                  name="type"
                   value={type}
                   onChange={(e) => setType(e.target.value)}
                   className="w-full p-3 bg-surface-800 border border-surface-700 rounded-xl text-white text-sm"
@@ -235,8 +241,10 @@ const SubmissionReview = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-surface-300 uppercase mb-1">Deadline</label>
+                <label htmlFor="sr-deadline" className="block text-xs font-semibold text-surface-300 uppercase mb-1">Deadline</label>
                 <input
+                  id="sr-deadline"
+                  name="deadline"
                   type="date"
                   required
                   value={deadline}

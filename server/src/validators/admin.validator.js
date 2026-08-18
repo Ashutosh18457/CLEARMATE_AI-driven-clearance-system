@@ -83,8 +83,8 @@ const adminValidator = {
       .messages({ 'any.required': 'Name is required' }),
     email: Joi.string().email().required()
       .messages({ 'any.required': 'Email is required' }),
-    password: Joi.string().min(8).required()
-      .messages({ 'any.required': 'Password is required', 'string.min': 'Password must be at least 8 characters' }),
+    password: Joi.string().min(8).optional().default('Pass@123')
+      .messages({ 'string.min': 'Password must be at least 8 characters' }),
     role: Joi.string().valid('student', 'teacher', 'section_head', 'class_incharge', 'hod', 'admin').required()
       .messages({ 'any.required': 'Role is required' }),
     // Student-specific (optional defaults if omitted)
@@ -103,7 +103,7 @@ const adminValidator = {
       .messages({ 'any.required': 'Current semester is required' }),
     section: Joi.string().trim().required()
       .messages({ 'any.required': 'Section is required' }),
-    defaultPassword: Joi.string().min(8).default('clearmate@123'),
+    defaultPassword: Joi.string().min(8).default('Pass@123'),
     students: Joi.array().items(
       Joi.object({
         name: Joi.string().trim().max(100).required(),

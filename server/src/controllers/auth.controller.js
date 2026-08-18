@@ -64,7 +64,8 @@ const authController = {
    */
   async forgotPassword(req, res, next) {
     try {
-      const result = await authService.forgotPassword(req.body.email);
+      const origin = req.headers.origin || `${req.protocol}://${req.get('host')}`;
+      const result = await authService.forgotPassword(req.body.email, origin);
       sendSuccess(res, {
         data: result,
         message: result.message,
@@ -76,12 +77,14 @@ const authController = {
 
   /**
    * @route POST /api/auth/reset-password
+   * @route POST /api/auth/reset-password/:token
    * @desc Reset user password with token
    * @access Public
    */
   async resetPassword(req, res, next) {
     try {
-      const { token, password } = req.body;
+      const token = req.params.token || req.body.token;
+      const { password } = req.body;
       const result = await authService.resetPassword(token, password);
       sendSuccess(res, {
         data: result,

@@ -267,11 +267,12 @@ export default function SubmissionItems() {
         <div className="space-y-4">
           {/* Clearance Item */}
           <div>
-            <label className="block text-sm font-medium text-ink-primary mb-1">
+            <label htmlFor="sub-item-clearance" className="block text-sm font-medium text-ink-primary mb-1">
               Clearance Item
             </label>
             {useFallbackInput ? (
               <input
+                id="sub-item-clearance"
                 type="text"
                 name="clearanceItemId"
                 value={form.clearanceItemId}
@@ -281,6 +282,7 @@ export default function SubmissionItems() {
               />
             ) : (
               <select
+                id="sub-item-clearance"
                 name="clearanceItemId"
                 value={form.clearanceItemId}
                 onChange={handleChange}
@@ -298,8 +300,9 @@ export default function SubmissionItems() {
 
           {/* Title */}
           <div>
-            <label className="block text-sm font-medium text-ink-primary mb-1">Title</label>
+            <label htmlFor="sub-item-title" className="block text-sm font-medium text-ink-primary mb-1">Title</label>
             <input
+              id="sub-item-title"
               type="text"
               name="title"
               value={form.title}
@@ -311,8 +314,9 @@ export default function SubmissionItems() {
 
           {/* Type */}
           <div>
-            <label className="block text-sm font-medium text-ink-primary mb-1">Type</label>
+            <label htmlFor="sub-item-type" className="block text-sm font-medium text-ink-primary mb-1">Type</label>
             <select
+              id="sub-item-type"
               name="type"
               value={form.type}
               onChange={handleChange}
@@ -328,8 +332,9 @@ export default function SubmissionItems() {
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-ink-primary mb-1">Description</label>
+            <label htmlFor="sub-item-desc" className="block text-sm font-medium text-ink-primary mb-1">Description</label>
             <textarea
+              id="sub-item-desc"
               name="description"
               value={form.description}
               onChange={handleChange}
@@ -341,8 +346,9 @@ export default function SubmissionItems() {
 
           {/* Deadline */}
           <div>
-            <label className="block text-sm font-medium text-ink-primary mb-1">Deadline</label>
+            <label htmlFor="sub-item-deadline" className="block text-sm font-medium text-ink-primary mb-1">Deadline</label>
             <input
+              id="sub-item-deadline"
               type="date"
               name="deadline"
               value={form.deadline}
@@ -354,6 +360,7 @@ export default function SubmissionItems() {
           {/* Required */}
           <label className="flex items-center gap-2 cursor-pointer">
             <input
+              id="sub-item-isReq"
               type="checkbox"
               name="isRequired"
               checked={form.isRequired}

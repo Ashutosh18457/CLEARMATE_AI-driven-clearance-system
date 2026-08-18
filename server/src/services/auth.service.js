@@ -72,53 +72,98 @@ const authService = {
 
   /**
    * Request password reset token via email.
+   * Generates a secure random 32-byte token, hashes with SHA-256, sets 15m expiration, and sends email.
    */
-  async forgotPassword(email) {
+  async forgotPassword(email, reqOrigin) {
     const cleanEmail = email ? email.toLowerCase().trim() : '';
+
+    if (!cleanEmail.endsWith('@sbjit.edu.in')) {
+      throw AppError.badRequest('Only official college domain (@sbjit.edu.in) is allowed');
+    }
+
     const user = await User.findOne({ email: cleanEmail });
     if (!user) {
-      // Return ambiguous message to prevent user enumeration
+      // Ambiguous message to prevent user enumeration
       return { message: 'If an account exists with this email, password reset instructions have been sent.' };
     }
 
     if (!user.isActive) {
-      throw AppError.forbidden('Your account has been deactivated.');
+      throw AppError.forbidden('Your account has been deactivated. Please contact administration.');
     }
 
-    const resetToken = jwt.sign({ id: user._id, type: 'password_reset' }, env.jwtSecret, {
-      expiresIn: '1h',
-    });
+    // 1. Generate unhashed token & save hashed token + 15m expiry in DB
+    const resetToken = user.getResetPasswordToken();
+    await user.save({ validateBeforeSave: false });
 
-    const AuditLog = require('../models/AuditLog');
-    new AuditLog({ userId: user._id, action: 'password_reset_requested', resource: 'Auth' }).save().catch(() => {});
+    // 2. Build Reset URL
+    const clientBaseUrl = process.env.CLIENT_URL || reqOrigin || 'http://localhost:5173';
+    const resetUrl = `${clientBaseUrl.replace(/\/$/, '')}/reset-password/${resetToken}`;
 
-    return {
-      message: 'If an account exists with this email, password reset instructions have been sent.',
-      resetToken, // Included for development/testing ease
-    };
+    // 3. Send Email
+    try {
+      const { sendPasswordResetEmail } = require('./email.service');
+      await sendPasswordResetEmail({
+        email: user.email,
+        resetUrl,
+        name: user.name,
+      });
+
+      const AuditLog = require('../models/AuditLog');
+      new AuditLog({ userId: user._id, action: 'password_reset_requested', resource: 'Auth' }).save().catch(() => {});
+
+      return {
+        message: 'Password reset link has been dispatched to your email address.',
+        resetToken, // Returned for dev testing ease
+        resetUrl,
+      };
+    } catch (err) {
+      // If email fails to send, clear reset token from DB
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save({ validateBeforeSave: false });
+      throw AppError.internal('Unable to send password reset email. Please try again later.');
+    }
   },
 
   /**
-   * Resets user password using reset token.
+   * Resets user password using secure token.
+   * Verifies SHA-256 hashed token & 15-minute expiration timestamp.
    */
   async resetPassword(token, newPassword) {
-    let decoded;
-    try {
-      decoded = jwt.verify(token, env.jwtSecret);
-    } catch (err) {
-      throw AppError.badRequest('Invalid or expired password reset token');
+    const crypto = require('crypto');
+
+    // 1. Hash the incoming plain token using SHA-256
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(token)
+      .digest('hex');
+
+    // 2. Find user by hashed token and ensure token is not expired ($gt: Date.now())
+    let user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpire: { $gt: Date.now() },
+    }).select('+resetPasswordToken +resetPasswordExpire');
+
+    // Fallback: check if legacy JWT token was passed
+    if (!user) {
+      try {
+        const decoded = jwt.verify(token, env.jwtSecret);
+        if (decoded.type === 'password_reset') {
+          user = await User.findById(decoded.id);
+        }
+      } catch (e) {
+        // Not a valid JWT either
+      }
     }
 
-    if (decoded.type !== 'password_reset') {
-      throw AppError.badRequest('Invalid reset token type');
-    }
-
-    const user = await User.findById(decoded.id);
     if (!user || !user.isActive) {
-      throw AppError.notFound('User account not found or deactivated');
+      throw AppError.badRequest('Password reset token is invalid or has expired (15 minute limit)');
     }
 
+    // 3. Set new password (bcrypt pre-save hook will hash it)
     user.password = newPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
     user.loginAttempts = 0;
     user.lockUntil = undefined;
     await user.save();
@@ -126,7 +171,7 @@ const authService = {
     const AuditLog = require('../models/AuditLog');
     new AuditLog({ userId: user._id, action: 'password_reset_completed', resource: 'Auth' }).save().catch(() => {});
 
-    return { message: 'Password has been successfully reset. You can now log in.' };
+    return { message: 'Password has been successfully reset. You can now log in with your new password.' };
   },
 
   /**

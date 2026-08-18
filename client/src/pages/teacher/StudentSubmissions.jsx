@@ -202,10 +202,12 @@ export default function StudentSubmissions() {
       {/* Item Selector */}
       {!paramItemId && (
         <div className="bg-surface border border-border-subtle rounded-md p-4 mb-6">
-          <label className="block text-sm font-medium text-ink-primary mb-2">
+          <label htmlFor="select-sub-item" className="block text-sm font-medium text-ink-primary mb-2">
             Select Submission Item
           </label>
           <select
+            id="select-sub-item"
+            name="submissionItem"
             value={selectedItemId}
             onChange={(e) => setSelectedItemId(e.target.value)}
             disabled={itemsLoading}

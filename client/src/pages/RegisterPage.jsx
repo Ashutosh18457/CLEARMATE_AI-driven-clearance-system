@@ -84,7 +84,9 @@ export default function RegisterPage() {
               </label>
               <input
                 id="reg-name"
+                name="name"
                 type="text"
+                autoComplete="name"
                 required
                 className="input-base"
                 placeholder="e.g. Alex Johnson"
@@ -96,14 +98,16 @@ export default function RegisterPage() {
             {/* Email */}
             <div>
               <label htmlFor="reg-email" className="label-base">
-                Email Address <span className="text-red-500">*</span>
+                Email Address (@sbjit.edu.in) <span className="text-red-500">*</span>
               </label>
               <input
                 id="reg-email"
+                name="email"
                 type="email"
+                autoComplete="email"
                 required
                 className="input-base"
-                placeholder="you@institution.edu"
+                placeholder="you@sbjit.edu.in"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -117,7 +121,9 @@ export default function RegisterPage() {
               <div className="relative">
                 <input
                   id="reg-password"
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
                   required
                   className="input-base pr-10"
                   placeholder="At least 8 characters"
@@ -146,6 +152,7 @@ export default function RegisterPage() {
               </label>
               <select
                 id="reg-role"
+                name="role"
                 className="input-base"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
@@ -166,6 +173,7 @@ export default function RegisterPage() {
                 </label>
                 <input
                   id="reg-enrollment"
+                  name="enrollmentNo"
                   type="text"
                   className="input-base"
                   placeholder="e.g. EN2024001"

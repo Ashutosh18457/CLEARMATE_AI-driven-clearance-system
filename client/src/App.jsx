@@ -10,6 +10,8 @@ import { lazy, Suspense } from 'react';
 
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 
 // Student
@@ -101,6 +103,30 @@ export default function App() {
             element={
               <AuthRedirect>
                 <LoginPage />
+              </AuthRedirect>
+            }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              <AuthRedirect>
+                <ForgotPassword />
+              </AuthRedirect>
+            }
+          />
+          <Route
+            path="/reset-password/:token"
+            element={
+              <AuthRedirect>
+                <ResetPassword />
+              </AuthRedirect>
+            }
+          />
+          <Route
+            path="/reset-password"
+            element={
+              <AuthRedirect>
+                <ResetPassword />
               </AuthRedirect>
             }
           />

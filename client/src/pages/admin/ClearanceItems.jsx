@@ -299,14 +299,14 @@ export default function ClearanceItems() {
       {/* Filters */}
       <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
         <div className="flex items-center gap-3">
-          <select className="select-base w-56" value={filterProgram}
+          <select id="ci-filter-program" name="filterProgram" className="select-base w-56" value={filterProgram}
             onChange={(e) => setFilterProgram(e.target.value)}>
             <option value="">Select program</option>
             {programs.map((p) => (
               <option key={p._id} value={p._id}>{p.name} ({p.code})</option>
             ))}
           </select>
-          <select className="select-base w-56" value={filterSemester}
+          <select id="ci-filter-semester" name="filterSemester" className="select-base w-56" value={filterSemester}
             onChange={(e) => setFilterSemester(e.target.value)} disabled={!filterProgram}>
             <option value="">Select semester</option>
             {semesters.map((s) => (
@@ -352,13 +352,13 @@ export default function ClearanceItems() {
           {/* Common fields */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="label-base">Sr. No</label>
-              <input className="input-base" type="number" min="1" value={form.srNo}
+              <label htmlFor="ci-form-srNo" className="label-base">Sr. No</label>
+              <input id="ci-form-srNo" name="srNo" className="input-base" type="number" min="1" value={form.srNo}
                 onChange={(e) => setForm({ ...form, srNo: e.target.value })} />
             </div>
             <div className="sm:col-span-2">
-              <label className="label-base">Title</label>
-              <input className="input-base" value={form.title}
+              <label htmlFor="ci-form-title" className="label-base">Title</label>
+              <input id="ci-form-title" name="title" className="input-base" value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 placeholder="e.g. Data Structures" />
             </div>
@@ -366,8 +366,8 @@ export default function ClearanceItems() {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="label-base">Type</label>
-              <select className="select-base" value={form.type}
+              <label htmlFor="ci-form-type" className="label-base">Type</label>
+              <select id="ci-form-type" name="type" className="select-base" value={form.type}
                 onChange={(e) => {
                   const newType = e.target.value;
                   const lbt = batches.map((b) => ({ batchId: b._id, batchName: b.name, teacherId: '' }));
@@ -379,13 +379,13 @@ export default function ClearanceItems() {
               </select>
             </div>
             <div>
-              <label className="label-base">Subject Code</label>
-              <input className="input-base" value={form.subjectCode}
+              <label htmlFor="ci-form-subjectCode" className="label-base">Subject Code</label>
+              <input id="ci-form-subjectCode" name="subjectCode" className="input-base" value={form.subjectCode}
                 onChange={(e) => setForm({ ...form, subjectCode: e.target.value })}
                 placeholder="e.g. CS301" />
             </div>
             <div className="flex items-end gap-2 pb-0.5">
-              <input type="checkbox" id="isReq" checked={form.isRequired}
+              <input type="checkbox" id="isReq" name="isRequired" checked={form.isRequired}
                 onChange={(e) => setForm({ ...form, isRequired: e.target.checked })}
                 className="rounded border-border-subtle text-brand focus:ring-brand" />
               <label htmlFor="isReq" className="text-sm text-ink-secondary">Required</label>
@@ -395,8 +395,8 @@ export default function ClearanceItems() {
           {/* Theory / Special: single teacher */}
           {(form.type === 'theory' || form.type === 'special') && (
             <div>
-              <label className="label-base">Teacher</label>
-              <select className="select-base" value={form.theoryTeacherId}
+              <label htmlFor="ci-form-teacher" className="label-base">Teacher</label>
+              <select id="ci-form-teacher" name="theoryTeacherId" className="select-base" value={form.theoryTeacherId}
                 onChange={(e) => setForm({ ...form, theoryTeacherId: e.target.value })}>
                 <option value="">Select teacher</option>
                 {teachers.map((t) => (
@@ -419,7 +419,7 @@ export default function ClearanceItems() {
                       <span className="text-sm text-ink-secondary w-24 shrink-0">
                         {lb.batchName || `Batch ${idx + 1}`}
                       </span>
-                      <select className="select-base flex-1" value={lb.teacherId}
+                      <select id={`ci-labbatch-teacher-${idx}`} name={`labBatchTeacher_${idx}`} className="select-base flex-1" value={lb.teacherId}
                         onChange={(e) => updateLabBatch(idx, e.target.value)}>
                         <option value="">Select teacher</option>
                         {teachers.map((t) => (
@@ -437,8 +437,8 @@ export default function ClearanceItems() {
           {form.type === 'elective' && (
             <div>
               <div className="mb-3">
-                <label className="label-base">Elective Group</label>
-                <input className="input-base" value={form.electiveGroup}
+                <label htmlFor="ci-form-elective-group" className="label-base">Elective Group</label>
+                <input id="ci-form-elective-group" name="electiveGroup" className="input-base" value={form.electiveGroup}
                   onChange={(e) => setForm({ ...form, electiveGroup: e.target.value })}
                   placeholder="e.g. Professional Elective 1" />
               </div>
@@ -452,10 +452,10 @@ export default function ClearanceItems() {
               <div className="space-y-2 border border-border-subtle rounded-md p-3">
                 {form.electiveOptions.map((opt, idx) => (
                   <div key={idx} className="flex items-center gap-2">
-                    <input className="input-base flex-1" value={opt.name}
+                    <input id={`ci-elective-name-${idx}`} name={`electiveOptionName_${idx}`} className="input-base flex-1" value={opt.name}
                       onChange={(e) => updateElectiveOption(idx, 'name', e.target.value)}
                       placeholder="Option name" />
-                    <select className="select-base flex-1" value={opt.teacherId}
+                    <select id={`ci-elective-teacher-${idx}`} name={`electiveOptionTeacher_${idx}`} className="select-base flex-1" value={opt.teacherId}
                       onChange={(e) => updateElectiveOption(idx, 'teacherId', e.target.value)}>
                       <option value="">Select teacher</option>
                       {teachers.map((t) => (
@@ -463,10 +463,9 @@ export default function ClearanceItems() {
                       ))}
                     </select>
                     {form.electiveOptions.length > 2 && (
-                      <button onClick={() => removeElectiveOption(idx)}
-                        className="p-1.5 rounded-md text-ink-muted hover:text-status-rejected hover:bg-red-50">
-                        <HiOutlineMinusSmall className="w-4 h-4" />
-                      </button>
+                      <Button variant="ghost" size="sm" onClick={() => removeElectiveOption(idx)}>
+                        <HiOutlineTrash className="w-4 h-4 text-status-rejected" />
+                      </Button>
                     )}
                   </div>
                 ))}
