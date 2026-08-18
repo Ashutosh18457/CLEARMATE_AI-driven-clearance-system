@@ -80,14 +80,30 @@ const adminService = {
     return semester;
   },
 
-  async getSemesters(filters) {
+  async getSemesters(filters = {}) {
     const query = {};
     if (filters.programId) query.programId = filters.programId;
-    if (filters.isActive !== undefined) query.isActive = filters.isActive;
+    if (filters.academicYear && filters.academicYear !== 'ALL') query.academicYear = filters.academicYear;
+    if (filters.type && filters.type !== 'ALL') query.type = filters.type;
+    if (filters.isActive !== undefined) {
+      query.isActive = filters.isActive === 'true' || filters.isActive === true;
+    }
+    if (filters.year && filters.year !== 'ALL') {
+      const yr = Number(filters.year);
+      if (yr >= 1 && yr <= 5) {
+        query.semNumber = { $in: [yr * 2 - 1, yr * 2] };
+      }
+    }
+    if (filters.search) {
+      query.$or = [
+        { name: { $regex: filters.search, $options: 'i' } },
+        { academicYear: { $regex: filters.search, $options: 'i' } },
+      ];
+    }
 
     return await Semester.find(query)
-      .populate('programId', 'name code')
-      .sort({ semNumber: 1 });
+      .populate('programId', 'name code degree branch department')
+      .sort({ academicYear: -1, semNumber: 1 });
   },
 
   async getSemesterById(id) {
