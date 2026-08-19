@@ -1,19 +1,21 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { toast } from 'react-hot-toast';
-import axios from '../../api/axios';
-import { useAuth } from '../../context/AuthContext';
+import React, { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import Table from '../../components/common/Table';
+import Badge from '../../components/common/Badge';
+import Button from '../../components/common/Button';
+import Modal from '../../components/common/Modal';
+import Skeleton from '../../components/common/Skeleton';
+import EmptyState from '../../components/common/EmptyState';
+import api from '../../api/axios';
+import toast from 'react-hot-toast';
 import {
-  HiMagnifyingGlass,
-  HiFunnel,
-  HiCheckCircle,
-  HiExclamationTriangle,
-  HiClock,
-  HiUserGroup,
-  HiXMark,
-  HiPencilSquare,
-  HiAcademicCap,
-  HiArrowRightOnRectangle,
+  HiOutlineMagnifyingGlass,
+  HiOutlineTruck,
+  HiOutlineCheckCircle,
+  HiOutlineExclamationCircle,
+  HiOutlineClock,
+  HiOutlinePencilSquare,
+  HiOutlineArrowPath,
 } from 'react-icons/hi2';
 
 // ─── Initial Mock Students for fallback / mock mode ───
@@ -22,26 +24,26 @@ const MOCK_BUS_STUDENTS = [
     student: {
       id: 'mock-1',
       _id: 'mock-1',
-      name: 'Aarav Patel',
-      enrollmentNo: 'EN2021CSE042',
-      email: 'aarav.patel@sbjit.edu.in',
+      name: 'Aarav Singh',
+      enrollmentNo: 'EN_BULK_101',
+      email: 'aarav_bulk101@sbjain.edu.in',
       program: 'CSE',
       currentSemester: 6,
       section: 'A',
     },
-    bus_fees_status: 'paid',
-    fees_status: 'paid',
-    reason: null,
-    remark_text: 'Bus fees cleared for Sem 6',
-    updated_by: { name: 'Bus Section Admin' },
-    updated_at: new Date().toISOString(),
+    bus_fees_status: 'not_paid',
+    fees_status: 'not_paid',
+    reason: 'fees_pending',
+    remark_text: 'Bus fees pending',
+    updated_by: { name: 'Bus Section Head' },
+    updated_at: '2026-08-19T14:37:09.000Z',
     auditTrail: [
       {
-        status: 'paid',
-        reason: null,
-        remark_text: 'Bus fees cleared for Sem 6',
-        changed_by_name: 'Bus Section Admin',
-        changed_at: new Date().toISOString(),
+        status: 'not_paid',
+        reason: 'fees_pending',
+        remark_text: 'Bus fees pending',
+        changed_by_name: 'Bus Section Head',
+        changed_at: '2026-08-19T14:37:09.000Z',
       },
     ],
   },
@@ -49,26 +51,26 @@ const MOCK_BUS_STUDENTS = [
     student: {
       id: 'mock-2',
       _id: 'mock-2',
-      name: 'Rohan Sharma',
-      enrollmentNo: 'EN2021CSE088',
-      email: 'rohan.sharma@sbjit.edu.in',
+      name: 'Aditya Joshi',
+      enrollmentNo: 'EN2024AIML001',
+      email: 'aditya.joshi@sbjain.edu.in',
       program: 'CSE',
-      currentSemester: 6,
-      section: 'B',
+      currentSemester: 8,
+      section: 'A',
     },
-    bus_fees_status: 'not_paid',
-    fees_status: 'not_paid',
-    reason: 'fees_pending',
-    remark_text: 'Bus fees pending for Sem 6',
-    updated_by: { name: 'Bus Section Admin' },
-    updated_at: new Date(Date.now() - 86400000).toISOString(),
+    bus_fees_status: 'paid',
+    fees_status: 'paid',
+    reason: null,
+    remark_text: 'Bus fees cleared',
+    updated_by: { name: 'Bus Section Head' },
+    updated_at: '2026-08-19T14:37:10.000Z',
     auditTrail: [
       {
-        status: 'not_paid',
-        reason: 'fees_pending',
-        remark_text: 'Bus fees pending for Sem 6',
-        changed_by_name: 'Bus Section Admin',
-        changed_at: new Date(Date.now() - 86400000).toISOString(),
+        status: 'paid',
+        reason: null,
+        remark_text: 'Bus fees cleared',
+        changed_by_name: 'Bus Section Head',
+        changed_at: '2026-08-19T14:37:10.000Z',
       },
     ],
   },
@@ -76,61 +78,65 @@ const MOCK_BUS_STUDENTS = [
     student: {
       id: 'mock-3',
       _id: 'mock-3',
-      name: 'Ananya Deshmukh',
-      enrollmentNo: 'EN2021AIDS012',
-      email: 'ananya.d@sbjit.edu.in',
-      program: 'AI&DS',
-      currentSemester: 4,
+      name: 'Ananya Patel',
+      enrollmentNo: 'EN2024CSE002',
+      email: 'ananya.patel@sbjain.edu.in',
+      program: 'CSE',
+      currentSemester: 6,
       section: 'A',
     },
-    bus_fees_status: 'not_paid',
-    fees_status: 'not_paid',
-    reason: 'remark',
-    remark_text: 'Bus pass renewal pending for Q2',
-    updated_by: { name: 'Bus Section Admin' },
-    updated_at: new Date(Date.now() - 172800000).toISOString(),
+    bus_fees_status: 'paid',
+    fees_status: 'paid',
+    reason: null,
+    remark_text: 'Bus fees cleared',
+    updated_by: { name: 'Bus Section Head' },
+    updated_at: '2026-08-19T14:37:10.000Z',
     auditTrail: [
       {
-        status: 'not_paid',
-        reason: 'remark',
-        remark_text: 'Bus pass renewal pending for Q2',
-        changed_by_name: 'Bus Section Admin',
-        changed_at: new Date(Date.now() - 172800000).toISOString(),
+        status: 'paid',
+        reason: null,
+        remark_text: 'Bus fees cleared',
+        changed_by_name: 'Bus Section Head',
+        changed_at: '2026-08-19T14:37:10.000Z',
       },
     ],
   },
 ];
 
 export default function BusSectionDashboard() {
-  const { logout } = useAuth();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'paid' | 'not_paid'
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  // Branch & Semester Filter State
   const [selectedBranch, setSelectedBranch] = useState('all');
   const [selectedSem, setSelectedSem] = useState('all');
   const [branches, setBranches] = useState([]);
+  const [semestersList] = useState([1, 2, 3, 4, 5, 6, 7, 8]);
 
   // Modal State
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalStatus, setModalStatus] = useState('paid'); // 'paid' | 'not_paid'
-  const [paidOption, setPaidOption] = useState('standard'); // 'standard' | 'add_clearance'
-  const [clearanceNoteText, setClearanceNoteText] = useState('');
-  const [modalReason, setModalReason] = useState('fees_pending'); // 'fees_pending' | 'remark'
-  const [modalRemarkText, setModalRemarkText] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Fetch branches metadata
+  // Form State inside Modal
+  const [feesStatus, setFeesStatus] = useState('not_paid'); // 'paid' | 'not_paid'
+  const [paidOption, setPaidOption] = useState('standard'); // 'standard' | 'add_clearance'
+  const [clearanceNoteText, setClearanceNoteText] = useState('');
+  const [reason, setReason] = useState('fees_pending'); // 'fees_pending' | 'remark'
+  const [remarkText, setRemarkText] = useState('');
+
+  // Fetch branches & semesters metadata
   useEffect(() => {
     async function fetchMetadata() {
       try {
-        const res = await axios.get('/account-section/branches');
+        const res = await api.get('/bus-section/branches');
         if (res.data?.success && res.data?.data?.programs) {
           setBranches(res.data.data.programs);
         }
       } catch (err) {
-        // Fallback default branches
         setBranches([
           { _id: 'cse', code: 'CSE', name: 'Computer Science & Engineering' },
           { _id: 'aids', code: 'AI&DS', name: 'Artificial Intelligence & Data Science' },
@@ -142,8 +148,8 @@ export default function BusSectionDashboard() {
     fetchMetadata();
   }, []);
 
-  // Fetch students
-  const fetchStudents = async () => {
+  // Fetch students function
+  const fetchStudents = useCallback(async () => {
     setLoading(true);
     try {
       const params = {};
@@ -152,242 +158,301 @@ export default function BusSectionDashboard() {
       if (selectedBranch !== 'all') params.branch = selectedBranch;
       if (selectedSem !== 'all') params.sem = selectedSem;
 
-      const res = await axios.get('/bus-section/students', { params });
+      const res = await api.get('/bus-section/students', { params });
       if (res.data?.success && Array.isArray(res.data?.data)) {
         setStudents(res.data.data);
       } else {
         setStudents(MOCK_BUS_STUDENTS);
       }
     } catch (err) {
-      console.warn('API error fetching bus section students, using fallback:', err.message);
+      console.warn('API error fetching bus students, using fallback:', err.message);
       setStudents(MOCK_BUS_STUDENTS);
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, statusFilter, selectedBranch, selectedSem]);
 
   useEffect(() => {
     fetchStudents();
-  }, [search, statusFilter, selectedBranch, selectedSem]);
+  }, [fetchStudents]);
 
-  // Metric computations
-  const metrics = useMemo(() => {
-    const total = students.length;
-    const paid = students.filter(
-      (s) => (s.bus_fees_status || s.fees_status) === 'paid'
-    ).length;
-    const pending = total - paid;
-    return { total, paid, pending };
-  }, [students]);
+  // Open modal handler
+  const handleOpenModal = async (row) => {
+    setSelectedStudent(row);
+    setIsModalOpen(true);
+    setModalLoading(true);
 
-  // Open Edit Modal
-  const handleOpenModal = (item) => {
-    setSelectedStudent(item);
-    const currentStatus = item.bus_fees_status || item.fees_status || 'not_paid';
-    setModalStatus(currentStatus);
-    setModalReason(item.reason || 'fees_pending');
-    setModalRemarkText(item.remark_text || '');
-    
-    if (currentStatus === 'paid' && item.reason === 'add_clearance') {
-      setPaidOption('add_clearance');
-      setClearanceNoteText(item.remark_text || '');
-    } else {
-      setPaidOption('standard');
-      setClearanceNoteText('');
+    try {
+      const sId = row.student.id || row.student._id;
+      const res = await api.get(`/bus-section/students/${sId}`);
+      if (res.data?.success && res.data?.data) {
+        const detail = res.data.data;
+        setSelectedStudent(detail);
+        const currentStatus = detail.bus_fees_status || detail.fees_status || 'not_paid';
+        setFeesStatus(currentStatus);
+        setReason(detail.reason || 'fees_pending');
+        setRemarkText(detail.remark_text || '');
+        if (currentStatus === 'paid' && detail.reason === 'add_clearance') {
+          setPaidOption('add_clearance');
+          setClearanceNoteText(detail.remark_text || '');
+        } else {
+          setPaidOption('standard');
+          setClearanceNoteText('');
+        }
+      }
+    } catch (err) {
+      const currentStatus = row.bus_fees_status || row.fees_status || 'not_paid';
+      setFeesStatus(currentStatus);
+      setReason(row.reason || 'fees_pending');
+      setRemarkText(row.remark_text || '');
+      if (currentStatus === 'paid' && row.reason === 'add_clearance') {
+        setPaidOption('add_clearance');
+        setClearanceNoteText(row.remark_text || '');
+      } else {
+        setPaidOption('standard');
+        setClearanceNoteText('');
+      }
+    } finally {
+      setModalLoading(false);
     }
-    setModalOpen(true);
   };
 
-  // Handle Save Fee Status
-  const handleSaveStatus = async () => {
+  // Handle Save Fees Status
+  const handleSaveFees = async () => {
     if (!selectedStudent) return;
-    if (modalStatus === 'paid' && paidOption === 'add_clearance' && !clearanceNoteText.trim()) {
+
+    if (feesStatus === 'paid' && paidOption === 'add_clearance' && !clearanceNoteText.trim()) {
       toast.error('Please enter clearance details / note.');
       return;
     }
-    if (modalStatus === 'not_paid' && modalReason === 'remark' && !modalRemarkText.trim()) {
-      toast.error('Please enter a remark explaining the bus fee pending status.');
+    if (feesStatus === 'not_paid' && reason === 'remark' && !remarkText.trim()) {
+      toast.error('Please enter a remark note for pending fees.');
       return;
     }
 
     setSaving(true);
-    const studentId = selectedStudent.student.id || selectedStudent.student._id;
+    const sId = selectedStudent.student.id || selectedStudent.student._id;
     const finalRemarkText =
-      modalStatus === 'paid'
+      feesStatus === 'paid'
         ? paidOption === 'add_clearance'
           ? clearanceNoteText.trim()
           : 'Bus fees cleared'
-        : modalReason === 'remark'
-        ? modalRemarkText.trim()
+        : reason === 'remark'
+        ? remarkText.trim()
         : 'Bus fees pending';
 
     const payload = {
-      status: modalStatus,
-      ...(modalStatus === 'paid'
+      status: feesStatus,
+      ...(feesStatus === 'paid'
         ? { reason: paidOption === 'add_clearance' ? 'add_clearance' : undefined, remark_text: finalRemarkText }
-        : { reason: modalReason, remark_text: finalRemarkText }),
+        : { reason: reason, remark_text: finalRemarkText }),
     };
 
     try {
-      const res = await axios.patch(`/bus-section/students/${studentId}/bus-fees`, payload);
+      const res = await api.patch(`/bus-section/students/${sId}/bus-fees`, payload);
       if (res.data?.success) {
-        toast.success('Bus fee status updated successfully');
-        setModalOpen(false);
+        toast.success('Bus fee clearance status updated successfully');
         fetchStudents();
+        setIsModalOpen(false);
       } else {
         throw new Error(res.data?.message || 'Update failed');
       }
     } catch (err) {
       console.warn('Backend update failed, updating inline for demo:', err.message);
-      // Update inline state for mock/fallback mode
       setStudents((prev) =>
-        prev.map((item) => {
-          const sId = item.student.id || item.student._id;
-          if (sId === studentId) {
+        prev.map((s) => {
+          const targetId = s.student.id || s.student._id;
+          if (targetId === sId) {
             const updatedAudit = [
               {
-                status: modalStatus,
-                reason: modalStatus === 'paid' ? (paidOption === 'add_clearance' ? 'add_clearance' : null) : modalReason,
+                status: feesStatus,
+                reason: feesStatus === 'paid' ? (paidOption === 'add_clearance' ? 'add_clearance' : null) : reason,
                 remark_text: finalRemarkText,
-                changed_by_name: 'Bus Section Admin',
+                changed_by_name: 'Bus Section Head',
                 changed_at: new Date().toISOString(),
               },
-              ...(item.auditTrail || []),
+              ...(s.auditTrail || []),
             ];
             return {
-              ...item,
-              bus_fees_status: modalStatus,
-              fees_status: modalStatus,
-              reason: modalStatus === 'paid' ? (paidOption === 'add_clearance' ? 'add_clearance' : null) : modalReason,
+              ...s,
+              bus_fees_status: feesStatus,
+              fees_status: feesStatus,
+              reason: feesStatus === 'paid' ? (paidOption === 'add_clearance' ? 'add_clearance' : null) : reason,
               remark_text: finalRemarkText,
               updated_at: new Date().toISOString(),
               auditTrail: updatedAudit,
             };
           }
-          return item;
+          return s;
         })
       );
-      toast.success('Bus fee status updated successfully');
-      setModalOpen(false);
+
+      toast.success('Bus fee clearance status updated successfully');
+      setIsModalOpen(false);
     } finally {
       setSaving(false);
     }
   };
 
-  return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* ─── Header ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-surface-200 pb-5">
+  // Calculated Metrics
+  const totalCount = students.length;
+  const paidCount = students.filter((s) => (s.bus_fees_status || s.fees_status) === 'paid').length;
+  const pendingCount = totalCount - paidCount;
+
+  const columns = [
+    {
+      key: 'name',
+      label: 'STUDENT',
+      render: (_, row) => (
         <div>
-          <h1 className="text-2xl font-bold text-surface-900 tracking-tight">
-            Bus Section Admin Dashboard
-          </h1>
-          <p className="text-sm text-surface-500 mt-1">
-            Manage student transport clearance, verify bus fee payments, and issue status remarks.
-          </p>
+          <p className="text-sm font-semibold text-ink-primary">{row.student.name}</p>
+          <p className="text-xs text-ink-muted">{row.student.email}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Bus Transport Portal Active
-          </span>
-          <button
-            type="button"
-            onClick={logout}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition cursor-pointer shadow-sm"
-            title="Log out of Bus Section Admin"
-          >
-            <HiArrowRightOnRectangle className="w-4 h-4 text-rose-600" />
-            Logout
-          </button>
+      ),
+    },
+    {
+      key: 'enrollmentNo',
+      label: 'ENROLLMENT NO',
+      render: (_, row) => (
+        <span className="text-sm font-mono text-ink-secondary font-medium">
+          {row.student.enrollmentNo}
+        </span>
+      ),
+    },
+    {
+      key: 'program',
+      label: 'PROGRAM / SEM',
+      render: (_, row) => (
+        <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-surface-100 text-ink-secondary border border-surface-200">
+          {row.student.program} - Sem {row.student.currentSemester} ({row.student.section || 'A'})
+        </span>
+      ),
+    },
+    {
+      key: 'bus_fees_status',
+      label: 'BUS FEES STATUS',
+      render: (val, row) => {
+        const status = row.bus_fees_status || row.fees_status || val;
+        if (status === 'paid') {
+          return (
+            <Badge variant="success" className="gap-1.5 py-1 px-3">
+              <HiOutlineCheckCircle className="w-4 h-4 text-emerald-600" />
+              <span>Paid</span>
+            </Badge>
+          );
+        }
+        return (
+          <Badge variant="warning" className="gap-1.5 py-1 px-3">
+            <HiOutlineExclamationCircle className="w-4 h-4 text-amber-600" />
+            <span>
+              Not Paid {row.reason === 'remark' ? `(${row.remark_text || 'Remark'})` : ''}
+            </span>
+          </Badge>
+        );
+      },
+    },
+    {
+      key: 'updated_at',
+      label: 'LAST UPDATED',
+      render: (val) => (
+        <span className="text-xs text-ink-muted">
+          {val ? new Date(val).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'ACTION',
+      render: (_, row) => (
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={<HiOutlinePencilSquare className="w-4 h-4" />}
+          onClick={() => handleOpenModal(row)}
+        >
+          Manage Bus Fees
+        </Button>
+      ),
+    },
+  ];
+
+  return (
+    <DashboardLayout title="Bus Section — Transport Fee Clearance">
+      {/* Metrics Banner */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="bg-surface border border-border-subtle p-5 rounded-xl shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-ink-muted uppercase tracking-wider">TOTAL STUDENTS</p>
+            <p className="text-2xl font-bold text-ink-primary mt-1">{totalCount}</p>
+          </div>
+          <div className="w-10 h-10 rounded-lg bg-surface-100 flex items-center justify-center text-ink-secondary">
+            <HiOutlineTruck className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-surface border border-border-subtle p-5 rounded-xl shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-ink-muted uppercase tracking-wider">BUS FEES CLEARED</p>
+            <p className="text-2xl font-bold text-emerald-600 mt-1">{paidCount}</p>
+          </div>
+          <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-200">
+            <HiOutlineCheckCircle className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-surface border border-border-subtle p-5 rounded-xl shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-ink-muted uppercase tracking-wider">BUS FEES PENDING</p>
+            <p className="text-2xl font-bold text-amber-600 mt-1">{pendingCount}</p>
+          </div>
+          <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-200">
+            <HiOutlineExclamationCircle className="w-5 h-5" />
+          </div>
         </div>
       </div>
 
-      {/* ─── Metrics Cards ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        {/* Total Students */}
-        <div className="bg-white p-5 rounded-xl border border-surface-200 shadow-sm flex items-center justify-between">
+      {/* Branch & Semester Selection Bar */}
+      <div className="bg-surface border border-border-subtle rounded-xl p-5 mb-6 space-y-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-border-subtle pb-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-surface-500">Total Students</p>
-            <h3 className="text-2xl font-bold text-surface-900 mt-1">{metrics.total}</h3>
-            <p className="text-xs text-surface-400 mt-1">Enrolled transport records</p>
-          </div>
-          <div className="p-3 bg-surface-100 text-surface-600 rounded-lg">
-            <HiUserGroup className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Bus Fees Cleared */}
-        <div className="bg-white p-5 rounded-xl border border-surface-200 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-600">Bus Fees Cleared</p>
-            <h3 className="text-2xl font-bold text-emerald-700 mt-1">{metrics.paid}</h3>
-            <p className="text-xs text-emerald-600/80 mt-1">Transport cleared (Paid)</p>
-          </div>
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
-            <HiCheckCircle className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Bus Fees Pending */}
-        <div className="bg-white p-5 rounded-xl border border-surface-200 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-amber-600">Bus Fees Pending</p>
-            <h3 className="text-2xl font-bold text-amber-700 mt-1">{metrics.pending}</h3>
-            <p className="text-xs text-amber-600/80 mt-1">Pending verification</p>
-          </div>
-          <div className="p-3 bg-amber-50 text-amber-600 rounded-lg">
-            <HiExclamationTriangle className="w-6 h-6" />
-          </div>
-        </div>
-      </div>
-
-      {/* ─── Controls Header: Search, Filters, Branch & Sem Selectors ─── */}
-      <div className="bg-white p-4 rounded-xl border border-surface-200 shadow-sm space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          {/* Search Input */}
-          <div className="relative flex-1 max-w-md">
-            <HiMagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
-            <input
-              type="text"
-              placeholder="Search by student name, enrollment no, or email..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm bg-surface-50 border border-surface-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition"
-            />
+            <h3 className="text-sm font-bold text-ink-primary uppercase tracking-wider">
+              BRANCH & SEMESTER FILTER
+            </h3>
+            <p className="text-xs text-ink-muted mt-0.5">
+              Select student branch and academic semester to view fee status records.
+            </p>
           </div>
 
-          {/* Filter Dropdowns: Branch & Semester */}
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Branch Selector */}
-            <div className="flex items-center gap-1.5 bg-surface-50 border border-surface-200 rounded-lg px-3 py-1.5">
-              <HiAcademicCap className="w-4 h-4 text-surface-500" />
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            {/* Branch / Program Selector */}
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-semibold text-ink-secondary whitespace-nowrap">Branch:</label>
               <select
                 value={selectedBranch}
                 onChange={(e) => setSelectedBranch(e.target.value)}
-                className="bg-transparent text-sm font-medium text-surface-700 focus:outline-none cursor-pointer"
+                className="input-base text-xs font-semibold py-1.5 px-3 rounded-lg border border-surface-300 bg-white text-ink-primary focus:ring-2 focus:ring-primary-500"
               >
-                <option value="all">All Branches / Programs</option>
+                <option value="all">All Branches</option>
                 {branches.map((b) => (
-                  <option key={b._id || b.code} value={b.code}>
-                    {b.code} - {b.name}
+                  <option key={b._id || b.code} value={b.code || b._id}>
+                    {b.code} ({b.name})
                   </option>
                 ))}
               </select>
             </div>
 
             {/* Semester Selector */}
-            <div className="flex items-center gap-1.5 bg-surface-50 border border-surface-200 rounded-lg px-3 py-1.5">
-              <HiFunnel className="w-4 h-4 text-surface-500" />
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-semibold text-ink-secondary whitespace-nowrap">Semester:</label>
               <select
                 value={selectedSem}
                 onChange={(e) => setSelectedSem(e.target.value)}
-                className="bg-transparent text-sm font-medium text-surface-700 focus:outline-none cursor-pointer"
+                className="input-base text-xs font-semibold py-1.5 px-3 rounded-lg border border-surface-300 bg-white text-ink-primary focus:ring-2 focus:ring-primary-500"
               >
                 <option value="all">All Semesters</option>
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                  <option key={s} value={String(s)}>
-                    Semester {s}
+                {semestersList.map((semNum) => (
+                  <option key={semNum} value={String(semNum)}>
+                    Semester {semNum}
                   </option>
                 ))}
               </select>
@@ -395,218 +460,186 @@ export default function BusSectionDashboard() {
           </div>
         </div>
 
-        {/* Quick Semester Pills & Status Tabs */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-surface-100">
-          {/* Quick Sem Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-            <span className="text-xs font-semibold text-surface-500 mr-1">Quick Sem:</span>
-            <button
-              onClick={() => setSelectedSem('all')}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition ${
-                selectedSem === 'all'
-                  ? 'bg-brand-600 text-white shadow-sm'
-                  : 'bg-surface-100 text-surface-600 hover:bg-surface-200'
-              }`}
-            >
-              All
-            </button>
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((semNum) => {
-              const semStr = String(semNum);
-              const isActive = selectedSem === semStr;
-              return (
-                <button
-                  key={semNum}
-                  onClick={() => setSelectedSem(semStr)}
-                  className={`px-2.5 py-1 text-xs font-medium rounded-md transition ${
-                    isActive
-                      ? 'bg-brand-600 text-white shadow-sm font-semibold'
-                      : 'bg-surface-100 text-surface-600 hover:bg-surface-200'
-                  }`}
-                >
-                  Sem {semNum}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Status Tabs */}
-          <div className="flex items-center bg-surface-100 p-1 rounded-lg self-start sm:self-auto">
-            <button
-              onClick={() => setStatusFilter('all')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition ${
-                statusFilter === 'all' ? 'bg-white text-surface-900 shadow-sm' : 'text-surface-600 hover:text-surface-900'
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setStatusFilter('paid')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition ${
-                statusFilter === 'paid' ? 'bg-emerald-600 text-white shadow-sm font-semibold' : 'text-surface-600 hover:text-surface-900'
-              }`}
-            >
-              Cleared (Paid)
-            </button>
-            <button
-              onClick={() => setStatusFilter('not_paid')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition ${
-                statusFilter === 'not_paid' ? 'bg-amber-600 text-white shadow-sm font-semibold' : 'text-surface-600 hover:text-surface-900'
-              }`}
-            >
-              Pending (Not Paid)
-            </button>
-          </div>
+        {/* Semester Quick-Filter Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <span className="text-xs font-bold text-ink-secondary whitespace-nowrap shrink-0">Quick Sem:</span>
+          <button
+            onClick={() => setSelectedSem('all')}
+            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors border ${
+              selectedSem === 'all'
+                ? 'bg-primary-600 text-white border-primary-600'
+                : 'bg-surface text-ink-secondary border-border-subtle hover:bg-canvas'
+            }`}
+          >
+            All
+          </button>
+          {semestersList.map((semNum) => {
+            const semStr = String(semNum);
+            const isActive = selectedSem === semStr;
+            return (
+              <button
+                key={semNum}
+                onClick={() => setSelectedSem(semStr)}
+                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors border ${
+                  isActive
+                    ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
+                    : 'bg-surface text-ink-secondary border-border-subtle hover:bg-canvas'
+                }`}
+              >
+                Sem {semNum}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* ─── Student Table ─── */}
-      <div className="bg-white rounded-xl border border-surface-200 shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="p-12 text-center text-surface-500">
-            <div className="inline-block w-6 h-6 border-2 border-brand-600 border-t-transparent rounded-full animate-spin mb-2"></div>
-            <p className="text-sm">Loading student transport clearance records...</p>
-          </div>
-        ) : students.length === 0 ? (
-          <div className="p-12 text-center text-surface-500">
-            <HiUserGroup className="w-10 h-10 mx-auto text-surface-300 mb-2" />
-            <p className="text-base font-medium text-surface-700">No student transport records found</p>
-            <p className="text-xs text-surface-400 mt-1">Try resetting your search query or filter parameters.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-surface-50 border-b border-surface-200 text-xs font-semibold text-surface-500 uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Student Name</th>
-                  <th className="py-3.5 px-4">Roll / Enrollment No</th>
-                  <th className="py-3.5 px-4">Branch / Sem</th>
-                  <th className="py-3.5 px-4">Bus Fees Status</th>
-                  <th className="py-3.5 px-4">Last Updated</th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-surface-200 text-sm text-surface-700">
-                {students.map((item) => {
-                  const status = item.bus_fees_status || item.fees_status || 'not_paid';
-                  const isPaid = status === 'paid';
-                  const isRemark = !isPaid && item.reason === 'remark';
+      {/* Filter and Search Header */}
+      <div className="bg-surface border border-border-subtle rounded-xl p-4 mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
+        {/* Search */}
+        <div className="relative w-full md:w-96">
+          <HiOutlineMagnifyingGlass className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
+          <input
+            type="text"
+            placeholder="Search student by name, enrollment no..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="input-base pl-10 pr-4 py-2 w-full text-sm rounded-lg"
+          />
+        </div>
 
-                  return (
-                    <tr key={item.student.id || item.student._id} className="hover:bg-surface-50/80 transition">
-                      <td className="py-3.5 px-4 font-medium text-surface-900">
-                        <div>{item.student.name}</div>
-                        <div className="text-xs text-surface-400 font-normal">{item.student.email}</div>
-                      </td>
-                      <td className="py-3.5 px-4 text-surface-600 font-mono text-xs">
-                        {item.student.enrollmentNo || 'N/A'}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-surface-100 text-surface-700 border border-surface-200">
-                          {item.student.program || 'CSE'} - Sem {item.student.currentSemester || 'N/A'}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        {isPaid ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <HiCheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-                            Paid
-                          </span>
-                        ) : isRemark ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200" title={item.remark_text}>
-                            <HiExclamationTriangle className="w-3.5 h-3.5 text-amber-500" />
-                            Pending: {item.remark_text || 'Remark'}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
-                            <HiExclamationTriangle className="w-3.5 h-3.5 text-amber-500" />
-                            Fees Pending
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 text-xs text-surface-500">
-                        {item.updated_at ? new Date(item.updated_at).toLocaleDateString() : 'Not updated'}
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <button
-                          onClick={() => handleOpenModal(item)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-200 transition"
-                        >
-                          <HiPencilSquare className="w-3.5 h-3.5" />
-                          Manage Bus Fees
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        {/* Status Filters & Refresh */}
+        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+          <div className="flex items-center gap-1 bg-surface-100 p-1 rounded-lg border border-border-subtle">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                statusFilter === 'all'
+                  ? 'bg-surface text-ink-primary shadow-xs'
+                  : 'text-ink-muted hover:text-ink-primary'
+              }`}
+            >
+              All Statuses
+            </button>
+            <button
+              onClick={() => setStatusFilter('paid')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                statusFilter === 'paid'
+                  ? 'bg-emerald-500 text-white shadow-xs'
+                  : 'text-ink-muted hover:text-ink-primary'
+              }`}
+            >
+              Paid
+            </button>
+            <button
+              onClick={() => setStatusFilter('not_paid')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                statusFilter === 'not_paid'
+                  ? 'bg-amber-500 text-white shadow-xs'
+                  : 'text-ink-muted hover:text-ink-primary'
+              }`}
+            >
+              Not Paid
+            </button>
           </div>
-        )}
+
+          <Button
+            variant="tertiary"
+            size="sm"
+            icon={<HiOutlineArrowPath className="w-4 h-4" />}
+            onClick={fetchStudents}
+          >
+            Refresh
+          </Button>
+        </div>
       </div>
 
-      {/* ─── Manage Bus Fees Modal ─── */}
-      {modalOpen && selectedStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-900/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-xl border border-surface-200 shadow-xl max-w-lg w-full overflow-hidden space-y-0">
-            {/* Modal Header */}
-            <div className="p-5 border-b border-surface-200 flex items-center justify-between bg-surface-50">
-              <div>
-                <h3 className="text-lg font-bold text-surface-900">Manage Bus Fee Status</h3>
-                <p className="text-xs text-surface-500 mt-0.5">
-                  {selectedStudent.student.name} ({selectedStudent.student.enrollmentNo})
-                </p>
-              </div>
-              <button
-                onClick={() => setModalOpen(false)}
-                className="p-1 rounded-lg text-surface-400 hover:text-surface-600 hover:bg-surface-200/60 transition"
-              >
-                <HiXMark className="w-5 h-5" />
-              </button>
-            </div>
+      {/* Main Table */}
+      {loading ? (
+        <Skeleton count={6} />
+      ) : students.length === 0 ? (
+        <EmptyState
+          title="No Student Records Found"
+          description="There are no students matching your current search or filter criteria."
+          icon={<HiOutlineTruck className="w-12 h-12 text-ink-muted" />}
+        />
+      ) : (
+        <div className="bg-surface border border-border-subtle rounded-xl shadow-xs overflow-hidden">
+          <Table columns={columns} data={students} />
+        </div>
+      )}
 
-            {/* Modal Body */}
-            <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
-              {/* Paid / Not Paid Toggle */}
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-surface-600 mb-2">
+      {/* Manage Bus Fees Modal */}
+      {isModalOpen && selectedStudent && (
+        <Modal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          title="Manage Bus Fee Status"
+        >
+          {modalLoading ? (
+            <Skeleton count={3} />
+          ) : (
+            <div className="space-y-6">
+              {/* Student Details Summary Header */}
+              <div className="p-4 rounded-xl bg-surface-100 border border-border-subtle flex justify-between items-center">
+                <div>
+                  <h4 className="font-bold text-ink-primary text-base">
+                    {selectedStudent.student?.name}
+                  </h4>
+                  <p className="text-xs text-ink-muted mt-0.5">
+                    Enrollment: <span className="font-mono font-medium text-ink-secondary">{selectedStudent.student?.enrollmentNo}</span>
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-surface border border-border-subtle text-ink-secondary">
+                    {selectedStudent.student?.program} - Sem {selectedStudent.student?.currentSemester} ({selectedStudent.student?.section || 'A'})
+                  </span>
+                </div>
+              </div>
+
+              {/* Fee Clearance Status Options */}
+              <div className="space-y-3">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-ink-muted">
                   Bus Fee Clearance Status
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+
+                <div className="grid grid-cols-2 gap-4">
                   <button
                     type="button"
-                    onClick={() => setModalStatus('paid')}
-                    className={`py-2.5 px-4 rounded-lg border text-sm font-semibold flex items-center justify-center gap-2 transition ${
-                      modalStatus === 'paid'
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                        : 'bg-surface-50 text-surface-700 border-surface-200 hover:bg-surface-100'
+                    onClick={() => setFeesStatus('paid')}
+                    className={`py-3 px-4 rounded-xl border font-semibold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      feesStatus === 'paid'
+                        ? 'bg-emerald-50 border-emerald-500 text-emerald-700 ring-2 ring-emerald-500/20'
+                        : 'bg-surface border-border-subtle text-ink-secondary hover:border-surface-300'
                     }`}
                   >
-                    <HiCheckCircle className="w-4 h-4" />
-                    Paid (Cleared)
+                    <HiOutlineCheckCircle className="w-5 h-5 text-emerald-600" />
+                    <span>Paid (Cleared)</span>
                   </button>
+
                   <button
                     type="button"
-                    onClick={() => setModalStatus('not_paid')}
-                    className={`py-2.5 px-4 rounded-lg border text-sm font-semibold flex items-center justify-center gap-2 transition ${
-                      modalStatus === 'not_paid'
-                        ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
-                        : 'bg-surface-50 text-surface-700 border-surface-200 hover:bg-surface-100'
+                    onClick={() => setFeesStatus('not_paid')}
+                    className={`py-3 px-4 rounded-xl border font-semibold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      feesStatus === 'not_paid'
+                        ? 'bg-amber-50 border-amber-500 text-amber-700 ring-2 ring-amber-500/20'
+                        : 'bg-surface border-border-subtle text-ink-secondary hover:border-surface-300'
                     }`}
                   >
-                    <HiExclamationTriangle className="w-4 h-4" />
-                    Not Paid (Pending)
+                    <HiOutlineExclamationCircle className="w-5 h-5 text-amber-600" />
+                    <span>Not Paid (Pending)</span>
                   </button>
                 </div>
               </div>
 
-              {/* Sub-options for Paid */}
-              {modalStatus === 'paid' && (
-                <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-lg space-y-3">
-                  <label className="block text-xs font-semibold text-emerald-900">
-                    Specify Bus Fee Clearance Option:
+              {/* Sub-options if Paid */}
+              {feesStatus === 'paid' && (
+                <div className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-200/70 space-y-4">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-emerald-800">
+                    Paid Clearance Option
                   </label>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-sm text-surface-700 cursor-pointer">
+
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 text-sm font-medium text-emerald-900 cursor-pointer">
                       <input
                         type="radio"
                         name="paidOption"
@@ -615,11 +648,10 @@ export default function BusSectionDashboard() {
                         onChange={() => setPaidOption('standard')}
                         className="text-emerald-600 focus:ring-emerald-500"
                       />
-                      <span className="font-medium">Direct Cleared</span>
-                      <span className="text-xs text-surface-400">(Standard bus fee cleared status)</span>
+                      <span>Direct Cleared (Standard)</span>
                     </label>
 
-                    <label className="flex items-center gap-2 text-sm text-surface-700 cursor-pointer">
+                    <label className="flex items-center gap-2 text-sm font-medium text-emerald-900 cursor-pointer">
                       <input
                         type="radio"
                         name="paidOption"
@@ -628,140 +660,138 @@ export default function BusSectionDashboard() {
                         onChange={() => setPaidOption('add_clearance')}
                         className="text-emerald-600 focus:ring-emerald-500"
                       />
-                      <span className="font-medium">Add Clearance</span>
-                      <span className="text-xs text-surface-400">(Add custom clearance note / receipt / pass ID)</span>
+                      <span>Add Clearance Note / Receipt</span>
                     </label>
                   </div>
 
-                  {/* Textarea for Add Clearance note */}
                   {paidOption === 'add_clearance' && (
                     <div className="pt-2">
-                      <label className="block text-xs font-medium text-surface-700 mb-1">
+                      <label className="block text-xs font-semibold text-emerald-900 mb-1">
                         Clearance Details / Note <span className="text-red-500">*</span>
                       </label>
                       <textarea
                         rows={3}
-                        placeholder="e.g. Cleared via Receipt #84920 / Bus Pass #B-104 issued..."
                         value={clearanceNoteText}
                         onChange={(e) => setClearanceNoteText(e.target.value)}
-                        className="w-full p-2.5 text-sm bg-white border border-surface-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        placeholder="e.g. Cleared via Receipt #84920 / Bus Pass #B-104 issued..."
+                        className="input-base text-sm w-full p-2.5 bg-white border border-emerald-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Sub-options for Not Paid */}
-              {modalStatus === 'not_paid' && (
-                <div className="p-4 bg-amber-50/60 border border-amber-200 rounded-lg space-y-3">
-                  <label className="block text-xs font-semibold text-amber-900">
-                    Specify Bus Fee Pending Reason:
+              {/* Sub-options if Not Paid */}
+              {feesStatus === 'not_paid' && (
+                <div className="p-4 rounded-xl bg-amber-50/50 border border-amber-200/70 space-y-4">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-amber-800">
+                    Not Paid Sub-Option
                   </label>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-sm text-surface-700 cursor-pointer">
+
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 text-sm font-medium text-amber-900 cursor-pointer">
                       <input
                         type="radio"
-                        name="busReason"
+                        name="notPaidReason"
                         value="fees_pending"
-                        checked={modalReason === 'fees_pending'}
-                        onChange={() => setModalReason('fees_pending')}
-                        className="text-brand-600 focus:ring-brand-500"
+                        checked={reason === 'fees_pending'}
+                        onChange={() => setReason('fees_pending')}
+                        className="text-amber-600 focus:ring-amber-500"
                       />
-                      <span className="font-medium">Fees Pending</span>
-                      <span className="text-xs text-surface-400">(Standard pending status)</span>
+                      <span>Fees Pending (Default Status Flag)</span>
                     </label>
 
-                    <label className="flex items-center gap-2 text-sm text-surface-700 cursor-pointer">
+                    <label className="flex items-center gap-2 text-sm font-medium text-amber-900 cursor-pointer">
                       <input
                         type="radio"
-                        name="busReason"
+                        name="notPaidReason"
                         value="remark"
-                        checked={modalReason === 'remark'}
-                        onChange={() => setModalReason('remark')}
-                        className="text-brand-600 focus:ring-brand-500"
+                        checked={reason === 'remark'}
+                        onChange={() => setReason('remark')}
+                        className="text-amber-600 focus:ring-amber-500"
                       />
-                      <span className="font-medium">Add Remark</span>
-                      <span className="text-xs text-surface-400">(Custom note for student & admins)</span>
+                      <span>Add Remark Note</span>
                     </label>
                   </div>
 
-                  {/* Textarea for Remark */}
-                  {modalReason === 'remark' && (
+                  {reason === 'remark' && (
                     <div className="pt-2">
-                      <label className="block text-xs font-medium text-surface-700 mb-1">
+                      <label className="block text-xs font-semibold text-amber-900 mb-1">
                         Remark Note <span className="text-red-500">*</span>
                       </label>
                       <textarea
                         rows={3}
-                        placeholder="e.g. Bus pass quarterly renewal fee ₹1,200 pending..."
-                        value={modalRemarkText}
-                        onChange={(e) => setModalRemarkText(e.target.value)}
-                        className="w-full p-2.5 text-sm bg-white border border-surface-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        value={remarkText}
+                        onChange={(e) => setRemarkText(e.target.value)}
+                        placeholder="e.g. Bus pass quarterly renewal fee ₹1,500 pending..."
+                        className="input-base text-sm w-full p-2.5 bg-white border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500"
                       />
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Audit History Timeline */}
-              <div className="border-t border-surface-200 pt-4">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-3 flex items-center gap-1.5">
-                  <HiClock className="w-4 h-4 text-surface-400" />
+              {/* Audit Trail History */}
+              <div className="pt-4 border-t border-border-subtle">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-muted mb-3 flex items-center gap-1.5">
+                  <HiOutlineClock className="w-4 h-4 text-ink-muted" />
                   Audit & History Timeline
                 </h4>
+
                 {selectedStudent.auditTrail && selectedStudent.auditTrail.length > 0 ? (
-                  <div className="space-y-3 relative before:absolute before:inset-0 before:left-2.5 before:w-0.5 before:bg-surface-200">
+                  <div className="space-y-3 max-h-40 overflow-y-auto pr-2">
                     {selectedStudent.auditTrail.map((log, idx) => (
-                      <div key={idx} className="relative pl-7 text-xs">
-                        <div
-                          className={`absolute left-1 top-1 w-3 h-3 rounded-full border-2 bg-white ${
-                            log.status === 'paid' ? 'border-emerald-500' : 'border-amber-500'
-                          }`}
-                        />
-                        <div className="font-semibold text-surface-800">
-                          {log.status === 'paid' ? 'Marked Paid' : 'Marked Not Paid'}
+                      <div
+                        key={idx}
+                        className="flex items-start justify-between text-xs p-3 rounded-lg bg-surface border border-border-subtle"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`font-semibold ${
+                                log.status === 'paid' ? 'text-emerald-600' : 'text-amber-600'
+                              }`}
+                            >
+                              {log.status === 'paid' ? 'Marked Paid' : 'Marked Not Paid'}
+                            </span>
+                          </div>
+                          {log.remark_text && (
+                            <p className="text-ink-secondary mt-1 font-medium">{log.remark_text}</p>
+                          )}
+                          <p className="text-[11px] text-ink-muted mt-1">
+                            Updated by: {log.changed_by_name || 'Bus Section Head'}
+                          </p>
                         </div>
-                        {log.remark_text && <div className="text-surface-600 mt-0.5">{log.remark_text}</div>}
-                        <div className="text-surface-400 mt-0.5 text-[11px]">
-                          By {log.changed_by_name || 'Bus Section Admin'} • {new Date(log.changed_at).toLocaleString()}
-                        </div>
+
+                        <span className="text-[10px] text-ink-muted whitespace-nowrap">
+                          {log.changed_at
+                            ? new Date(log.changed_at).toLocaleString('en-IN', {
+                                dateStyle: 'short',
+                                timeStyle: 'short',
+                              })
+                            : '—'}
+                        </span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-surface-400 italic">No prior audit records.</p>
+                  <p className="text-xs text-ink-muted italic">No prior audit records found.</p>
                 )}
               </div>
-            </div>
 
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-surface-200 bg-surface-50 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-surface-700 bg-white border border-surface-300 rounded-lg hover:bg-surface-100 transition cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveStatus}
-                disabled={saving}
-                className="px-5 py-2 text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm border border-slate-900 cursor-pointer"
-              >
-                {saving ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Saving...
-                  </>
-                ) : (
-                  'Save'
-                )}
-              </button>
+              {/* Modal Actions */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-border-subtle">
+                <Button variant="tertiary" onClick={() => setIsModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" loading={saving} onClick={handleSaveFees}>
+                  Save Bus Fee Status
+                </Button>
+              </div>
             </div>
-          </div>
-        </div>
+          )}
+        </Modal>
       )}
-    </div>
+    </DashboardLayout>
   );
 }
