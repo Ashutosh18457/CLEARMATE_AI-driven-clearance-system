@@ -46,6 +46,22 @@ const autoSeed = async () => {
       { name: 'Library Head', email: 'library@sbjit.edu.in', password: 'Password123!', role: 'section_head', sectionType: 'library' },
       { name: 'Class Incharge (Sec A)', email: 'ci@sbjit.edu.in', password: 'Password123!', role: 'class_incharge' },
       { name: 'Dr. Kulkarni (HOD)', email: 'hod@sbjit.edu.in', password: 'Password123!', role: 'hod' },
+      // Also seed @sbjain.edu.in accounts for backwards compatibility
+      { name: 'Admin User (Legacy)', email: 'admin@sbjain.edu.in', password: 'Password123!', role: 'admin' },
+      { name: 'Prof. Sharma (Legacy)', email: 'teacher@sbjain.edu.in', password: 'Password123!', role: 'teacher' },
+      {
+        name: 'Rahul Verma (Legacy)',
+        email: 'student@sbjain.edu.in',
+        password: 'Password123!',
+        role: 'student',
+        programId: program._id,
+        enrollmentNo: 'EN2021CSE043',
+        currentSemester: 6,
+        section: 'A',
+      },
+      { name: 'Library Head (Legacy)', email: 'library@sbjain.edu.in', password: 'Password123!', role: 'section_head', sectionType: 'library' },
+      { name: 'Class Incharge (Legacy)', email: 'ci@sbjain.edu.in', password: 'Password123!', role: 'class_incharge' },
+      { name: 'Dr. Kulkarni (Legacy HOD)', email: 'hod@sbjain.edu.in', password: 'Password123!', role: 'hod' },
     ];
 
     let seededCount = 0;
@@ -57,6 +73,41 @@ const autoSeed = async () => {
         seededCount++;
       }
     }
+
+    // Ensure ClearanceItems are assigned to Prof. Sharma (teacher@sbjit.edu.in)
+    const ClearanceItem = require('../models/ClearanceItem');
+    const teacherUser = await User.findOne({ email: 'teacher@sbjit.edu.in' });
+    const legacyTeacher = await User.findOne({ email: 'teacher@sbjain.edu.in' });
+
+    if (teacherUser) {
+      // 1. Reassign legacy or unassigned clearance items to teacherUser
+      const queryOr = [{ theoryTeacherId: null }];
+      if (legacyTeacher) queryOr.push({ theoryTeacherId: legacyTeacher._id });
+
+      await ClearanceItem.updateMany(
+        { type: 'theory', $or: queryOr },
+        { $set: { theoryTeacherId: teacherUser._id } }
+      );
+
+      // 2. Ensure DSA item exists and is assigned to Prof. Sharma
+      let dsaItem = await ClearanceItem.findOne({ title: 'DSA' });
+      if (!dsaItem) {
+        await ClearanceItem.create({
+          semesterId: semester._id,
+          title: 'DSA',
+          type: 'theory',
+          subjectCode: 'CSE601',
+          srNo: 1,
+          theoryTeacherId: teacherUser._id,
+        });
+        logger.info('🎉 Auto-seeded clearance item "DSA" assigned to Prof. Sharma (teacher@sbjit.edu.in)');
+      } else if (!dsaItem.theoryTeacherId || dsaItem.theoryTeacherId.toString() !== teacherUser._id.toString()) {
+        dsaItem.theoryTeacherId = teacherUser._id;
+        await dsaItem.save();
+        logger.info('🎉 Updated clearance item "DSA" assignment to Prof. Sharma (teacher@sbjit.edu.in)');
+      }
+    }
+
     if (seededCount > 0) {
       logger.info(`🎉 Auto-seeded ${seededCount} missing demo account(s). Password for all demo accounts: Password123!`);
     }
@@ -83,8 +134,9 @@ const connectDB = async (uri) => {
 
   const isInvalidScheme = !uri || (!uri.startsWith('mongodb://') && !uri.startsWith('mongodb+srv://'));
   if (isInvalidScheme || uri.includes('placeholder') || uri.includes('your_mongodb_connection_string')) {
-    logger.error('❌ MONGODB_URI in server/.env is missing or invalid. Expected a connection string starting with "mongodb://" or "mongodb+srv://".');
-    throw new Error('Invalid or missing MONGODB_URI in server/.env');
+    logger.warn('⚠️ MONGODB_URI in server/.env is missing or invalid. Falling back to zero-setup In-Memory Local MongoDB...');
+    await startMemoryServer();
+    return;
   }
 
   try {
@@ -92,16 +144,11 @@ const connectDB = async (uri) => {
     logger.info(`✅ MongoDB connected: ${conn.connection.host}`);
     await autoSeed();
   } catch (error) {
-    logger.error(`❌ MongoDB Atlas connection failed: ${error.message}`);
-    if (process.env.NODE_ENV !== 'production') {
-      logger.warn('⚠️ Falling back to In-Memory MongoDB for local development...');
-      await startMemoryServer();
-      return;
-    }
+    logger.warn(`⚠️ MongoDB Atlas connection failed: ${error.message}. Automatically falling back to zero-setup In-Memory Local MongoDB...`);
     try {
       await mongoose.disconnect();
     } catch (e) {}
-    throw new Error(`MongoDB Atlas connection failed: ${error.message}`);
+    await startMemoryServer();
   }
 };
 

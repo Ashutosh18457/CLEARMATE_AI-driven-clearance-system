@@ -18,7 +18,7 @@ async function bootstrapAdmin() {
       process.exit(0);
     }
 
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@sbjain.edu.in';
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@sbjit.edu.in';
     const adminPassword = process.env.ADMIN_PASSWORD || 'Password123!';
 
     const admin = await User.create({

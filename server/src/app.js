@@ -60,7 +60,7 @@ app.use(morgan(env.isDev ? 'dev' : 'combined', { stream: logger.stream }));
 // ──────────────────────────────────────────────
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: env.isDev ? 10000 : 200,
   message: {
     success: false,
     message: 'Too many requests, please try again later',
@@ -72,7 +72,7 @@ const globalLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: env.isDev ? 100 : 10,
+  max: env.isDev ? 1000 : 10,
   message: {
     success: false,
     message: 'Too many login attempts, please try again later',

@@ -40,9 +40,16 @@ api.interceptors.response.use(
       }
     }
 
+    const rawData = error.response?.data;
+    if (typeof rawData === 'string' && (rawData.includes('ECONNREFUSED') || rawData.includes('500 Internal Server Error'))) {
+      message = 'Backend server is offline on port 5000. Please start the backend server ("npm start" inside server/).';
+    }
+
     if (!message) {
-      if (status === 500) {
-        message = 'Internal server error. Please try again or check server logs.';
+      if (status === 429) {
+        message = 'Too many requests. Please wait a moment before trying again.';
+      } else if (status === 500) {
+        message = 'Backend server is offline or encountered an unexpected error. Please ensure backend server is running.';
       } else if (status === 404) {
         message = 'Requested API resource was not found.';
       } else if (!status) {

@@ -47,8 +47,10 @@ const submissionService = {
    * Groups them by their parent ClearanceItem for a cleaner UI.
    */
   async getSubmissionItemsByTeacher(teacherId, semesterId) {
-    // Find all ClearanceItems this teacher is assigned to in the semester
-    const clearanceItems = await ClearanceItem.find({ semesterId });
+    // Find all ClearanceItems this teacher is assigned to
+    // If semesterId is provided, scope to that semester; otherwise find across all semesters
+    const query = semesterId ? { semesterId } : {};
+    const clearanceItems = await ClearanceItem.find(query);
     const ownedItemIds = clearanceItems
       .filter((item) => this._isTeacherOwner(item, teacherId))
       .map((item) => item._id);
