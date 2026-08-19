@@ -123,8 +123,12 @@ const adminValidator = {
   updateUserSchema: Joi.object({
     name: Joi.string().trim().max(100),
     email: Joi.string().email(),
-    currentSemester: Joi.number().integer().min(1).max(10),
-    section: Joi.string().trim(),
+    role: Joi.string().valid('student', 'teacher', 'section_head', 'class_incharge', 'hod', 'admin'),
+    programId: objectId.optional().allow('', null),
+    enrollmentNo: Joi.string().trim().optional().allow('', null),
+    currentSemester: Joi.number().integer().min(1).max(10).optional().allow('', null),
+    section: Joi.string().trim().optional().allow('', null),
+    sectionType: Joi.string().valid('library', 'accounts', 'bus', 'student_section').optional().allow('', null),
     isActive: Joi.boolean(),
   }).min(1),
 

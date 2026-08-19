@@ -31,11 +31,11 @@ const autoSeed = async () => {
     }
 
     const demoUsers = [
-      { name: 'Admin User', email: 'admin@sbjain.edu.in', password: 'Password123!', role: 'admin' },
-      { name: 'Prof. Sharma', email: 'teacher@sbjain.edu.in', password: 'Password123!', role: 'teacher' },
+      { name: 'Admin User', email: 'admin@sbjit.edu.in', password: 'Password123!', role: 'admin' },
+      { name: 'Prof. Sharma', email: 'teacher@sbjit.edu.in', password: 'Password123!', role: 'teacher' },
       {
         name: 'Rahul Verma',
-        email: 'student@sbjain.edu.in',
+        email: 'student@sbjit.edu.in',
         password: 'Password123!',
         role: 'student',
         programId: program._id,
@@ -43,14 +43,15 @@ const autoSeed = async () => {
         currentSemester: 6,
         section: 'A',
       },
-      { name: 'Library Head', email: 'library@sbjain.edu.in', password: 'Password123!', role: 'section_head', sectionType: 'library' },
-      { name: 'Class Incharge (Sec A)', email: 'ci@sbjain.edu.in', password: 'Password123!', role: 'class_incharge' },
-      { name: 'Dr. Kulkarni (HOD)', email: 'hod@sbjain.edu.in', password: 'Password123!', role: 'hod' },
+      { name: 'Library Head', email: 'library@sbjit.edu.in', password: 'Password123!', role: 'section_head', sectionType: 'library' },
+      { name: 'Class Incharge (Sec A)', email: 'ci@sbjit.edu.in', password: 'Password123!', role: 'class_incharge' },
+      { name: 'Dr. Kulkarni (HOD)', email: 'hod@sbjit.edu.in', password: 'Password123!', role: 'hod' },
     ];
 
     let seededCount = 0;
     for (const u of demoUsers) {
-      const existing = await User.findOne({ email: u.email });
+      const query = u.enrollmentNo ? { $or: [{ email: u.email }, { enrollmentNo: u.enrollmentNo }] } : { email: u.email };
+      const existing = await User.findOne(query);
       if (!existing) {
         await User.create(u);
         seededCount++;
@@ -92,6 +93,11 @@ const connectDB = async (uri) => {
     await autoSeed();
   } catch (error) {
     logger.error(`❌ MongoDB Atlas connection failed: ${error.message}`);
+    if (process.env.NODE_ENV !== 'production') {
+      logger.warn('⚠️ Falling back to In-Memory MongoDB for local development...');
+      await startMemoryServer();
+      return;
+    }
     try {
       await mongoose.disconnect();
     } catch (e) {}
