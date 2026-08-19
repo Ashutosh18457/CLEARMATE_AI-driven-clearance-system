@@ -279,10 +279,31 @@ export default function LoginPage() {
               </button>
               <button
                 type="button"
-                onClick={() => { setEmail('admin@sbjit.edu.in'); setPassword('Password123!'); }}
+                onClick={() => { setEmail('accounts@sbjit.edu.in'); setPassword('Password123!'); }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all text-left"
+              >
+                💳 Accounts Section
+              </button>
+              <button
+                type="button"
+                onClick={() => { setEmail('student_section@sbjit.edu.in'); setPassword('Password123!'); }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all text-left"
+              >
+                🏛️ Student Section
+              </button>
+              <button
+                type="button"
+                onClick={() => { setEmail('library@sbjit.edu.in'); setPassword('Password123!'); }}
                 className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all"
               >
-                ⚙️ Admin
+                📚 Library
+              </button>
+              <button
+                type="button"
+                onClick={() => { setEmail('ci@sbjit.edu.in'); setPassword('Password123!'); }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all"
+              >
+                📋 Class Incharge
               </button>
               <button
                 type="button"
@@ -290,6 +311,13 @@ export default function LoginPage() {
                 className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all"
               >
                 👨‍💼 HOD
+              </button>
+              <button
+                type="button"
+                onClick={() => { setEmail('admin@sbjit.edu.in'); setPassword('Password123!'); }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all"
+              >
+                ⚙️ Admin
               </button>
             </div>
           </div>
