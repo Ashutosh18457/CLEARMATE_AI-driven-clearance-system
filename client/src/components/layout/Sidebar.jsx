@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import logoIcon from '../../assets/logo_icon.png';
 import { ROLES, ROLE_LABELS } from '../../utils/constants';
 import {
   HiOutlineHome,
@@ -74,13 +75,11 @@ export default function Sidebar() {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo / Brand */}
-      <div className="flex items-center gap-2.5 px-4 h-16 border-b border-border-subtle shrink-0">
-        <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center">
-          <HiOutlineBookOpen className="w-5 h-5 text-white" />
-        </div>
+      <div className="flex items-center gap-3 px-4 h-16 border-b border-border-subtle shrink-0">
+        <img src={logoIcon} alt="ClearMate" className="h-10 w-auto object-contain shrink-0" />
         {!collapsed && (
-          <span className="text-base font-semibold text-ink-primary tracking-tight">
-            ClearMate
+          <span className="text-xl font-extrabold text-ink-primary tracking-wide font-display">
+            CLEARMATE
           </span>
         )}
       </div>

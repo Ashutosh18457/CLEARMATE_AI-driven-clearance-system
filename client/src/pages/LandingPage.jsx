@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import logoIcon from '../assets/logo_icon.png';
 import {
   HiOutlineClipboardDocumentCheck,
   HiOutlineShieldCheck,
@@ -35,11 +36,11 @@ export default function LandingPage() {
       {/* Navbar */}
       <nav className="w-full border-b border-border-subtle bg-white">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-brand rounded-md flex items-center justify-center">
-              <span className="text-white text-xs font-semibold">CM</span>
-            </div>
-            <span className="text-base font-semibold text-ink-primary">ClearMate</span>
+          <Link to="/" className="flex items-center gap-3">
+            <img src={logoIcon} alt="ClearMate" className="h-10 w-auto object-contain" />
+            <span className="text-xl font-extrabold text-ink-primary tracking-wide font-display">
+              CLEARMATE
+            </span>
           </Link>
           <Link
             to="/login"
@@ -106,11 +107,11 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="mt-auto border-t border-border-subtle bg-white">
         <div className="max-w-6xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-brand rounded-md flex items-center justify-center">
-              <span className="text-white text-[10px] font-semibold">CM</span>
-            </div>
-            <span className="text-sm font-medium text-ink-primary">ClearMate</span>
+          <div className="flex items-center gap-2.5">
+            <img src={logoIcon} alt="ClearMate" className="h-8 w-auto object-contain" />
+            <span className="text-base font-extrabold text-ink-primary tracking-wide font-display">
+              CLEARMATE
+            </span>
           </div>
           <p className="text-xs text-ink-muted">
             &copy; {new Date().getFullYear()} Institution Name. All rights reserved.

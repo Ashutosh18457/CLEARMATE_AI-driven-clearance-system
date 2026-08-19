@@ -22,19 +22,30 @@ const clearanceService = {
    * and SectionClearance records for all 4 departments.
    */
   async initiateClearance(studentId, semesterId) {
-    // 1. Validate semester exists and is active
-    const semester = await Semester.findById(semesterId);
-    if (!semester) throw AppError.notFound('Semester not found');
-    if (!semester.isActive) throw AppError.badRequest('This semester is no longer active');
-
-    // 2. Validate student
+    // 1. Validate student (needed to resolve semester if not provided)
     const student = await User.findById(studentId);
     if (!student || student.role !== 'student') {
       throw AppError.badRequest('Invalid student');
     }
 
+    let targetSemesterId = semesterId;
+    if (!targetSemesterId) {
+      const activeSemester = await Semester.findOne({
+        programId: student.programId,
+        semNumber: student.currentSemester,
+        isActive: true,
+      });
+      if (!activeSemester) throw AppError.notFound('No active semester found for your program');
+      targetSemesterId = activeSemester._id;
+    }
+
+    // 2. Validate semester exists and is active
+    const semester = await Semester.findById(targetSemesterId);
+    if (!semester) throw AppError.notFound('Semester not found');
+    if (!semester.isActive) throw AppError.badRequest('This semester is no longer active');
+
     // 3. Check for existing clearance request
-    const existing = await ClearanceRequest.findOne({ studentId, semesterId });
+    const existing = await ClearanceRequest.findOne({ studentId, semesterId: semester._id });
     if (existing) {
       if (existing.status === 'completed') {
         throw AppError.badRequest('Clearance already completed for this semester');
@@ -46,20 +57,20 @@ const clearanceService = {
       await ItemClearance.deleteMany({ clearanceRequestId: existing._id });
       await SectionClearance.deleteMany({ clearanceRequestId: existing._id });
       await ClearanceRequest.findByIdAndDelete(existing._id);
-      logger.info('Previous rejected clearance cleaned up for re-initiation', { studentId, semesterId });
+      logger.info('Previous rejected clearance cleaned up for re-initiation', { studentId, semesterId: semester._id });
     }
 
     // 4. Create the ClearanceRequest
     const clearanceRequest = await ClearanceRequest.create({
       studentId,
-      semesterId,
+      semesterId: semester._id,
       status: 'items_review',
       currentStage: 'items',
       initiatedAt: new Date(),
     });
 
     // 5. Auto-generate ItemClearance records
-    const clearanceItems = await ClearanceItem.find({ semesterId });
+    const clearanceItems = await ClearanceItem.find({ semesterId: semester._id });
     const itemClearances = [];
 
     for (const item of clearanceItems) {
@@ -95,7 +106,7 @@ const clearanceService = {
     logger.info('Clearance initiated', {
       requestId: clearanceRequest._id,
       studentId,
-      semesterId,
+      semesterId: semester._id,
       itemClearancesCreated: itemClearances.length,
     });
 
@@ -110,7 +121,20 @@ const clearanceService = {
    * Gets the full clearance dashboard for a student.
    */
   async getMyClearanceStatus(studentId, semesterId) {
-    const clearanceRequest = await ClearanceRequest.findOne({ studentId, semesterId })
+    let targetSemesterId = semesterId;
+    if (!targetSemesterId) {
+      const student = await User.findById(studentId);
+      if (student && student.role === 'student') {
+        const activeSemester = await Semester.findOne({
+          programId: student.programId,
+          semNumber: student.currentSemester,
+          isActive: true,
+        });
+        if (activeSemester) targetSemesterId = activeSemester._id;
+      }
+    }
+
+    const clearanceRequest = await ClearanceRequest.findOne({ studentId, semesterId: targetSemesterId })
       .populate('semesterId', 'name semNumber academicYear');
 
     if (!clearanceRequest) {

@@ -8,6 +8,8 @@ import Button from '../../components/common/Button';
 import Badge, { getStatusVariant } from '../../components/common/Badge';
 import EmptyState from '../../components/common/EmptyState';
 import Skeleton from '../../components/common/Skeleton';
+import { useAuth } from '../../context/AuthContext';
+import logoIcon from '../../assets/logo_icon.png';
 import {
   HiOutlineClipboardDocumentCheck,
   HiOutlineArrowPath,
@@ -17,6 +19,7 @@ import {
 import { CLEARANCE_STATUS_LABELS, DEPARTMENT_LABELS, ITEM_TYPE_LABELS } from '../../utils/constants';
 
 export default function StudentClearance() {
+  const { user } = useAuth();
   const [clearance, setClearance] = useState(null);
   const [loading, setLoading] = useState(true);
   const [initiating, setInitiating] = useState(false);
@@ -49,9 +52,12 @@ export default function StudentClearance() {
   }, [fetchClearance]);
 
   const handleInitiate = async () => {
+    const semId = user?.currentSemester?._id || user?.currentSemester;
+    const isValidObjectId = typeof semId === 'string' && semId.length === 24;
     setInitiating(true);
     try {
-      await api.post('/clearances/initiate');
+      const payload = isValidObjectId ? { semesterId: semId } : {};
+      await api.post('/clearances/initiate', payload);
       toast.success('Clearance initiated successfully');
       fetchClearance();
     } catch (err) {
@@ -62,9 +68,12 @@ export default function StudentClearance() {
   };
 
   const handleReInitiate = async () => {
+    const semId = user?.currentSemester?._id || user?.currentSemester;
+    const isValidObjectId = typeof semId === 'string' && semId.length === 24;
     setInitiating(true);
     try {
-      await api.post('/clearances/initiate');
+      const payload = isValidObjectId ? { semesterId: semId } : {};
+      await api.post('/clearances/initiate', payload);
       toast.success('Clearance re-initiated — previous records cleared');
       fetchClearance();
     } catch (err) {
@@ -195,7 +204,10 @@ export default function StudentClearance() {
           </head>
           <body>
             <div class="cert-container">
-              <div class="logo">ClearMate</div>
+              <div style="display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 16px;">
+                <img src="${logoIcon}" alt="ClearMate Logo" style="height: 60px; width: auto; object-fit: contain;" />
+                <span style="font-size: 32px; font-weight: 900; letter-spacing: 1px; color: #0f172a; font-family: sans-serif;">CLEARMATE</span>
+              </div>
               <div class="title">Clearance Certificate</div>
               <div class="subtitle font-display">${data.institution}</div>
               
@@ -325,11 +337,24 @@ export default function StudentClearance() {
     {
       key: 'status',
       label: 'Status',
-      render: (val) => (
-        <Badge variant={getStatusVariant(val)}>
-          {val === 'pending' ? 'Pending' : val === 'approved' ? 'Approved' : 'Rejected'}
-        </Badge>
-      ),
+      render: (val, row) => {
+        const isAccounts = row.department === 'accounts' || row.department === 'student_section';
+        if (isAccounts && row.fees_status) {
+          if (row.fees_status === 'paid') {
+            return <Badge variant="success">Paid</Badge>;
+          }
+          return (
+            <Badge variant="warning">
+              Pending {row.reason === 'remark' ? '(Remark)' : ''}
+            </Badge>
+          );
+        }
+        return (
+          <Badge variant={getStatusVariant(val)}>
+            {val === 'pending' ? 'Pending' : val === 'approved' ? 'Approved' : 'Rejected'}
+          </Badge>
+        );
+      },
     },
     {
       key: 'reviewerId',
@@ -343,9 +368,20 @@ export default function StudentClearance() {
     {
       key: 'remarks',
       label: 'Remarks',
-      render: (val) => (
-        <span className="text-sm text-ink-muted">{val || '—'}</span>
-      ),
+      render: (val, row) => {
+        const isAccounts = row.department === 'accounts' || row.department === 'student_section';
+        const displayRemark = isAccounts ? (row.remark_text || val) : val;
+        return (
+          <div className="group relative inline-block">
+            <span className="text-sm text-ink-muted">{displayRemark || '—'}</span>
+            {isAccounts && row.reason === 'remark' && row.remark_text && (
+              <div className="mt-1 text-xs text-amber-700 font-medium bg-amber-50 p-2 rounded-md border border-amber-200">
+                ⚠️ {row.remark_text}
+              </div>
+            )}
+          </div>
+        );
+      },
     },
   ];
 

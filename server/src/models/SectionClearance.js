@@ -5,7 +5,6 @@ const sectionClearanceSchema = new mongoose.Schema(
     clearanceRequestId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'ClearanceRequest',
-      required: [true, 'Clearance Request ID is required'],
       index: true,
     },
     studentId: {
@@ -37,6 +36,38 @@ const sectionClearanceSchema = new mongoose.Schema(
     reviewedAt: {
       type: Date,
     },
+
+    // ─── Fee Clearance Fields (Account Section) ───
+    fees_status: {
+      type: String,
+      enum: ['paid', 'not_paid'],
+      default: 'not_paid',
+    },
+    reason: {
+      type: String,
+      enum: ['fees_pending', 'remark'],
+    },
+    remark_text: {
+      type: String,
+      trim: true,
+    },
+    updated_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    updated_at: {
+      type: Date,
+    },
+    auditTrail: [
+      {
+        status: { type: String, enum: ['paid', 'not_paid'] },
+        reason: { type: String, enum: ['fees_pending', 'remark'] },
+        remark_text: { type: String, trim: true },
+        changed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        changed_by_name: { type: String },
+        changed_at: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     timestamps: true,
@@ -45,8 +76,8 @@ const sectionClearanceSchema = new mongoose.Schema(
   }
 );
 
-// A student can only have one section clearance per department per request
-sectionClearanceSchema.index({ clearanceRequestId: 1, department: 1 }, { unique: true });
+// A student can only have one section clearance per department
+sectionClearanceSchema.index({ studentId: 1, department: 1 }, { unique: true });
 
 const SectionClearance = mongoose.model('SectionClearance', sectionClearanceSchema);
 

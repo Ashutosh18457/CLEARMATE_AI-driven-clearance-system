@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { HiOutlineArrowLeft, HiOutlineCheckCircle, HiOutlineExclamationCircle } from 'react-icons/hi2';
 import Button from '../components/common/Button';
+import logoIcon from '../assets/logo_icon.png';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -59,12 +60,12 @@ export default function ForgotPassword() {
     <div className="min-h-screen bg-canvas flex flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-brand rounded-md flex items-center justify-center">
-              <span className="text-white text-sm font-semibold">CM</span>
-            </div>
-            <span className="text-xl font-semibold text-ink-primary">ClearMate</span>
+        <div className="flex items-center justify-center mb-6">
+          <Link to="/" className="flex items-center justify-center gap-3 group">
+            <img src={logoIcon} alt="ClearMate Logo" className="h-16 sm:h-20 w-auto object-contain transition-transform duration-200 group-hover:scale-105" />
+            <span className="text-2xl sm:text-3xl font-extrabold text-ink-primary tracking-wide font-display">
+              CLEARMATE
+            </span>
           </Link>
         </div>
 

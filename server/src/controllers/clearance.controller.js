@@ -9,7 +9,7 @@ const clearanceController = {
   /** @route POST /api/clearances/initiate */
   async initiateClearance(req, res, next) {
     try {
-      const result = await clearanceService.initiateClearance(req.user.id, req.body.semesterId);
+      const result = await clearanceService.initiateClearance(req.user.id, req.body?.semesterId);
       sendCreated(res, {
         data: result,
         message: `Clearance initiated. ${result.itemClearancesCreated} items and ${result.sectionClearancesCreated} sections created for review.`,

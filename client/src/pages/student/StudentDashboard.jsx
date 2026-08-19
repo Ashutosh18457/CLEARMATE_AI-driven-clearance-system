@@ -120,14 +120,12 @@ export default function StudentDashboard() {
   }, [fetchSubmissions, fetchClearance]);
 
   const handleInitiateClearance = async () => {
-    const semesterId = user?.currentSemester?._id || user?.currentSemester;
-    if (!semesterId) {
-      toast.error('No active semester found. Please contact your administrator.');
-      return;
-    }
+    const semId = user?.currentSemester?._id || user?.currentSemester;
+    const isValidObjectId = typeof semId === 'string' && semId.length === 24;
     try {
       setInitiating(true);
-      await api.post('/clearances/initiate', { semesterId });
+      const payload = isValidObjectId ? { semesterId: semId } : {};
+      await api.post('/clearances/initiate', payload);
       toast.success('Clearance request initiated successfully');
       fetchClearance();
     } catch (err) {

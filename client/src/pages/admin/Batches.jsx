@@ -5,6 +5,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import Table from '../../components/common/Table';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
+import * as XLSX from 'xlsx';
 import {
   HiOutlinePlusCircle,
   HiOutlineUserPlus,
@@ -100,6 +101,77 @@ export default function Batches() {
     setSelectedStudents((prev) =>
       prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
     );
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const fileExtension = file.name.split('.').pop().toLowerCase();
+    const reader = new FileReader();
+
+    if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+      reader.onload = (event) => {
+        try {
+          const data = new Uint8Array(event.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+          // Flatten rows & cols to match against student data
+          const parsedItems = jsonData
+            .flatMap((row) => row.map((cell) => String(cell || '').trim()))
+            .filter((cell) => cell.length > 0);
+
+          matchAndSelectStudents(parsedItems);
+        } catch (err) {
+          toast.error('Failed to parse Excel file: ' + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      // Handle CSV and TXT
+      reader.onload = (event) => {
+        try {
+          const text = event.target.result;
+          const lines = text.split(/\r?\n/);
+          const parsedItems = lines
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0)
+            .flatMap((line) => line.split(',').map((item) => item.trim()));
+
+          matchAndSelectStudents(parsedItems);
+        } catch (err) {
+          toast.error('Failed to parse file: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+    e.target.value = '';
+  };
+
+  const matchAndSelectStudents = (parsedItems) => {
+    const matchedIds = students
+      .filter((s) =>
+        parsedItems.some(
+          (item) =>
+            s.name.toLowerCase().includes(item.toLowerCase()) ||
+            s.enrollmentNo?.toLowerCase() === item.toLowerCase() ||
+            s.email.toLowerCase() === item.toLowerCase()
+        )
+      )
+      .map((s) => s._id);
+
+    if (matchedIds.length > 0) {
+      setSelectedStudents((prev) => {
+        const combined = new Set([...prev, ...matchedIds]);
+        return Array.from(combined);
+      });
+      toast.success(`Matched and selected ${matchedIds.length} students from the uploaded list!`);
+    } else {
+      toast.error('No matching students found in the list');
+    }
   };
 
   const handleAssign = async () => {
@@ -247,6 +319,22 @@ export default function Batches() {
           </>
         }
       >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-border-subtle shrink-0">
+          <div>
+            <p className="text-sm font-semibold text-ink-primary">Bulk Select from Excel/CSV</p>
+            <p className="text-xs text-ink-muted">Upload a list of names, enrollment numbers, or emails</p>
+          </div>
+          <label className="relative flex items-center justify-center px-4 py-2 text-xs font-semibold text-brand bg-brand-50 border border-brand-100 rounded-md hover:bg-brand hover:text-white cursor-pointer transition-colors duration-150 shrink-0">
+            <span>Upload List (Excel/CSV/Text)</span>
+            <input
+              type="file"
+              accept=".xlsx,.xls,.csv,.txt"
+              onChange={handleFileUpload}
+              className="sr-only"
+            />
+          </label>
+        </div>
+
         <div className="max-h-96 overflow-y-auto custom-scrollbar">
           {students.length === 0 ? (
             <p className="text-sm text-ink-muted py-4 text-center">No students found</p>

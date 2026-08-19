@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import logoIcon from '../assets/logo_icon.png';
 import {
   HiSquares2X2,
   HiDocumentCheck,
@@ -30,6 +31,9 @@ const roleMenus = {
   section_head: [
     { path: '/dashboard', label: 'Department Approvals', icon: HiShieldCheck },
   ],
+  account_section: [
+    { path: '/dashboard', label: 'Fee Clearance Dashboard', icon: HiShieldCheck },
+  ],
   class_incharge: [
     { path: '/dashboard', label: 'Class Approvals', icon: HiShieldCheck },
   ],
@@ -54,12 +58,12 @@ const Sidebar = () => {
     <aside className="w-64 bg-surface-900 border-r border-surface-800 flex flex-col justify-between h-screen sticky top-0">
       <div>
         {/* Brand Header */}
-        <div className="p-6 border-b border-surface-800 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary-600 to-indigo-500 flex items-center justify-center text-white font-extrabold text-lg shadow-glow">
-            CM
+        <div className="p-5 border-b border-surface-800 flex items-center gap-3">
+          <div className="bg-white p-0.5 rounded-full shadow-md shrink-0">
+            <img src={logoIcon} alt="ClearMate" className="h-10 w-auto object-contain rounded-full" />
           </div>
           <div>
-            <h1 className="font-display font-bold text-lg text-white tracking-wide">ClearMate</h1>
+            <h1 className="font-display font-extrabold text-xl text-white tracking-wide">CLEARMATE</h1>
             <p className="text-xs text-primary-400 font-medium capitalize">{user?.role?.replace('_', ' ')} Portal</p>
           </div>
         </div>

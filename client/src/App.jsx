@@ -28,6 +28,9 @@ const ItemClearances = lazy(() => import('./pages/teacher/ItemClearances'));
 // Section Head
 const SectionHeadDashboard = lazy(() => import('./pages/section-head/SectionHeadDashboard'));
 
+// Account Section
+const AccountSectionDashboard = lazy(() => import('./pages/account-section/AccountSectionDashboard'));
+
 // Class Incharge
 const ClassInchargeDashboard = lazy(() => import('./pages/class-incharge/ClassInchargeDashboard'));
 
@@ -206,6 +209,16 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={[ROLES.SECTION_HEAD]}>
                 <SectionHeadDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ─── Account Section Routes ─── */}
+          <Route
+            path="/account-section"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ACCOUNT_SECTION, ROLES.ADMIN]}>
+                <AccountSectionDashboard />
               </ProtectedRoute>
             }
           />

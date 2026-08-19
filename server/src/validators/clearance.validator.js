@@ -11,8 +11,8 @@ const objectId = Joi.string().custom((value, helpers) => {
 const clearanceValidator = {
   // Student initiates clearance
   initiateClearanceSchema: Joi.object({
-    semesterId: objectId.required()
-      .messages({ 'any.required': 'Semester ID is required', 'any.invalid': 'Invalid Semester ID' }),
+    semesterId: objectId.optional()
+      .messages({ 'any.invalid': 'Invalid Semester ID' }),
   }),
 
   // Teacher reviews an item clearance

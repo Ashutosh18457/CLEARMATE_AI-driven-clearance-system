@@ -1,5 +1,14 @@
 const mongoose = require('mongoose');
+const dns = require('dns');
 const logger = require('./logger');
+
+// Set reliable public DNS servers to resolve MongoDB Atlas SRV records (_mongodb._tcp...)
+// when local router/ISP DNS blocks or refuses SRV queries (ECONNREFUSED querySrv).
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (err) {
+  // Fallback gracefully if setServers is not supported in environment
+}
 
 const autoSeed = async () => {
   try {
@@ -44,6 +53,7 @@ const autoSeed = async () => {
         section: 'A',
       },
       { name: 'Library Head', email: 'library@sbjit.edu.in', password: 'Password123!', role: 'section_head', sectionType: 'library' },
+      { name: 'Account Section Admin', email: 'accounts@sbjit.edu.in', password: 'Password123!', role: 'account_section' },
       { name: 'Class Incharge (Sec A)', email: 'ci@sbjit.edu.in', password: 'Password123!', role: 'class_incharge' },
       { name: 'Dr. Kulkarni (HOD)', email: 'hod@sbjit.edu.in', password: 'Password123!', role: 'hod' },
       // Also seed @sbjain.edu.in accounts for backwards compatibility
@@ -60,6 +70,7 @@ const autoSeed = async () => {
         section: 'A',
       },
       { name: 'Library Head (Legacy)', email: 'library@sbjain.edu.in', password: 'Password123!', role: 'section_head', sectionType: 'library' },
+      { name: 'Account Section Admin (Legacy)', email: 'accounts@sbjain.edu.in', password: 'Password123!', role: 'account_section' },
       { name: 'Class Incharge (Legacy)', email: 'ci@sbjain.edu.in', password: 'Password123!', role: 'class_incharge' },
       { name: 'Dr. Kulkarni (Legacy HOD)', email: 'hod@sbjain.edu.in', password: 'Password123!', role: 'hod' },
     ];
