@@ -785,7 +785,7 @@ export default function BusSectionDashboard() {
                   Cancel
                 </Button>
                 <Button variant="primary" loading={saving} onClick={handleSaveFees}>
-                  Save Bus Fee Status
+                  Save fees Clearance System
                 </Button>
               </div>
             </div>
