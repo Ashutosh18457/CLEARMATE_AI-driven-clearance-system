@@ -10,10 +10,11 @@ import { CLEARANCE_STAGES } from '../../utils/constants';
  * @param {string} [props.remarks] - Rejection remarks (shown when rejected)
  */
 export default function StatusStepper({ status, remarks }) {
-  const isRejected = status === 'rejected';
+  const normalizedStatus = typeof status === 'string' ? status.trim().toLowerCase() : '';
+  const isRejected = normalizedStatus === 'rejected';
 
   // Find the index of the current stage
-  const currentIndex = CLEARANCE_STAGES.findIndex((s) => s.key === status);
+  const currentIndex = CLEARANCE_STAGES.findIndex((s) => s.key === normalizedStatus);
 
   const getStepState = (index) => {
     if (isRejected) {
@@ -22,6 +23,7 @@ export default function StatusStepper({ status, remarks }) {
       return 'neutral';
     }
     if (currentIndex === -1) return 'neutral';
+    if (normalizedStatus === 'completed') return 'completed';
     if (index < currentIndex) return 'completed';
     if (index === currentIndex) return 'active';
     return 'upcoming';

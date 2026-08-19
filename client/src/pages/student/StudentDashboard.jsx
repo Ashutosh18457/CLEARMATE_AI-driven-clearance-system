@@ -141,8 +141,9 @@ export default function StudentDashboard() {
     (s) => s.status === SUBMISSION_STATUSES.PENDING || s.status === SUBMISSION_STATUSES.SUBMITTED
   ).length;
   const overdueCount = submissions.filter(isOverdue).length;
-  const clearanceStatus = clearance
-    ? CLEARANCE_STATUS_LABELS[clearance.status] || clearance.status
+  const currentClearanceStatus = clearance?.status || clearance?.clearanceRequest?.status;
+  const clearanceStatus = currentClearanceStatus
+    ? CLEARANCE_STATUS_LABELS[currentClearanceStatus] || currentClearanceStatus
     : 'Not Initiated';
 
   // Recent submissions — last 5
@@ -268,7 +269,10 @@ export default function StudentDashboard() {
         {loadingClearance ? (
           <Skeleton rows={2} columns={6} />
         ) : clearance ? (
-          <StatusStepper status={clearance.status} remarks={clearance.remarks} />
+          <StatusStepper
+            status={clearance.status || clearance.clearanceRequest?.status}
+            remarks={clearance.remarks || clearance.clearanceRequest?.remarks}
+          />
         ) : (
           <div className="text-center py-8">
             <div className="w-12 h-12 rounded-full bg-brand-50 flex items-center justify-center mx-auto mb-3">

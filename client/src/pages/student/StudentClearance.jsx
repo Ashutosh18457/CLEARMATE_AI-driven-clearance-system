@@ -279,11 +279,14 @@ export default function StudentClearance() {
     );
   }
 
-  const { status, itemClearances = [], sectionClearances = [] } = clearance;
+  const status = clearance?.status || clearance?.clearanceRequest?.status;
+  const itemClearances = clearance?.itemClearances || [];
+  const sectionClearances = clearance?.sectionClearances || [];
   const rejectionRemarks =
     itemClearances.find((i) => i.status === 'rejected')?.remarks ||
     sectionClearances.find((s) => s.status === 'rejected')?.remarks ||
-    clearance.remarks ||
+    clearance?.remarks ||
+    clearance?.clearanceRequest?.remarks ||
     '';
 
   const itemColumns = [
