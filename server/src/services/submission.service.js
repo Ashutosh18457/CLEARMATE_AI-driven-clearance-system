@@ -43,6 +43,25 @@ const submissionService = {
   },
 
   /**
+   * Gets all ClearanceItems assigned to this teacher with their semester and program details.
+   */
+  async getTeacherAssignedClearanceItems(teacherId) {
+    const clearanceItems = await ClearanceItem.find()
+      .populate({
+        path: 'semesterId',
+        select: 'semNumber academicYear programId',
+        populate: {
+          path: 'programId',
+          select: 'name code degree durationYears totalSemesters',
+        },
+      })
+      .sort({ title: 1 });
+
+    const assigned = clearanceItems.filter((item) => this._isTeacherOwner(item, teacherId));
+    return assigned;
+  },
+
+  /**
    * Gets all submission items created by a teacher for a given semester.
    * Groups them by their parent ClearanceItem for a cleaner UI.
    */
@@ -62,10 +81,113 @@ const submissionService = {
     const submissionItems = await SubmissionItem.find({
       clearanceItemId: { $in: ownedItemIds },
     })
-      .populate('clearanceItemId', 'title type subjectCode srNo')
+      .populate({
+        path: 'clearanceItemId',
+        select: 'title type subjectCode srNo semesterId',
+        populate: {
+          path: 'semesterId',
+          select: 'semNumber academicYear programId',
+          populate: {
+            path: 'programId',
+            select: 'name code degree',
+          },
+        },
+      })
       .sort({ deadline: 1 });
 
     return submissionItems;
+  },
+
+  /**
+   * Updates an existing submission item.
+   * Allows modifying title, type, description, deadline, isRequired, and clearance item.
+   */
+  async updateSubmissionItem(teacherId, itemId, data) {
+    const submissionItem = await SubmissionItem.findById(itemId).populate('clearanceItemId');
+    if (!submissionItem) {
+      throw AppError.notFound('Submission item not found');
+    }
+
+    // Verify current owner
+    const currentClearanceItem = submissionItem.clearanceItemId;
+    if (!currentClearanceItem || !this._isTeacherOwner(currentClearanceItem, teacherId)) {
+      throw AppError.forbidden('You are not authorized to edit this submission item');
+    }
+
+    // If changing clearance item, verify ownership of new clearance item
+    if (data.clearanceItemId && data.clearanceItemId.toString() !== currentClearanceItem._id.toString()) {
+      const newClearanceItem = await ClearanceItem.findById(data.clearanceItemId);
+      if (!newClearanceItem) {
+        throw AppError.notFound('Target clearance item not found');
+      }
+      if (!this._isTeacherOwner(newClearanceItem, teacherId)) {
+        throw AppError.forbidden('You are not authorized to assign this submission to the specified clearance item');
+      }
+      submissionItem.clearanceItemId = newClearanceItem._id;
+      submissionItem.semesterId = newClearanceItem.semesterId;
+    }
+
+    if (data.title !== undefined) submissionItem.title = data.title;
+    if (data.type !== undefined) submissionItem.type = data.type;
+    if (data.description !== undefined) submissionItem.description = data.description;
+    if (data.deadline !== undefined) submissionItem.deadline = data.deadline;
+    if (data.isRequired !== undefined) submissionItem.isRequired = data.isRequired;
+
+    await submissionItem.save();
+
+    logger.info('SubmissionItem updated', {
+      itemId,
+      teacherId,
+      updates: Object.keys(data),
+    });
+
+    const updated = await SubmissionItem.findById(itemId).populate({
+      path: 'clearanceItemId',
+      select: 'title type subjectCode srNo semesterId',
+      populate: {
+        path: 'semesterId',
+        select: 'semNumber academicYear programId',
+        populate: {
+          path: 'programId',
+          select: 'name code degree',
+        },
+      },
+    });
+
+    return updated;
+  },
+
+  /**
+   * Deletes a submission item and removes all associated student submissions.
+   */
+  async deleteSubmissionItem(teacherId, itemId) {
+    const submissionItem = await SubmissionItem.findById(itemId).populate('clearanceItemId');
+    if (!submissionItem) {
+      throw AppError.notFound('Submission item not found');
+    }
+
+    // Verify teacher owner
+    const clearanceItem = submissionItem.clearanceItemId;
+    if (!clearanceItem || !this._isTeacherOwner(clearanceItem, teacherId)) {
+      throw AppError.forbidden('You are not authorized to delete this submission item');
+    }
+
+    // Delete associated student submissions
+    const deletedSubmissions = await Submission.deleteMany({ submissionItemId: itemId });
+
+    // Delete submission item
+    await SubmissionItem.findByIdAndDelete(itemId);
+
+    logger.info('SubmissionItem deleted', {
+      itemId,
+      teacherId,
+      deletedSubmissionsCount: deletedSubmissions.deletedCount,
+    });
+
+    return {
+      message: 'Submission item and associated student submissions deleted successfully',
+      deletedSubmissionsCount: deletedSubmissions.deletedCount,
+    };
   },
 
   /**
@@ -196,6 +318,118 @@ const submissionService = {
     }
 
     return submission;
+  },
+
+  /**
+   * Teacher bulk verifies or rejects multiple student submissions.
+   * Performs strict authorization verification across all items, batched status updates,
+   * and bulk notification dispatch.
+   */
+  async bulkVerifySubmissions(teacherId, { submissionIds, status, remarks }) {
+    if (!submissionIds || !Array.isArray(submissionIds) || submissionIds.length === 0) {
+      throw AppError.badRequest('submissionIds must be a non-empty array');
+    }
+
+    // 1. Fetch all requested submissions with their clearance item hierarchy
+    const submissions = await Submission.find({ _id: { $in: submissionIds } })
+      .populate({
+        path: 'submissionItemId',
+        populate: { path: 'clearanceItemId' },
+      });
+
+    if (!submissions || submissions.length === 0) {
+      throw AppError.notFound('None of the requested submissions were found');
+    }
+
+    // 2. Strict Security Fence: verify teacher owns ALL targeted clearance items
+    for (const sub of submissions) {
+      const clearanceItem = sub.submissionItemId?.clearanceItemId;
+      if (!clearanceItem || !this._isTeacherOwner(clearanceItem, teacherId)) {
+        throw AppError.forbidden('You are not authorized to review one or more selected submissions');
+      }
+    }
+
+    // 3. Separate valid submissions ('submitted' status) from invalid / stale ones
+    const validSubmissions = [];
+    const failed = [];
+    const foundIdSet = new Set(submissions.map((s) => s._id.toString()));
+
+    for (const id of submissionIds) {
+      if (!foundIdSet.has(id.toString())) {
+        failed.push({ id: id.toString(), reason: 'Submission record not found' });
+      }
+    }
+
+    for (const sub of submissions) {
+      if (sub.status !== 'submitted') {
+        failed.push({
+          id: sub._id.toString(),
+          studentId: sub.studentId,
+          reason: `Current status is "${sub.status}" (only "submitted" items can be reviewed)`,
+        });
+      } else {
+        validSubmissions.push(sub);
+      }
+    }
+
+    if (validSubmissions.length === 0) {
+      return {
+        processedCount: 0,
+        failedCount: failed.length,
+        failed,
+        status,
+      };
+    }
+
+    // 4. Batch update verified/rejected submissions
+    const validIds = validSubmissions.map((s) => s._id);
+    const now = new Date();
+    await Submission.updateMany(
+      { _id: { $in: validIds } },
+      {
+        $set: {
+          status,
+          remarks: remarks || '',
+          verifiedBy: teacherId,
+          verifiedAt: now,
+        },
+      }
+    );
+
+    // 5. Batch insert student notifications (single DB round-trip)
+    const Notification = require('../models/Notification');
+    const notificationDocs = validSubmissions.map((sub) => {
+      const itemTitle = sub.submissionItemId?.title || 'Clearance Task';
+      return {
+        userId: sub.studentId,
+        title: status === 'verified' ? 'Submission Verified ✅' : 'Submission Rejected ❌',
+        message:
+          status === 'verified'
+            ? `Your submission for "${itemTitle}" has been verified.`
+            : `Your submission for "${itemTitle}" was rejected.${remarks ? ` Reason: ${remarks}` : ''} Please re-submit.`,
+        type: status === 'verified' ? 'success' : 'error',
+        link: '/dashboard/submissions',
+      };
+    });
+
+    if (notificationDocs.length > 0) {
+      await Notification.insertMany(notificationDocs);
+    }
+
+    logger.info('Bulk submissions verified', {
+      teacherId,
+      status,
+      totalRequested: submissionIds.length,
+      processedCount: validSubmissions.length,
+      failedCount: failed.length,
+    });
+
+    return {
+      processedCount: validSubmissions.length,
+      failedCount: failed.length,
+      failed,
+      status,
+    };
   },
 
   // ══════════════════════════════════════════════
