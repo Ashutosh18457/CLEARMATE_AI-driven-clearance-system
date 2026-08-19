@@ -69,10 +69,10 @@ We strictly follow **Conventional Commits**:
 ### Phase 3 — End of Semester Clearance
 1. **Initiation**: Student clicks "Start Clearance".
 2. **Prerequisite Check**: System verifies all required submissions are completed & verified. If incomplete, shows pending items.
-3. **Auto-Generation**: System auto-creates Item Clearances (Theory + Lab + Elective + Special) and Section Clearances (Library, Accounts, Bus, Student Section).
+3. **Auto-Generation**: System auto-creates Item Clearances (Theory + Lab + Elective + Special) and Section Clearances (Library, Accounts, Bus).
 4. **Multi-Stage Approval Pipeline**:
    - **Stage 1 (Items Review)**: Teachers review assigned theory/lab/elective items.
-   - **Stage 2 (Sections Review)**: Section Heads review department clearances (Library, Accounts, Bus, Student Section).
+   - **Stage 2 (Sections Review)**: Section Heads review department clearances (Library, Accounts, Bus).
    - **Stage 3 (Class Incharge Review)**: Class Incharge reviews overall class clearance.
    - **Stage 4 (HOD Review)**: HOD performs final department approval.
 

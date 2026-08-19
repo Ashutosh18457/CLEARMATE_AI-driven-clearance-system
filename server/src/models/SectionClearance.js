@@ -19,7 +19,7 @@ const sectionClearanceSchema = new mongoose.Schema(
       ref: 'User',
     },
     department: {
-      type: String, // library | accounts | bus | student_section
+      type: String, // library | accounts | bus
       required: true,
       index: true,
     },
@@ -75,6 +75,10 @@ const sectionClearanceSchema = new mongoose.Schema(
     toObject: { virtuals: true },
   }
 );
+
+sectionClearanceSchema.virtual('bus_fees_status')
+  .get(function () { return this.fees_status; })
+  .set(function (val) { this.fees_status = val; });
 
 // A student can only have one section clearance per department
 sectionClearanceSchema.index({ studentId: 1, department: 1 }, { unique: true });

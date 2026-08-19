@@ -31,6 +31,9 @@ const SectionHeadDashboard = lazy(() => import('./pages/section-head/SectionHead
 // Account Section
 const AccountSectionDashboard = lazy(() => import('./pages/account-section/AccountSectionDashboard'));
 
+// Bus Section
+const BusSectionDashboard = lazy(() => import('./pages/bus-section/BusSectionDashboard'));
+
 // Class Incharge
 const ClassInchargeDashboard = lazy(() => import('./pages/class-incharge/ClassInchargeDashboard'));
 
@@ -219,6 +222,16 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={[ROLES.ACCOUNT_SECTION, ROLES.ADMIN]}>
                 <AccountSectionDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ─── Bus Section Routes ─── */}
+          <Route
+            path="/bus-section"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.BUS_SECTION, ROLES.ADMIN]}>
+                <BusSectionDashboard />
               </ProtectedRoute>
             }
           />

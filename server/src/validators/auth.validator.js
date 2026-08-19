@@ -73,12 +73,12 @@ const authValidator = {
       'string.min': 'Password must be at least 8 characters',
       'any.required': 'Password is required',
     }),
-    role: Joi.string().valid('student', 'teacher', 'section_head', 'account_section', 'class_incharge', 'hod', 'admin').default('student'),
+    role: Joi.string().valid('student', 'teacher', 'section_head', 'account_section', 'bus_section', 'class_incharge', 'hod', 'admin').default('student'),
     enrollmentNo: Joi.string().trim().optional().allow(''),
     programId: Joi.string().optional().allow(''),
     currentSemester: Joi.number().optional(),
     section: Joi.string().optional().allow(''),
-    sectionType: Joi.string().valid('library', 'accounts', 'bus', 'student_section').optional(),
+    sectionType: Joi.string().valid('library', 'accounts', 'bus').optional(),
   }),
 };
 

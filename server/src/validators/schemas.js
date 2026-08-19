@@ -6,12 +6,12 @@ export const registerSchema = {
     name: Joi.string().max(100).required(),
     email: Joi.string().email().required(),
     password: Joi.string().min(8).required(),
-    role: Joi.string().valid('student', 'teacher', 'section_head', 'account_section', 'class_incharge', 'hod', 'admin').default('student'),
+    role: Joi.string().valid('student', 'teacher', 'section_head', 'account_section', 'bus_section', 'class_incharge', 'hod', 'admin').default('student'),
     enrollmentNo: Joi.string().optional().allow(''),
     programId: Joi.string().optional().allow(''),
     currentSemester: Joi.number().integer().min(1).max(10).optional(),
     section: Joi.string().optional().allow(''),
-    sectionType: Joi.when('role', { is: 'section_head', then: Joi.string().valid('library', 'accounts', 'bus', 'student_section').required(), otherwise: Joi.string().optional() }),
+    sectionType: Joi.when('role', { is: 'section_head', then: Joi.string().valid('library', 'accounts', 'bus').required(), otherwise: Joi.string().optional() }),
   }),
 };
 
@@ -97,7 +97,7 @@ export const createUserSchema = {
     programId: Joi.string().optional(),
     currentSemester: Joi.number().integer().min(1).max(10).optional(),
     section: Joi.string().optional(),
-    sectionType: Joi.string().valid('library', 'accounts', 'bus', 'student_section').optional(),
+    sectionType: Joi.string().valid('library', 'accounts', 'bus').optional(),
   }),
 };
 
@@ -130,7 +130,7 @@ export const updateUserSchema = {
     programId: Joi.string(),
     currentSemester: Joi.number().integer().min(1).max(10),
     section: Joi.string(),
-    sectionType: Joi.string().valid('library', 'accounts', 'bus', 'student_section'),
+    sectionType: Joi.string().valid('library', 'accounts', 'bus'),
   }).min(1),
 };
 

@@ -338,9 +338,10 @@ export default function StudentClearance() {
       key: 'status',
       label: 'Status',
       render: (val, row) => {
-        const isAccounts = row.department === 'accounts' || row.department === 'student_section';
-        if (isAccounts && row.fees_status) {
-          if (row.fees_status === 'paid') {
+        const isFeeSection = row.department === 'accounts' || row.department === 'bus';
+        const feeStatus = row.bus_fees_status || row.fees_status;
+        if (isFeeSection && feeStatus) {
+          if (feeStatus === 'paid') {
             return <Badge variant="success">Paid</Badge>;
           }
           return (
@@ -369,12 +370,12 @@ export default function StudentClearance() {
       key: 'remarks',
       label: 'Remarks',
       render: (val, row) => {
-        const isAccounts = row.department === 'accounts' || row.department === 'student_section';
-        const displayRemark = isAccounts ? (row.remark_text || val) : val;
+        const isFeeSection = row.department === 'accounts' || row.department === 'bus';
+        const displayRemark = isFeeSection ? (row.remark_text || val) : val;
         return (
           <div className="group relative inline-block">
             <span className="text-sm text-ink-muted">{displayRemark || '—'}</span>
-            {isAccounts && row.reason === 'remark' && row.remark_text && (
+            {isFeeSection && row.reason === 'remark' && row.remark_text && (
               <div className="mt-1 text-xs text-amber-700 font-medium bg-amber-50 p-2 rounded-md border border-amber-200">
                 ⚠️ {row.remark_text}
               </div>

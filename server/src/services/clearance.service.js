@@ -9,7 +9,7 @@ const AppError = require('../utils/AppError');
 const logger = require('../config/logger');
 const notificationService = require('./notification.service');
 
-const SECTION_DEPARTMENTS = ['library', 'accounts', 'bus', 'student_section'];
+const SECTION_DEPARTMENTS = ['library', 'accounts', 'bus'];
 
 const clearanceService = {
   // ══════════════════════════════════════════════

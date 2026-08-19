@@ -96,7 +96,7 @@ const seed = async () => {
     }
 
     // ── Section Heads ──
-    const sectionTypes = ['library', 'accounts', 'bus', 'student_section'];
+    const sectionTypes = ['library', 'accounts', 'bus'];
     for (const type of sectionTypes) {
       const email = `${type}@clearmate.dev`;
       const existing = await User.findOne({ email });
@@ -146,7 +146,6 @@ const seed = async () => {
     console.log('  Library:    library@clearmate.dev / Section@123');
     console.log('  Accounts:   accounts@clearmate.dev / Section@123');
     console.log('  Bus:        bus@clearmate.dev / Section@123');
-    console.log('  Stu.Sect:   student_section@clearmate.dev / Section@123');
 
     process.exit(0);
   } catch (error) {

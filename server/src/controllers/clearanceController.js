@@ -6,7 +6,7 @@ import Semester from '../models/Semester.js';
 import AppError from '../utils/AppError.js';
 import { success, created } from '../utils/response.js';
 
-const SECTION_DEPARTMENTS = ['library', 'accounts', 'bus', 'student_section'];
+const SECTION_DEPARTMENTS = ['library', 'accounts', 'bus'];
 
 // ═══════════════ STUDENT ═══════════════
 

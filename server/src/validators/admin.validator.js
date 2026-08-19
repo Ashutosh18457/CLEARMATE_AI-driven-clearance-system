@@ -94,7 +94,7 @@ const adminValidator = {
       .messages({ 'any.required': 'Email is required' }),
     password: Joi.string().min(8).optional().default('Pass@123')
       .messages({ 'string.min': 'Password must be at least 8 characters' }),
-    role: Joi.string().valid('student', 'teacher', 'section_head', 'account_section', 'class_incharge', 'hod', 'admin').required()
+    role: Joi.string().valid('student', 'teacher', 'section_head', 'account_section', 'bus_section', 'class_incharge', 'hod', 'admin').required()
       .messages({ 'any.required': 'Role is required' }),
     // Student-specific (optional defaults if omitted)
     programId: objectId.optional().allow('', null),
@@ -102,7 +102,7 @@ const adminValidator = {
     currentSemester: Joi.number().integer().min(1).max(10).optional().allow('', null),
     section: Joi.string().trim().optional().allow('', null),
     // Section Head-specific
-    sectionType: Joi.string().valid('library', 'accounts', 'bus', 'student_section').optional().allow('', null),
+    sectionType: Joi.string().valid('library', 'accounts', 'bus').optional().allow('', null),
   }),
 
   bulkCreateStudentsSchema: Joi.object({
@@ -127,12 +127,12 @@ const adminValidator = {
     name: Joi.string().trim().max(100),
     email: Joi.string().email(),
     password: Joi.string().min(8).optional().allow('', null),
-    role: Joi.string().valid('student', 'teacher', 'section_head', 'account_section', 'class_incharge', 'hod', 'admin'),
+    role: Joi.string().valid('student', 'teacher', 'section_head', 'account_section', 'bus_section', 'class_incharge', 'hod', 'admin'),
     programId: objectId.optional().allow('', null),
     enrollmentNo: Joi.string().trim().optional().allow('', null),
     currentSemester: Joi.number().integer().min(1).max(10).optional().allow('', null),
     section: Joi.string().trim().optional().allow('', null),
-    sectionType: Joi.string().valid('library', 'accounts', 'bus', 'student_section').optional().allow('', null),
+    sectionType: Joi.string().valid('library', 'accounts', 'bus').optional().allow('', null),
     isActive: Joi.boolean(),
   }).min(1),
 

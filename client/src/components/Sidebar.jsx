@@ -34,6 +34,9 @@ const roleMenus = {
   account_section: [
     { path: '/dashboard', label: 'Fee Clearance Dashboard', icon: HiShieldCheck },
   ],
+  bus_section: [
+    { path: '/dashboard', label: 'Bus Fee Clearance', icon: HiShieldCheck },
+  ],
   class_incharge: [
     { path: '/dashboard', label: 'Class Approvals', icon: HiShieldCheck },
   ],

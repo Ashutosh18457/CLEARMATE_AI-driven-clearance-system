@@ -100,7 +100,7 @@ const analyticsService = {
   // ══════════════════════════════════════════════
 
   /**
-   * Returns approval/rejection/pending rates per department (Library, Accounts, Bus, Student Section).
+   * Returns approval/rejection/pending rates per department (Library, Accounts, Bus).
    */
   async getDepartmentStats(semesterId) {
     // Get all clearance request IDs for this semester
@@ -140,7 +140,6 @@ const analyticsService = {
       library: 'Library',
       accounts: 'Accounts',
       bus: 'Bus/Transport',
-      student_section: 'Student Section',
     };
 
     return results.map((r) => {

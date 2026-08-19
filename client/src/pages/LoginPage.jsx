@@ -287,13 +287,6 @@ export default function LoginPage() {
               </button>
               <button
                 type="button"
-                onClick={() => { setEmail('student_section@sbjit.edu.in'); setPassword('Password123!'); }}
-                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all text-left"
-              >
-                🏛️ Student Section
-              </button>
-              <button
-                type="button"
                 onClick={() => { setEmail('library@sbjit.edu.in'); setPassword('Password123!'); }}
                 className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all"
               >
