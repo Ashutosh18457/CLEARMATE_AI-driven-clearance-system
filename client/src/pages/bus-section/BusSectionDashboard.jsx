@@ -785,7 +785,7 @@ export default function BusSectionDashboard() {
                   Cancel
                 </Button>
                 <Button variant="primary" loading={saving} onClick={handleSaveFees}>
-                  Save fees Clearance System
+                  {feesStatus === 'not_paid' ? 'remark added' : 'Save fees Clearance System'}
                 </Button>
               </div>
             </div>
