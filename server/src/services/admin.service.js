@@ -530,15 +530,23 @@ const adminService = {
       throw AppError.badRequest('Admin accounts cannot be deactivated.');
     }
 
-    delete data.password;
     if (requester && requester.role !== 'admin') {
       delete data.role;
     }
 
-    const user = await User.findByIdAndUpdate(id, data, {
-      new: true,
-      runValidators: true,
-    }).select('-password');
+    if (data.password && typeof data.password === 'string' && data.password.trim().length > 0) {
+      targetUser.password = data.password.trim();
+    }
+    delete data.password;
+
+    Object.keys(data).forEach((key) => {
+      targetUser[key] = data[key];
+    });
+
+    await targetUser.save();
+    targetUser.password = undefined;
+
+    const user = targetUser;
 
     const AuditLog = require('../models/AuditLog');
     new AuditLog({

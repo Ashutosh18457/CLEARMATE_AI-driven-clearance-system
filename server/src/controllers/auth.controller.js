@@ -131,6 +131,24 @@ const authController = {
     } catch (error) {
       next(error);
     }
+  /**
+   * @route PATCH /api/auth/change-password
+   * @route PATCH /api/auth/me/password
+   * @desc Change authenticated user's password
+   * @access Private
+   */
+  async changePassword(req, res, next) {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const result = await authService.changePassword(req.user.id, currentPassword, newPassword);
+
+      sendSuccess(res, {
+        data: result,
+        message: result.message,
+      });
+    } catch (error) {
+      next(error);
+    }
   },
 };
 

@@ -220,6 +220,35 @@ const authService = {
   },
 
   /**
+   * Changes the password of an authenticated user after verifying current password.
+   */
+  async changePassword(userId, currentPassword, newPassword) {
+    const user = await User.findById(userId).select('+password');
+    if (!user) {
+      throw AppError.notFound('User not found');
+    }
+
+    if (!user.isActive) {
+      throw AppError.forbidden('Your account has been deactivated');
+    }
+
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      throw AppError.badRequest('Current password is incorrect');
+    }
+
+    user.password = newPassword;
+    user.loginAttempts = 0;
+    user.lockUntil = undefined;
+    await user.save();
+
+    const AuditLog = require('../models/AuditLog');
+    new AuditLog({ userId: user._id, action: 'password_changed', resource: 'Auth' }).save().catch(() => {});
+
+    return { message: 'Password changed successfully' };
+  },
+
+  /**
    * Fetches the current user's profile data.
    */
   async getMe(userId) {

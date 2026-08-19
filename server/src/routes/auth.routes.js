@@ -17,5 +17,7 @@ router.post('/logout', authController.logout);
 
 // Protected routes
 router.get('/me', protect, authController.getMe);
+router.patch('/change-password', protect, validate(authValidator.changePasswordSchema), auditLogger('change_password', 'Auth'), authController.changePassword);
+router.patch('/me/password', protect, validate(authValidator.changePasswordSchema), auditLogger('change_password', 'Auth'), authController.changePassword);
 
 module.exports = router;

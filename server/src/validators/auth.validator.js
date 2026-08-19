@@ -41,6 +41,20 @@ const authValidator = {
         'any.required': 'New password is required',
       }),
   }),
+  changePasswordSchema: Joi.object({
+    currentPassword: Joi.string().required().messages({
+      'any.required': 'Current password is required',
+    }),
+    newPassword: Joi.string()
+      .min(8)
+      .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/)
+      .required()
+      .messages({
+        'string.min': 'Password must be at least 8 characters long',
+        'string.pattern.base': 'Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character',
+        'any.required': 'New password is required',
+      }),
+  }),
 
   registerSchema: Joi.object({
     name: Joi.string().trim().max(100).required().messages({
