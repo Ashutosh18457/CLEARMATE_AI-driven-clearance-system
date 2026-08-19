@@ -251,7 +251,11 @@ export default function BusSectionDashboard() {
     try {
       const res = await api.patch(`/bus-section/students/${sId}/bus-fees`, payload);
       if (res.data?.success) {
-        toast.success('Bus fee clearance status updated successfully');
+        if (feesStatus === 'not_paid') {
+          toast.success('Remark added & student notified successfully!');
+        } else {
+          toast.success('Bus fee clearance status updated successfully!');
+        }
         fetchStudents();
         setIsModalOpen(false);
       } else {
@@ -287,7 +291,11 @@ export default function BusSectionDashboard() {
         })
       );
 
-      toast.success('Bus fee clearance status updated successfully');
+      if (feesStatus === 'not_paid') {
+        toast.success('Remark added & student notified successfully!');
+      } else {
+        toast.success('Bus fee clearance status updated successfully!');
+      }
       setIsModalOpen(false);
     } finally {
       setSaving(false);

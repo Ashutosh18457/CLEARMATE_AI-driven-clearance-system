@@ -6,6 +6,7 @@ const Program = require('../models/Program');
 const Semester = require('../models/Semester');
 const AppError = require('../utils/AppError');
 const logger = require('../config/logger');
+const notificationService = require('./notification.service');
 
 const busSectionService = {
   /**
@@ -235,6 +236,29 @@ const busSectionService = {
         secSummary.remarks = sc.remarks;
         await activeRequest.save();
       }
+    }
+
+    // Send Notification to student
+    try {
+      if (status === 'not_paid') {
+        const notifMsg = sc.remark_text || 'Bus fees pending. Please resolve with Bus Section.';
+        await notificationService.createNotification(student._id, {
+          title: 'Bus Transport Fee Remark 🚌',
+          message: `Bus Section Remark: ${notifMsg}`,
+          type: 'warning',
+          link: '/dashboard/clearance',
+        });
+      } else if (status === 'paid') {
+        const notifMsg = sc.remark_text || 'Bus fees cleared';
+        await notificationService.createNotification(student._id, {
+          title: 'Bus Transport Fee Cleared 🚌',
+          message: `Your Bus Fee status has been updated to Paid (${notifMsg}).`,
+          type: 'success',
+          link: '/dashboard/clearance',
+        });
+      }
+    } catch (notifErr) {
+      logger.warn('Failed to send notification to student for bus fee update', { error: notifErr.message });
     }
 
     logger.info('Student bus fee status updated by Bus Section', {
