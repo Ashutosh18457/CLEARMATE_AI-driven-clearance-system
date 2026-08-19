@@ -706,7 +706,7 @@ export default function BusSectionDashboard() {
                           }`}
                         />
                         <div className="font-semibold text-surface-800">
-                          {log.status === 'paid' ? 'Marked Paid' : `Marked Not Paid (${log.reason || 'Pending'})`}
+                          {log.status === 'paid' ? 'Marked Paid' : 'Marked Not Paid'}
                         </div>
                         {log.remark_text && <div className="text-surface-600 mt-0.5">{log.remark_text}</div>}
                         <div className="text-surface-400 mt-0.5 text-[11px]">

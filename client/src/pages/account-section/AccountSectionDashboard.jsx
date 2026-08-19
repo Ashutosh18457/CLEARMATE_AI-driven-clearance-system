@@ -686,9 +686,6 @@ export default function AccountSectionDashboard() {
                             >
                               {log.status === 'paid' ? 'Paid' : 'Not Paid'}
                             </span>
-                            {log.reason && (
-                              <span className="text-ink-muted">({log.reason})</span>
-                            )}
                           </div>
                           {log.remark_text && (
                             <p className="text-ink-secondary mt-1 font-medium">{log.remark_text}</p>
