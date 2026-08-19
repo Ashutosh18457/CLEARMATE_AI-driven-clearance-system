@@ -131,6 +131,8 @@ const authController = {
     } catch (error) {
       next(error);
     }
+  },
+
   /**
    * @route PATCH /api/auth/change-password
    * @route PATCH /api/auth/me/password
