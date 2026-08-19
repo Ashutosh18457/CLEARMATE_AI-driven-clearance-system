@@ -111,6 +111,8 @@ export default function BusSectionDashboard() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalStatus, setModalStatus] = useState('paid'); // 'paid' | 'not_paid'
+  const [paidOption, setPaidOption] = useState('standard'); // 'standard' | 'add_clearance'
+  const [clearanceNoteText, setClearanceNoteText] = useState('');
   const [modalReason, setModalReason] = useState('fees_pending'); // 'fees_pending' | 'remark'
   const [modalRemarkText, setModalRemarkText] = useState('');
   const [saving, setSaving] = useState(false);
@@ -181,12 +183,24 @@ export default function BusSectionDashboard() {
     setModalStatus(currentStatus);
     setModalReason(item.reason || 'fees_pending');
     setModalRemarkText(item.remark_text || '');
+    
+    if (currentStatus === 'paid' && item.reason === 'add_clearance') {
+      setPaidOption('add_clearance');
+      setClearanceNoteText(item.remark_text || '');
+    } else {
+      setPaidOption('standard');
+      setClearanceNoteText('');
+    }
     setModalOpen(true);
   };
 
   // Handle Save Fee Status
   const handleSaveStatus = async () => {
     if (!selectedStudent) return;
+    if (modalStatus === 'paid' && paidOption === 'add_clearance' && !clearanceNoteText.trim()) {
+      toast.error('Please enter clearance details / note.');
+      return;
+    }
     if (modalStatus === 'not_paid' && modalReason === 'remark' && !modalRemarkText.trim()) {
       toast.error('Please enter a remark explaining the bus fee pending status.');
       return;
@@ -194,9 +208,20 @@ export default function BusSectionDashboard() {
 
     setSaving(true);
     const studentId = selectedStudent.student.id || selectedStudent.student._id;
+    const finalRemarkText =
+      modalStatus === 'paid'
+        ? paidOption === 'add_clearance'
+          ? clearanceNoteText.trim()
+          : 'Bus fees cleared'
+        : modalReason === 'remark'
+        ? modalRemarkText.trim()
+        : 'Bus fees pending';
+
     const payload = {
       status: modalStatus,
-      ...(modalStatus === 'not_paid' ? { reason: modalReason, remark_text: modalRemarkText.trim() } : {}),
+      ...(modalStatus === 'paid'
+        ? { reason: paidOption === 'add_clearance' ? 'add_clearance' : undefined, remark_text: finalRemarkText }
+        : { reason: modalReason, remark_text: finalRemarkText }),
     };
 
     try {
@@ -218,8 +243,8 @@ export default function BusSectionDashboard() {
             const updatedAudit = [
               {
                 status: modalStatus,
-                reason: modalStatus === 'not_paid' ? modalReason : null,
-                remark_text: modalStatus === 'paid' ? 'Bus fees cleared' : modalRemarkText,
+                reason: modalStatus === 'paid' ? (paidOption === 'add_clearance' ? 'add_clearance' : null) : modalReason,
+                remark_text: finalRemarkText,
                 changed_by_name: 'Bus Section Admin',
                 changed_at: new Date().toISOString(),
               },
@@ -229,8 +254,8 @@ export default function BusSectionDashboard() {
               ...item,
               bus_fees_status: modalStatus,
               fees_status: modalStatus,
-              reason: modalStatus === 'not_paid' ? modalReason : null,
-              remark_text: modalStatus === 'paid' ? 'Bus fees cleared' : modalRemarkText,
+              reason: modalStatus === 'paid' ? (paidOption === 'add_clearance' ? 'add_clearance' : null) : modalReason,
+              remark_text: finalRemarkText,
               updated_at: new Date().toISOString(),
               auditTrail: updatedAudit,
             };
@@ -560,6 +585,58 @@ export default function BusSectionDashboard() {
                   </button>
                 </div>
               </div>
+
+              {/* Sub-options for Paid */}
+              {modalStatus === 'paid' && (
+                <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-lg space-y-3">
+                  <label className="block text-xs font-semibold text-emerald-900">
+                    Specify Bus Fee Clearance Option:
+                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm text-surface-700 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="paidOption"
+                        value="standard"
+                        checked={paidOption === 'standard'}
+                        onChange={() => setPaidOption('standard')}
+                        className="text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span className="font-medium">Direct Cleared</span>
+                      <span className="text-xs text-surface-400">(Standard bus fee cleared status)</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 text-sm text-surface-700 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="paidOption"
+                        value="add_clearance"
+                        checked={paidOption === 'add_clearance'}
+                        onChange={() => setPaidOption('add_clearance')}
+                        className="text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span className="font-medium">Add Clearance</span>
+                      <span className="text-xs text-surface-400">(Add custom clearance note / receipt / pass ID)</span>
+                    </label>
+                  </div>
+
+                  {/* Textarea for Add Clearance note */}
+                  {paidOption === 'add_clearance' && (
+                    <div className="pt-2">
+                      <label className="block text-xs font-medium text-surface-700 mb-1">
+                        Clearance Details / Note <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        rows={3}
+                        placeholder="e.g. Cleared via Receipt #84920 / Bus Pass #B-104 issued..."
+                        value={clearanceNoteText}
+                        onChange={(e) => setClearanceNoteText(e.target.value)}
+                        className="w-full p-2.5 text-sm bg-white border border-surface-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Sub-options for Not Paid */}
               {modalStatus === 'not_paid' && (

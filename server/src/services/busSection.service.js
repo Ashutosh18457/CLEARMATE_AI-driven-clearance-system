@@ -203,9 +203,9 @@ const busSectionService = {
     sc.reviewedAt = new Date();
 
     if (status === 'paid') {
-      sc.reason = undefined;
-      sc.remark_text = 'Bus fees cleared';
-      sc.remarks = 'Bus fees cleared';
+      sc.reason = reason || undefined;
+      sc.remark_text = remark_text && remark_text.trim() ? remark_text.trim() : 'Bus fees cleared';
+      sc.remarks = sc.remark_text;
     } else {
       sc.reason = reason || 'fees_pending';
       sc.remark_text = reason === 'remark' ? (remark_text || 'Bus fees pending') : 'Bus fees pending';
