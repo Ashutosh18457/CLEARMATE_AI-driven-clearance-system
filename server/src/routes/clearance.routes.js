@@ -10,93 +10,93 @@ const router = express.Router();
 router.use(protect);
 
 // ──────────────────────────────────────────────
-// STUDENT ROUTES
+// STUDENT & ADMIN ROUTES
 // ──────────────────────────────────────────────
 router.post(
   '/initiate',
-  restrictTo('student', 'admin'),
+  restrictTo('student', 'admin', 'super_admin'),
   validate(v.initiateClearanceSchema),
   clearanceController.initiateClearance
 );
 
 router.get(
   '/prerequisites',
-  restrictTo('student', 'admin'),
+  restrictTo('student', 'admin', 'super_admin'),
   clearanceController.getPrerequisites
 );
 
 router.get(
   '/my',
-  restrictTo('student', 'admin'),
+  restrictTo('student', 'admin', 'super_admin'),
   clearanceController.getMyClearanceStatus
 );
 
 // ──────────────────────────────────────────────
-// TEACHER ROUTES
+// TEACHER & ADMIN ROUTES
 // ──────────────────────────────────────────────
 router.get(
   '/items/pending',
-  restrictTo('teacher'),
+  restrictTo('teacher', 'admin', 'super_admin'),
   clearanceController.getMyPendingItems
 );
 
 router.patch(
   '/items/:id/review',
-  restrictTo('teacher'),
+  restrictTo('teacher', 'admin', 'super_admin'),
   validate(v.reviewItemSchema),
   clearanceController.reviewItem
 );
 
 // ──────────────────────────────────────────────
-// SECTION HEAD ROUTES
+// SECTION HEAD & ADMIN ROUTES
 // ──────────────────────────────────────────────
 router.get(
   '/sections/pending',
-  restrictTo('section_head'),
+  restrictTo('section_head', 'account_section', 'bus_section', 'admin', 'super_admin'),
   clearanceController.getMyPendingSections
 );
 
 router.patch(
   '/sections/:id/review',
-  restrictTo('section_head'),
+  restrictTo('section_head', 'account_section', 'bus_section', 'admin', 'super_admin'),
   validate(v.reviewSectionSchema),
   clearanceController.reviewSection
 );
 
 // ──────────────────────────────────────────────
-// CLASS INCHARGE ROUTES
+// CLASS INCHARGE & ADMIN ROUTES
 // ──────────────────────────────────────────────
 router.get(
   '/ci/pending',
-  restrictTo('class_incharge'),
+  restrictTo('class_incharge', 'admin', 'super_admin'),
   clearanceController.getPendingCIReviews
 );
 
 router.patch(
   '/ci/:id/review',
-  restrictTo('class_incharge'),
+  restrictTo('class_incharge', 'admin', 'super_admin'),
   validate(v.reviewCISchema),
   clearanceController.reviewCI
 );
 
 // ──────────────────────────────────────────────
-// HOD ROUTES
+// HOD & ADMIN ROUTES
 // ──────────────────────────────────────────────
 router.get(
   '/hod/pending',
-  restrictTo('hod'),
+  restrictTo('hod', 'admin', 'super_admin'),
   clearanceController.getPendingHODReviews
 );
 
 router.get(
   '/hod/teachers-overview',
-  restrictTo('hod'),
+  restrictTo('hod', 'admin', 'super_admin'),
   clearanceController.getHODDepartmentTeachers
 );
 
 router.patch(
   '/hod/:id/review',
-  restrictTo('hod'),
+  restrictTo('hod', 'admin', 'super_admin'),
   validate(v.reviewHODSchema),
   clearanceController.reviewHOD
 );

@@ -12,49 +12,49 @@ const router = express.Router();
 router.use(protect);
 
 // ──────────────────────────────────────────────
-// TEACHER ROUTES
+// TEACHER & ADMIN ROUTES
 // ──────────────────────────────────────────────
 router.get(
   '/teacher-clearance-items',
-  restrictTo('teacher'),
+  restrictTo('teacher', 'admin', 'super_admin'),
   submissionController.getTeacherClearanceItems
 );
 
 router.post(
   '/items',
-  restrictTo('teacher'),
+  restrictTo('teacher', 'admin', 'super_admin'),
   validate(v.createSubmissionItemSchema),
   submissionController.createSubmissionItem
 );
 
 router.patch(
   '/items/:id',
-  restrictTo('teacher'),
+  restrictTo('teacher', 'admin', 'super_admin'),
   validate(v.updateSubmissionItemSchema),
   submissionController.updateSubmissionItem
 );
 
 router.delete(
   '/items/:id',
-  restrictTo('teacher'),
+  restrictTo('teacher', 'admin', 'super_admin'),
   submissionController.deleteSubmissionItem
 );
 
 router.get(
   '/items',
-  restrictTo('teacher'),
+  restrictTo('teacher', 'admin', 'super_admin'),
   submissionController.getSubmissionItems
 );
 
 router.get(
   '/items/:id/students',
-  restrictTo('teacher'),
+  restrictTo('teacher', 'admin', 'super_admin'),
   submissionController.getStudentSubmissions
 );
 
 router.patch(
   '/bulk/verify',
-  restrictTo('teacher'),
+  restrictTo('teacher', 'admin', 'super_admin'),
   validate(v.bulkVerifySubmissionSchema),
   auditLogger('bulk_verify_submissions', 'Submission'),
   submissionController.bulkVerifySubmissions
@@ -62,23 +62,23 @@ router.patch(
 
 router.patch(
   '/:id/verify',
-  restrictTo('teacher'),
+  restrictTo('teacher', 'admin', 'super_admin'),
   validate(v.verifySubmissionSchema),
   submissionController.verifySubmission
 );
 
 // ──────────────────────────────────────────────
-// STUDENT ROUTES
+// STUDENT & ADMIN ROUTES
 // ──────────────────────────────────────────────
 router.get(
   '/my',
-  restrictTo('student', 'admin'),
+  restrictTo('student', 'admin', 'super_admin'),
   submissionController.getMySubmissions
 );
 
 router.post(
   '/submit',
-  restrictTo('student', 'admin'),
+  restrictTo('student', 'admin', 'super_admin'),
   validate(v.submitWorkSchema),
   submissionController.submitWork
 );
