@@ -13,6 +13,10 @@ import {
   HiOutlineArrowUpTray,
   HiOutlineNoSymbol,
   HiOutlineUsers,
+  HiOutlineUserGroup,
+  HiOutlineAcademicCap,
+  HiOutlineMagnifyingGlass,
+  HiOutlineCheckBadge,
 } from 'react-icons/hi2';
 
 const EMPTY_FORM = {
@@ -43,6 +47,18 @@ export default function Users() {
   const [previewRows, setPreviewRows] = useState([]);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkResults, setBulkResults] = useState(null);
+
+  // Class Incharge Student Assignment Modal
+  const [ciModalOpen, setCiModalOpen] = useState(false);
+  const [selectedCI, setSelectedCI] = useState(null);
+  const [ciProgramId, setCiProgramId] = useState('');
+  const [ciSemester, setCiSemester] = useState('');
+  const [ciSection, setCiSection] = useState('all');
+  const [ciSelectedStudents, setCiSelectedStudents] = useState([]);
+  const [ciStudentSearch, setCiStudentSearch] = useState('');
+  const [ciAllStudents, setCiAllStudents] = useState([]);
+  const [ciLoadingStudents, setCiLoadingStudents] = useState(false);
+  const [ciSaving, setCiSaving] = useState(false);
 
   const fetchPrograms = useCallback(async () => {
     try {
@@ -233,6 +249,56 @@ export default function Users() {
     }
   };
 
+  const openAssignCI = async (user) => {
+    setSelectedCI(user);
+    setCiProgramId(user.assignedProgramId?._id || user.assignedProgramId || '');
+    setCiSemester(user.assignedSemester || '');
+    setCiSection(user.assignedSection || 'all');
+    setCiSelectedStudents(
+      Array.isArray(user.assignedStudents)
+        ? user.assignedStudents.map((s) => (typeof s === 'object' ? s._id : s))
+        : []
+    );
+    setCiStudentSearch('');
+    setCiModalOpen(true);
+
+    setCiLoadingStudents(true);
+    try {
+      const res = await api.get('/tasks/students');
+      setCiAllStudents(res.data.data || []);
+    } catch {
+      try {
+        const fallback = await api.get('/admin/users', { params: { role: 'student', limit: 500 } });
+        setCiAllStudents(fallback.data.data.users || fallback.data.data || []);
+      } catch {
+        setCiAllStudents([]);
+      }
+    } finally {
+      setCiLoadingStudents(false);
+    }
+  };
+
+  const handleSaveCIAssignment = async () => {
+    if (!selectedCI) return;
+    setCiSaving(true);
+    try {
+      const payload = {
+        assignedProgramId: ciProgramId || undefined,
+        assignedSemester: ciSemester ? Number(ciSemester) : undefined,
+        assignedSection: ciSection || undefined,
+        assignedStudents: ciSelectedStudents,
+      };
+      await api.put(`/admin/class-incharges/${selectedCI._id}/assign`, payload);
+      toast.success('Class Incharge assignment saved successfully');
+      setCiModalOpen(false);
+      fetchUsers();
+    } catch (err) {
+      toast.error(err.message || 'Failed to assign students to Class Incharge');
+    } finally {
+      setCiSaving(false);
+    }
+  };
+
   const columns = [
     {
       key: 'name',
@@ -246,11 +312,28 @@ export default function Users() {
     },
     {
       key: 'role',
+<<<<<<< HEAD
       label: 'Role',
       render: (val) => (
         <Badge variant={val === 'super_admin' ? 'purple' : val === 'admin' ? 'info' : 'default'}>
           {ROLE_LABELS[val] || val}
         </Badge>
+=======
+      label: 'Role & Assignment',
+      render: (val, row) => (
+        <div className="flex flex-col gap-0.5">
+          <Badge variant={val === 'admin' ? 'info' : val === 'class_incharge' ? 'warning' : 'default'}>
+            {ROLE_LABELS[val] || val}
+          </Badge>
+          {val === 'class_incharge' && (
+            <span className="text-[11px] text-ink-muted">
+              {row.assignedSection && row.assignedSection !== 'all' ? `Sec ${row.assignedSection}` : 'All Secs'}
+              {row.assignedSemester ? ` • Sem ${row.assignedSemester}` : ''}
+              {row.assignedStudents?.length > 0 ? ` (${row.assignedStudents.length} students)` : ''}
+            </span>
+          )}
+        </div>
+>>>>>>> bf165cc (feat: add admin rights to assign students and sections to class incharge)
       ),
     },
     {
@@ -275,6 +358,16 @@ export default function Users() {
       align: 'right',
       render: (_, row) => (
         <div className="flex items-center justify-end gap-1">
+          {row.role === 'class_incharge' && (
+            <button
+              onClick={() => openAssignCI(row)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-brand bg-brand-50 hover:bg-brand-100 border border-brand/20 rounded-md transition-colors mr-1"
+              title="Assign Students / Section to Class Incharge"
+            >
+              <HiOutlineUserGroup className="w-3.5 h-3.5" />
+              Assign Students
+            </button>
+          )}
           <Button variant="ghost" size="sm" onClick={() => openEdit(row)}>
             <HiOutlinePencilSquare className="w-4 h-4" />
           </Button>
@@ -635,6 +728,234 @@ export default function Users() {
             )}
           </div>
         )}
+      </Modal>
+
+      {/* ─── Assign Students to Class Incharge Modal ─── */}
+      <Modal
+        isOpen={ciModalOpen}
+        onClose={() => setCiModalOpen(false)}
+        title={`Assign Students to Class Incharge: ${selectedCI?.name || ''}`}
+        size="lg"
+        footer={
+          <div className="flex items-center justify-between w-full">
+            <span className="text-xs font-semibold text-brand bg-brand-50 border border-brand/20 px-3 py-1.5 rounded-md">
+              {ciSelectedStudents.length} Students Assigned
+            </span>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="md" onClick={() => setCiModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                loading={ciSaving}
+                onClick={handleSaveCIAssignment}
+                icon={<HiOutlineCheckBadge className="w-4 h-4" />}
+              >
+                Save Assignment
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          {/* Class Incharge Info Card */}
+          <div className="flex items-center justify-between p-3 bg-brand-50/50 border border-brand/20 rounded-md">
+            <div>
+              <p className="text-xs font-bold text-brand uppercase tracking-wider">Faculty Member</p>
+              <p className="text-sm font-semibold text-ink-primary">{selectedCI?.name}</p>
+              <p className="text-xs text-ink-muted">{selectedCI?.email}</p>
+            </div>
+            <Badge variant="warning">Class Incharge</Badge>
+          </div>
+
+          {/* Filter / Scope Criteria */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-canvas border border-border-subtle rounded-md">
+            <div>
+              <label htmlFor="ci-program" className="label-base text-xs font-medium">
+                Program / Department
+              </label>
+              <select
+                id="ci-program"
+                className="select-base text-xs"
+                value={ciProgramId}
+                onChange={(e) => setCiProgramId(e.target.value)}
+              >
+                <option value="">All Programs</option>
+                {programs.map((p) => (
+                  <option key={p._id} value={p._id}>
+                    {p.name} ({p.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="ci-semester" className="label-base text-xs font-medium">
+                Assigned Semester
+              </label>
+              <select
+                id="ci-semester"
+                className="select-base text-xs"
+                value={ciSemester}
+                onChange={(e) => setCiSemester(e.target.value)}
+              >
+                <option value="">All Semesters</option>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                  <option key={s} value={s}>Semester {s}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="ci-section" className="label-base text-xs font-medium">
+                Assigned Section
+              </label>
+              <select
+                id="ci-section"
+                className="select-base text-xs"
+                value={ciSection}
+                onChange={(e) => setCiSection(e.target.value)}
+              >
+                <option value="all">All Sections</option>
+                {['A', 'B', 'C', 'D'].map((sec) => (
+                  <option key={sec} value={sec}>Section {sec}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Student Selector Search & Bulk Select */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="relative flex-1 min-w-[200px]">
+                <HiOutlineMagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted" />
+                <input
+                  type="text"
+                  placeholder="Search students by name or enrollment..."
+                  className="input-base pl-9 text-xs"
+                  value={ciStudentSearch}
+                  onChange={(e) => setCiStudentSearch(e.target.value)}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const filtered = ciAllStudents.filter((s) => {
+                      if (ciProgramId && s.programId?._id !== ciProgramId && s.programId !== ciProgramId) return false;
+                      if (ciSemester && Number(s.currentSemester) !== Number(ciSemester)) return false;
+                      if (ciSection && ciSection !== 'all' && s.section !== ciSection) return false;
+                      if (ciStudentSearch) {
+                        const term = ciStudentSearch.toLowerCase();
+                        const nameMatch = s.name?.toLowerCase().includes(term);
+                        const enrollMatch = s.enrollmentNo?.toLowerCase().includes(term);
+                        if (!nameMatch && !enrollMatch) return false;
+                      }
+                      return true;
+                    });
+                    const filteredIds = filtered.map((s) => s._id);
+                    const allSelected = filteredIds.every((id) => ciSelectedStudents.includes(id));
+                    if (allSelected) {
+                      setCiSelectedStudents(ciSelectedStudents.filter((id) => !filteredIds.includes(id)));
+                    } else {
+                      const newSet = new Set([...ciSelectedStudents, ...filteredIds]);
+                      setCiSelectedStudents(Array.from(newSet));
+                    }
+                  }}
+                  className="px-2.5 py-1.5 text-xs font-medium text-brand bg-brand-50 hover:bg-brand-100 border border-brand/20 rounded-md transition-colors"
+                >
+                  Toggle Select All Filtered
+                </button>
+                {ciSelectedStudents.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setCiSelectedStudents([])}
+                    className="px-2.5 py-1.5 text-xs font-medium text-ink-muted hover:text-status-rejected transition-colors"
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Students List Box */}
+            <div className="border border-border-subtle rounded-md max-h-60 overflow-y-auto custom-scrollbar divide-y divide-border-subtle bg-surface">
+              {ciLoadingStudents ? (
+                <div className="p-6 text-center text-xs text-ink-muted">Loading students roster...</div>
+              ) : (
+                (() => {
+                  const filtered = ciAllStudents.filter((s) => {
+                    if (ciProgramId && s.programId?._id !== ciProgramId && s.programId !== ciProgramId) return false;
+                    if (ciSemester && Number(s.currentSemester) !== Number(ciSemester)) return false;
+                    if (ciSection && ciSection !== 'all' && s.section !== ciSection) return false;
+                    if (ciStudentSearch) {
+                      const term = ciStudentSearch.toLowerCase();
+                      const nameMatch = s.name?.toLowerCase().includes(term);
+                      const enrollMatch = s.enrollmentNo?.toLowerCase().includes(term);
+                      if (!nameMatch && !enrollMatch) return false;
+                    }
+                    return true;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="p-6 text-center text-xs text-ink-muted">
+                        No students found matching current filters.
+                      </div>
+                    );
+                  }
+
+                  return filtered.map((st) => {
+                    const isChecked = ciSelectedStudents.includes(st._id);
+                    return (
+                      <label
+                        key={st._id}
+                        className={`flex items-center justify-between px-3 py-2 text-xs hover:bg-surface-hover cursor-pointer transition-colors ${
+                          isChecked ? 'bg-brand-50/40' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <input
+                            type="checkbox"
+                            className="rounded border-border text-brand focus:ring-brand w-4 h-4 cursor-pointer"
+                            checked={isChecked}
+                            onChange={() => {
+                              if (isChecked) {
+                                setCiSelectedStudents(ciSelectedStudents.filter((id) => id !== st._id));
+                              } else {
+                                setCiSelectedStudents([...ciSelectedStudents, st._id]);
+                              }
+                            }}
+                          />
+                          <div>
+                            <span className="font-medium text-ink-primary">{st.name}</span>
+                            <span className="font-mono text-ink-muted ml-2">({st.enrollmentNo || 'No Enroll'})</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {st.programId?.code && (
+                            <span className="px-1.5 py-0.5 bg-canvas border border-border-subtle rounded text-[10px] text-ink-secondary">
+                              {st.programId.code}
+                            </span>
+                          )}
+                          {st.currentSemester && (
+                            <span className="px-1.5 py-0.5 bg-canvas border border-border-subtle rounded text-[10px] text-ink-secondary">
+                              Sem {st.currentSemester}
+                            </span>
+                          )}
+                          {st.section && (
+                            <span className="px-1.5 py-0.5 bg-brand-50 border border-brand/20 rounded text-[10px] font-semibold text-brand">
+                              Sec {st.section}
+                            </span>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  });
+                })()
+              )}
+            </div>
+          </div>
+        </div>
       </Modal>
     </DashboardLayout>
   );

@@ -94,6 +94,27 @@ const userSchema = new mongoose.Schema(
       enum: SECTION_TYPES,
       required: function () { return this.role === 'section_head'; },
     },
+
+    // ----------------------------------------------------
+    // CLASS INCHARGE-SPECIFIC FIELDS
+    // ----------------------------------------------------
+    assignedProgramId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Program',
+    },
+    assignedSemester: {
+      type: Number,
+    },
+    assignedSection: {
+      type: String,
+      trim: true,
+    },
+    assignedStudents: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
   },
   {
     timestamps: true,

@@ -221,6 +221,26 @@ const adminController = {
       sendSuccess(res, { data, message: 'Audit logs retrieved' });
     } catch (error) { next(error); }
   },
+
+  // ──────────────────────────────────────────────
+  // CLASS INCHARGE ASSIGNMENT
+  // ──────────────────────────────────────────────
+
+  /** @route GET /api/admin/class-incharges */
+  async getClassIncharges(req, res, next) {
+    try {
+      const classIncharges = await adminService.getClassIncharges();
+      sendSuccess(res, { data: classIncharges, message: 'Class incharges retrieved successfully' });
+    } catch (error) { next(error); }
+  },
+
+  /** @route PUT /api/admin/class-incharges/:id/assign */
+  async assignClassIncharge(req, res, next) {
+    try {
+      const updatedCI = await adminService.assignClassIncharge(req.params.id, req.body);
+      sendSuccess(res, { data: { user: updatedCI }, message: 'Class incharge assigned successfully' });
+    } catch (error) { next(error); }
+  },
 };
 
 module.exports = adminController;

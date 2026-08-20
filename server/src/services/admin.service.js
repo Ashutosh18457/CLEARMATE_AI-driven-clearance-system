@@ -482,6 +482,7 @@ const adminService = {
     const [users, total] = await Promise.all([
       User.find(query)
         .populate('programId', 'name code')
+        .populate('assignedProgramId', 'name code')
         .populate('batchId', 'name')
         .select('-password')
         .sort({ name: 1 })
@@ -660,11 +661,51 @@ const adminService = {
     return item;
   },
 
-  async deleteClearanceItem(id) {
-    const item = await ClearanceItem.findByIdAndDelete(id);
-    if (!item) throw AppError.notFound('Clearance item not found');
-    logger.info('ClearanceItem deleted', { itemId: id, title: item.title });
-    return item;
+  async assignClassIncharge(classInchargeId, data) {
+    const ci = await User.findById(classInchargeId);
+    if (!ci) throw AppError.notFound('User not found');
+    if (ci.role !== 'class_incharge' && ci.role !== 'teacher' && ci.role !== 'admin') {
+      throw AppError.badRequest('User must have class_incharge or teacher role');
+    }
+
+    const { assignedProgramId, assignedSemester, assignedSection, assignedStudents } = data;
+
+    let studentIds = Array.isArray(assignedStudents) ? assignedStudents : [];
+
+    if (studentIds.length === 0 && (assignedSection || assignedProgramId || assignedSemester)) {
+      const studentQuery = { role: 'student' };
+      if (assignedProgramId) studentQuery.programId = assignedProgramId;
+      if (assignedSemester) studentQuery.currentSemester = assignedSemester;
+      if (assignedSection && assignedSection !== 'all') studentQuery.section = assignedSection;
+      const matched = await User.find(studentQuery).select('_id');
+      studentIds = matched.map((s) => s._id);
+    }
+
+    ci.assignedProgramId = assignedProgramId || undefined;
+    ci.assignedSemester = assignedSemester || undefined;
+    ci.assignedSection = assignedSection || undefined;
+    ci.assignedStudents = studentIds;
+
+    await ci.save();
+
+    logger.info('Class Incharge assignment updated', {
+      classInchargeId: ci._id,
+      assignedSection,
+      studentCount: studentIds.length,
+    });
+
+    return await User.findById(ci._id)
+      .populate('assignedProgramId', 'name code')
+      .populate('assignedStudents', 'name email enrollmentNo section')
+      .select('-password');
+  },
+
+  async getClassIncharges() {
+    return await User.find({ role: 'class_incharge' })
+      .populate('assignedProgramId', 'name code')
+      .populate('assignedStudents', 'name email enrollmentNo section')
+      .select('-password')
+      .sort({ name: 1 });
   },
 
   // ══════════════════════════════════════════════

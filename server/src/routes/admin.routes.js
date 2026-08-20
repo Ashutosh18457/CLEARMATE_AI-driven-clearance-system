@@ -66,4 +66,10 @@ router.delete('/clearance-items/:id', restrictTo('admin', 'super_admin'), adminC
 // ──────────────────────────────────────────────
 router.get('/audit-logs', restrictTo('admin', 'super_admin'), adminController.getAuditLogs);
 
+// ──────────────────────────────────────────────
+// CLASS INCHARGE ASSIGNMENT
+// ──────────────────────────────────────────────
+router.get('/class-incharges', restrictTo('admin', 'hod'), adminController.getClassIncharges);
+router.put('/class-incharges/:id/assign', restrictTo('admin'), adminController.assignClassIncharge);
+
 module.exports = router;

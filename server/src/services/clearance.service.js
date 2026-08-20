@@ -470,27 +470,35 @@ const clearanceService = {
   // ══════════════════════════════════════════════
 
   /**
-   * Gets clearances pending CI review, scoped to the CI's section.
+   * Gets clearances pending CI review, scoped to the CI's assigned students/section/program.
    * @param {string} classInchargeId - The CI user's ID for scope lookup
    */
   async getPendingCIReviews(classInchargeId) {
-    // Lookup the CI's section to scope results
-    const ciUser = await User.findById(classInchargeId).select('section programId');
-    const query = { status: 'ci_review' };
+    let query = { status: 'ci_review' };
+    if (classInchargeId) {
+      const ci = await User.findById(classInchargeId);
+      if (ci) {
+        if (ci.assignedStudents && ci.assignedStudents.length > 0) {
+          query.studentId = { $in: ci.assignedStudents };
+        } else if (ci.assignedProgramId || ci.assignedSemester || ci.assignedSection || ci.section) {
+          const studentQuery = { role: 'student' };
+          if (ci.assignedProgramId) studentQuery.programId = ci.assignedProgramId;
+          if (ci.assignedSemester) studentQuery.currentSemester = ci.assignedSemester;
+          if (ci.assignedSection && ci.assignedSection !== 'all') {
+            studentQuery.section = ci.assignedSection;
+          } else if (ci.section) {
+            studentQuery.section = ci.section;
+          }
+          const studentIds = await User.find(studentQuery).select('_id');
+          query.studentId = { $in: studentIds.map((s) => s._id) };
+        }
+      }
+    }
 
-    let results = await ClearanceRequest.find(query)
+    return await ClearanceRequest.find(query)
       .populate('studentId', 'name email enrollmentNo section programId')
       .populate('semesterId', 'name semNumber academicYear')
       .sort({ createdAt: 1 });
-
-    // Filter by CI's section if available (scoped authorization)
-    if (ciUser && ciUser.section) {
-      results = results.filter(
-        (r) => r.studentId && r.studentId.section === ciUser.section
-      );
-    }
-
-    return results;
   },
 
   /**
