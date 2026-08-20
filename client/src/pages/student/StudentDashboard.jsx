@@ -92,7 +92,26 @@ export default function StudentDashboard() {
     try {
       setLoadingSubmissions(true);
       const res = await api.get('/submissions/my');
-      setSubmissions(res.data.data || []);
+      const raw = res.data.data || [];
+      const normalized = Array.isArray(raw)
+        ? raw.map((item) => {
+            if (item.submissionItem) {
+              return {
+                _id: item.submissionItem._id,
+                title: item.submissionItem.title,
+                type: item.submissionItem.type,
+                deadline: item.submissionItem.deadline,
+                clearanceItemTitle: item.submissionItem.clearanceItem?.title,
+                status: item.myStatus?.status || 'pending',
+                submittedAt: item.myStatus?.submittedAt,
+                verifiedAt: item.myStatus?.verifiedAt,
+                remarks: item.myStatus?.remarks,
+              };
+            }
+            return item;
+          })
+        : [];
+      setSubmissions(normalized);
     } catch (err) {
       setError(err.message);
     } finally {

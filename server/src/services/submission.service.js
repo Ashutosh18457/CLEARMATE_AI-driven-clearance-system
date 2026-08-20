@@ -1,6 +1,7 @@
 const SubmissionItem = require('../models/SubmissionItem');
 const Submission = require('../models/Submission');
 const ClearanceItem = require('../models/ClearanceItem');
+const Semester = require('../models/Semester');
 const User = require('../models/User');
 const Batch = require('../models/Batch');
 const AppError = require('../utils/AppError');
