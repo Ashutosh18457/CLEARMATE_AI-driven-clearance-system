@@ -98,6 +98,14 @@ const clearanceController = {
     } catch (error) { next(error); }
   },
 
+  /** @route GET /api/clearances/ci/cohort-overview */
+  async getCICohortOverview(req, res, next) {
+    try {
+      const cohortOverview = await clearanceService.getCICohortOverview(req.user.id);
+      sendSuccess(res, { data: cohortOverview, message: 'Cohort overview retrieved successfully' });
+    } catch (error) { next(error); }
+  },
+
   /** @route PATCH /api/clearances/ci/:id/review */
   async reviewCI(req, res, next) {
     try {

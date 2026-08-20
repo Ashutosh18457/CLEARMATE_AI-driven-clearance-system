@@ -534,6 +534,170 @@ const clearanceService = {
   },
 
   /**
+   * Comprehensive cohort monitor for Class Incharge.
+   * Returns all assigned students, their current clearance stage, approved counts, and overall metrics.
+   */
+  async getCICohortOverview(classInchargeId) {
+    const ci = await User.findById(classInchargeId).populate('assignedProgramId', 'name code');
+    if (!ci) throw AppError.notFound('Class Incharge user not found');
+
+    let studentQuery = { role: 'student', isActive: true };
+
+    if (ci.assignedStudents && ci.assignedStudents.length > 0) {
+      studentQuery._id = { $in: ci.assignedStudents };
+    } else if (ci.assignedProgramId || ci.assignedSemester || ci.assignedSection || ci.section) {
+      if (ci.assignedProgramId) studentQuery.programId = ci.assignedProgramId;
+      if (ci.assignedSemester) studentQuery.currentSemester = Number(ci.assignedSemester);
+      const sec = ci.assignedSection || ci.section;
+      if (sec && sec !== 'all') {
+        const cleanSec = sec.replace(/^Sec\s*/i, '').trim();
+        studentQuery.section = new RegExp(`^${cleanSec}$`, 'i');
+      }
+    }
+
+    const students = await User.find(studentQuery)
+      .populate('programId', 'name code')
+      .populate('batchId', 'name')
+      .sort({ section: 1, rollNo: 1, enrollmentNo: 1, name: 1 });
+
+    const studentIds = students.map((s) => s._id);
+
+    // Fetch latest clearance requests for these students
+    const requests = await ClearanceRequest.find({ studentId: { $in: studentIds } })
+      .populate('semesterId', 'name semNumber academicYear')
+      .sort({ createdAt: -1 });
+
+    // Map latest request per student
+    const requestMap = {};
+    for (const req of requests) {
+      const sId = req.studentId.toString();
+      if (!requestMap[sId]) {
+        requestMap[sId] = req;
+      }
+    }
+
+    const requestIds = Object.values(requestMap).map((r) => r._id);
+    const [allItems, allSections] = await Promise.all([
+      ItemClearance.find({ clearanceRequestId: { $in: requestIds } }).populate('clearanceItemId', 'title type subjectCode'),
+      SectionClearance.find({ clearanceRequestId: { $in: requestIds } }),
+    ]);
+
+    const itemsByReq = {};
+    for (const it of allItems) {
+      const rId = it.clearanceRequestId.toString();
+      if (!itemsByReq[rId]) itemsByReq[rId] = [];
+      itemsByReq[rId].push(it);
+    }
+
+    const sectionsByReq = {};
+    for (const sec of allSections) {
+      const rId = sec.clearanceRequestId.toString();
+      if (!sectionsByReq[rId]) sectionsByReq[rId] = [];
+      sectionsByReq[rId].push(sec);
+    }
+
+    const cohortList = students.map((student) => {
+      const req = requestMap[student._id.toString()];
+      if (!req) {
+        return {
+          student: {
+            _id: student._id,
+            name: student.name,
+            email: student.email,
+            enrollmentNo: student.enrollmentNo,
+            section: student.section,
+            currentSemester: student.currentSemester,
+            program: student.programId?.code || student.programId?.name || '—',
+            batch: student.batchId?.name || '—',
+          },
+          hasRequest: false,
+          clearanceStatus: 'not_initiated',
+          currentStage: 'none',
+          itemsApprovedCount: 0,
+          totalItemsCount: 0,
+          sectionsApprovedCount: 0,
+          totalSectionsCount: 0,
+          isActionableForCI: false,
+          request: null,
+          items: [],
+          sections: [],
+        };
+      }
+
+      const reqItems = itemsByReq[req._id.toString()] || [];
+      const reqSections = sectionsByReq[req._id.toString()] || [];
+
+      const itemsApproved = reqItems.filter((i) => i.status === 'approved').length;
+      const sectionsApproved = reqSections.filter((s) => s.status === 'approved').length;
+
+      return {
+        student: {
+          _id: student._id,
+          name: student.name,
+          email: student.email,
+          enrollmentNo: student.enrollmentNo,
+          section: student.section,
+          currentSemester: student.currentSemester,
+          program: student.programId?.code || student.programId?.name || '—',
+          batch: student.batchId?.name || '—',
+        },
+        hasRequest: true,
+        requestId: req._id,
+        clearanceStatus: req.status,
+        currentStage: req.currentStage || req.status,
+        semester: req.semesterId?.name || `Sem ${student.currentSemester}`,
+        itemsApprovedCount: itemsApproved,
+        totalItemsCount: reqItems.length,
+        sectionsApprovedCount: sectionsApproved,
+        totalSectionsCount: reqSections.length,
+        isActionableForCI: req.status === 'ci_review',
+        completedAt: req.completedAt,
+        request: {
+          _id: req._id,
+          status: req.status,
+          currentStage: req.currentStage,
+          certificateUrl: req.certificateUrl,
+          createdAt: req.createdAt,
+        },
+        items: reqItems.map((i) => ({
+          _id: i._id,
+          title: i.clearanceItemId?.title || 'Subject Item',
+          type: i.clearanceItemId?.type || 'theory',
+          status: i.status,
+          remarks: i.remarks,
+        })),
+        sections: reqSections.map((s) => ({
+          _id: s._id,
+          department: s.department,
+          status: s.status,
+          remarks: s.remarks,
+        })),
+      };
+    });
+
+    const stats = {
+      totalAssigned: students.length,
+      actionableCI: cohortList.filter((c) => c.isActionableForCI).length,
+      inProgress: cohortList.filter((c) => ['initiated', 'items_review', 'sections_review'].includes(c.clearanceStatus)).length,
+      hodReview: cohortList.filter((c) => c.clearanceStatus === 'hod_review').length,
+      completed: cohortList.filter((c) => c.clearanceStatus === 'completed').length,
+      rejected: cohortList.filter((c) => c.clearanceStatus === 'rejected').length,
+      notInitiated: cohortList.filter((c) => c.clearanceStatus === 'not_initiated').length,
+    };
+
+    return {
+      scope: {
+        program: ci.assignedProgramId?.name ? `${ci.assignedProgramId.name} (${ci.assignedProgramId.code})` : 'All Programs',
+        semester: ci.assignedSemester ? `Semester ${ci.assignedSemester}` : 'All Semesters',
+        section: ci.assignedSection && ci.assignedSection !== 'all' ? `Section ${ci.assignedSection}` : 'All Sections',
+        explicitStudentsAssigned: ci.assignedStudents?.length || 0,
+      },
+      stats,
+      students: cohortList,
+    };
+  },
+
+  /**
    * Class Incharge approves or rejects.
    * If approved, advances to hod_review.
    */

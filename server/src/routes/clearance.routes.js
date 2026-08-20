@@ -72,6 +72,12 @@ router.get(
   clearanceController.getPendingCIReviews
 );
 
+router.get(
+  '/ci/cohort-overview',
+  restrictTo('class_incharge', 'admin', 'super_admin'),
+  clearanceController.getCICohortOverview
+);
+
 router.patch(
   '/ci/:id/review',
   restrictTo('class_incharge', 'admin', 'super_admin'),
