@@ -73,7 +73,7 @@ export default function Users() {
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkResults, setBulkResults] = useState(null);
 
-  // Class Incharge Student Assignment Modal
+  // Faculty / Class Incharge Student Assignment Modal
   const [ciModalOpen, setCiModalOpen] = useState(false);
   const [selectedCI, setSelectedCI] = useState(null);
   const [ciProgramId, setCiProgramId] = useState('');
@@ -192,7 +192,7 @@ export default function Users() {
       if (payload.role !== 'section_head') {
         delete payload.sectionType;
       }
-      if (payload.role !== 'class_incharge') {
+      if (payload.role !== 'class_incharge' && payload.role !== 'teacher') {
         delete payload.assignedProgramId;
         delete payload.assignedSemester;
         delete payload.assignedSection;
@@ -312,7 +312,7 @@ export default function Users() {
     }
   };
 
-  const openAssignCI = async (user) => {
+  const openAssignFaculty = async (user) => {
     setSelectedCI(user);
     setCiProgramId(user.assignedProgramId?._id || user.assignedProgramId || '');
     setCiSemester(user.assignedSemester || '');
@@ -352,11 +352,12 @@ export default function Users() {
         assignedStudents: ciSelectedStudents,
       };
       await api.put(`/admin/class-incharges/${selectedCI._id}/assign`, payload);
-      toast.success('Class Incharge assignment saved successfully');
+      const roleName = selectedCI.role === 'teacher' ? 'Faculty / Teacher' : 'Class Incharge';
+      toast.success(`${roleName} assignment saved successfully`);
       setCiModalOpen(false);
       fetchUsers();
     } catch (err) {
-      toast.error(err.message || 'Failed to assign students to Class Incharge');
+      toast.error(err.message || 'Failed to save student assignment');
     } finally {
       setCiSaving(false);
     }
@@ -369,7 +370,7 @@ export default function Users() {
       label: 'Teacher Name',
       render: (val, row) => (
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-brand-50 text-brand font-semibold flex items-center justify-center text-xs border border-brand/20">
+          <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-700 font-semibold flex items-center justify-center text-xs border border-blue-200">
             {val?.[0]?.toUpperCase() || 'T'}
           </div>
           <div>
@@ -380,14 +381,42 @@ export default function Users() {
       ),
     },
     {
-      key: 'role',
-      label: 'Role',
-      render: () => (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-          <HiOutlineBookOpen className="w-3.5 h-3.5" />
-          Faculty / Teacher
+      key: 'assignedProgramId',
+      label: 'Department / Program',
+      render: (val) => (
+        <span className="text-xs font-medium text-ink-primary">
+          {val?.name ? `${val.name} (${val.code})` : 'All Departments'}
         </span>
       ),
+    },
+    {
+      key: 'assignedScope',
+      label: 'Assigned Cohort',
+      render: (_, row) => (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="px-2 py-0.5 rounded bg-brand-50 text-brand text-xs font-semibold border border-brand/20">
+            {row.assignedSemester ? `Sem ${row.assignedSemester}` : 'All Semesters'}
+          </span>
+          <span className="px-2 py-0.5 rounded bg-canvas text-ink-secondary text-xs font-medium border border-border-subtle">
+            {row.assignedSection && row.assignedSection !== 'all' ? `Sec ${row.assignedSection}` : 'All Sections'}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'assignedStudents',
+      label: 'Assigned Students',
+      render: (val) => {
+        const count = Array.isArray(val) ? val.length : 0;
+        return (
+          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+            count > 0 ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-surface-100 text-ink-muted'
+          }`}>
+            <HiOutlineUserGroup className="w-3.5 h-3.5" />
+            {count > 0 ? `${count} Students` : 'All Matching Cohort'}
+          </span>
+        );
+      },
     },
     {
       key: 'isActive',
@@ -403,7 +432,15 @@ export default function Users() {
       label: '',
       align: 'right',
       render: (_, row) => (
-        <div className="flex items-center justify-end gap-1">
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={() => openAssignFaculty(row)}
+            className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-brand bg-brand-50 hover:bg-brand-100 border border-brand/20 rounded-md transition-colors shadow-xs"
+            title="Assign Specific Cohort / Students to Teacher"
+          >
+            <HiOutlineUserGroup className="w-3.5 h-3.5" />
+            Assign Students
+          </button>
           <Button variant="ghost" size="sm" onClick={() => openEdit(row)} title="Edit Teacher">
             <HiOutlinePencilSquare className="w-4 h-4 text-ink-secondary hover:text-brand" />
           </Button>
@@ -495,7 +532,7 @@ export default function Users() {
       render: (_, row) => (
         <div className="flex items-center justify-end gap-2">
           <button
-            onClick={() => openAssignCI(row)}
+            onClick={() => openAssignFaculty(row)}
             className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-brand bg-brand-50 hover:bg-brand-100 border border-brand/20 rounded-md transition-colors shadow-xs"
             title="Assign Specific Cohort / Students"
           >
@@ -692,7 +729,7 @@ export default function Users() {
           <Badge variant={val === 'super_admin' ? 'purple' : val === 'admin' ? 'info' : val === 'class_incharge' ? 'warning' : 'default'}>
             {ROLE_LABELS[val] || val}
           </Badge>
-          {val === 'class_incharge' && (
+          {(val === 'class_incharge' || val === 'teacher') && (
             <span className="text-[11px] text-ink-muted">
               {row.assignedSection && row.assignedSection !== 'all' ? `Sec ${row.assignedSection}` : 'All Secs'}
               {row.assignedSemester ? ` • Sem ${row.assignedSemester}` : ''}
@@ -729,11 +766,11 @@ export default function Users() {
       align: 'right',
       render: (_, row) => (
         <div className="flex items-center justify-end gap-1">
-          {row.role === 'class_incharge' && (
+          {(row.role === 'class_incharge' || row.role === 'teacher') && (
             <button
-              onClick={() => openAssignCI(row)}
+              onClick={() => openAssignFaculty(row)}
               className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-brand bg-brand-50 hover:bg-brand-100 border border-brand/20 rounded-md transition-colors mr-1"
-              title="Assign Students / Section to Class Incharge"
+              title="Assign Students / Scope to Faculty"
             >
               <HiOutlineUserGroup className="w-3.5 h-3.5" />
               Assign Scope
@@ -941,8 +978,8 @@ export default function Users() {
             </select>
           </div>
 
-          {/* Class Incharge Specific Configuration */}
-          {form.role === 'class_incharge' && (
+          {/* Teacher / Class Incharge Specific Configuration */}
+          {(form.role === 'class_incharge' || form.role === 'teacher') && (
             <>
               <div>
                 <label htmlFor="ci-assign-program" className="label-base font-semibold">
@@ -1198,11 +1235,11 @@ export default function Users() {
         )}
       </Modal>
 
-      {/* Class Incharge Assignment Scope Modal */}
+      {/* Faculty / Class Incharge Assignment Scope Modal */}
       <Modal
         isOpen={ciModalOpen}
         onClose={() => setCiModalOpen(false)}
-        title="Assign Students & Cohort to Class Incharge"
+        title={`Assign Students & Cohort to ${ROLE_LABELS[selectedCI?.role] || 'Faculty Member'}`}
         size="lg"
         footer={
           <div className="flex items-center justify-between w-full">
@@ -1225,11 +1262,15 @@ export default function Users() {
         <div className="space-y-4">
           <div className="flex items-center justify-between p-3 bg-brand-50/50 border border-brand/20 rounded-md">
             <div>
-              <p className="text-xs font-bold text-brand uppercase tracking-wider">Faculty Member</p>
+              <p className="text-xs font-bold text-brand uppercase tracking-wider">
+                {selectedCI?.role === 'teacher' ? 'Faculty / Teacher' : 'Class Incharge'}
+              </p>
               <p className="text-sm font-semibold text-ink-primary">{selectedCI?.name}</p>
               <p className="text-xs text-ink-muted">{selectedCI?.email}</p>
             </div>
-            <Badge variant="warning">Class Incharge</Badge>
+            <Badge variant={selectedCI?.role === 'class_incharge' ? 'warning' : 'info'}>
+              {ROLE_LABELS[selectedCI?.role] || 'Faculty Member'}
+            </Badge>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-canvas border border-border-subtle rounded-md">
