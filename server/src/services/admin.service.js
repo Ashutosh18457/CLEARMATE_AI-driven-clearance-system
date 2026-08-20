@@ -682,7 +682,7 @@ const adminService = {
   async assignClassIncharge(classInchargeId, data) {
     const ci = await User.findById(classInchargeId);
     if (!ci) throw AppError.notFound('User not found');
-    if (ci.role !== 'class_incharge' && ci.role !== 'teacher' && ci.role !== 'admin') {
+    if (ci.role !== 'class_incharge' && ci.role !== 'teacher' && ci.role !== 'admin' && ci.role !== 'super_admin') {
       throw AppError.badRequest('User must have class_incharge or teacher role');
     }
 
@@ -693,18 +693,25 @@ const adminService = {
     if (studentIds.length === 0 && (assignedSection || assignedProgramId || assignedSemester)) {
       const studentQuery = { role: 'student' };
       if (assignedProgramId) studentQuery.programId = assignedProgramId;
-      if (assignedSemester) studentQuery.currentSemester = assignedSemester;
+      if (assignedSemester) studentQuery.currentSemester = Number(assignedSemester);
       if (assignedSection && assignedSection !== 'all') studentQuery.section = assignedSection;
       const matched = await User.find(studentQuery).select('_id');
       studentIds = matched.map((s) => s._id);
     }
 
-    ci.assignedProgramId = assignedProgramId || undefined;
-    ci.assignedSemester = assignedSemester || undefined;
-    ci.assignedSection = assignedSection || undefined;
-    ci.assignedStudents = studentIds;
-
-    await ci.save();
+    const updatedCI = await User.findByIdAndUpdate(
+      classInchargeId,
+      {
+        assignedProgramId: assignedProgramId || null,
+        assignedSemester: assignedSemester ? Number(assignedSemester) : null,
+        assignedSection: assignedSection || null,
+        assignedStudents: studentIds,
+      },
+      { new: true, runValidators: false }
+    )
+      .populate('assignedProgramId', 'name code')
+      .populate('assignedStudents', 'name email enrollmentNo section')
+      .select('-password');
 
     logger.info('Class Incharge assignment updated', {
       classInchargeId: ci._id,
@@ -712,10 +719,7 @@ const adminService = {
       studentCount: studentIds.length,
     });
 
-    return await User.findById(ci._id)
-      .populate('assignedProgramId', 'name code')
-      .populate('assignedStudents', 'name email enrollmentNo section')
-      .select('-password');
+    return updatedCI;
   },
 
   async getClassIncharges() {

@@ -106,8 +106,14 @@ const adminValidator = {
     currentSemester: Joi.number().integer().min(1).max(10).optional().allow('', null),
     section: Joi.string().trim().optional().allow('', null),
     // Section Head-specific
-    sectionType: Joi.string().valid('library', 'accounts', 'bus').optional().allow('', null),
-  }),
+    sectionType: Joi.string().valid('library', 'accounts', 'bus', 'student_section').optional().allow('', null),
+    // Class Incharge-specific
+    assignedProgramId: objectId.optional().allow('', null),
+    assignedSemester: Joi.number().integer().min(1).max(10).optional().allow('', null),
+    assignedSection: Joi.string().trim().optional().allow('', null),
+    assignedStudents: Joi.array().items(objectId).optional(),
+    isActive: Joi.boolean().optional(),
+  }).unknown(true),
 
   bulkCreateStudentsSchema: Joi.object({
     programId: objectId.required()
@@ -136,9 +142,13 @@ const adminValidator = {
     enrollmentNo: Joi.string().trim().optional().allow('', null),
     currentSemester: Joi.number().integer().min(1).max(10).optional().allow('', null),
     section: Joi.string().trim().optional().allow('', null),
-    sectionType: Joi.string().valid('library', 'accounts', 'bus').optional().allow('', null),
+    sectionType: Joi.string().valid('library', 'accounts', 'bus', 'student_section').optional().allow('', null),
+    assignedProgramId: objectId.optional().allow('', null),
+    assignedSemester: Joi.number().integer().min(1).max(10).optional().allow('', null),
+    assignedSection: Joi.string().trim().optional().allow('', null),
+    assignedStudents: Joi.array().items(objectId).optional(),
     isActive: Joi.boolean(),
-  }).min(1),
+  }).min(1).unknown(true),
 
   // ──────────────────────────────────────────────
   // CLEARANCE ITEMS
