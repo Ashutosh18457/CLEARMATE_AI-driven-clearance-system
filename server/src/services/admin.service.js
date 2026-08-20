@@ -461,7 +461,21 @@ const adminService = {
 
   async getUsers(filters, requester) {
     const query = {};
-    if (filters.role) query.role = filters.role;
+    if (filters.role) {
+      if (filters.role.includes(',')) {
+        query.role = { $in: filters.role.split(',').map((r) => r.trim()) };
+      } else {
+        query.role = filters.role;
+      }
+    }
+    if (filters.search && filters.search.trim()) {
+      const searchRegex = new RegExp(filters.search.trim(), 'i');
+      query.$or = [
+        { name: searchRegex },
+        { email: searchRegex },
+        { enrollmentNo: searchRegex },
+      ];
+    }
     if (filters.programId) query.programId = filters.programId;
     if (filters.isActive !== undefined) query.isActive = filters.isActive;
     if (filters.section) query.section = filters.section;

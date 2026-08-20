@@ -17,20 +17,43 @@ import {
   HiOutlineAcademicCap,
   HiOutlineMagnifyingGlass,
   HiOutlineCheckBadge,
+  HiOutlineBookOpen,
+  HiOutlineBuildingOffice2,
+  HiOutlineShieldCheck,
+  HiOutlineIdentification,
 } from 'react-icons/hi2';
 
 const EMPTY_FORM = {
-  name: '', email: '', password: 'Pass@123', role: 'student',
-  enrollmentNo: '', programId: '', currentSemester: '', section: '',
+  name: '',
+  email: '',
+  password: 'Pass@123',
+  role: 'student',
+  enrollmentNo: '',
+  programId: '',
+  currentSemester: '',
+  section: '',
   sectionType: '',
+  assignedProgramId: '',
+  assignedSemester: '',
+  assignedSection: 'all',
 };
 
+const USER_TABS = [
+  { id: 'all', label: 'All Users', icon: HiOutlineUsers, desc: 'Complete directory of all registered accounts across all roles' },
+  { id: 'teacher', label: 'Teachers / Faculty', icon: HiOutlineBookOpen, desc: 'Teaching faculty responsible for subject, lab, and elective clearance evaluations' },
+  { id: 'class_incharge', label: 'Class Incharges', icon: HiOutlineUserGroup, desc: 'Class Incharges overseeing semester/section cohort approvals (Stage 3 Review)' },
+  { id: 'student', label: 'Students', icon: HiOutlineAcademicCap, desc: 'Enrolled students roster, semester levels, and section allocations' },
+  { id: 'staff', label: 'Section Heads & Staff', icon: HiOutlineBuildingOffice2, desc: 'Clearance officers for Library, Accounts, Bus, Hostel, and Department Admins' },
+];
+
 export default function Users() {
+  const [activeTab, setActiveTab] = useState('all');
   const [users, setUsers] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [filterRole, setFilterRole] = useState('');
   const [search, setSearch] = useState('');
 
@@ -67,29 +90,56 @@ export default function Users() {
     } catch { /* non-critical */ }
   }, []);
 
+  const getQueryRole = useCallback(() => {
+    if (activeTab === 'teacher') return 'teacher';
+    if (activeTab === 'class_incharge') return 'class_incharge';
+    if (activeTab === 'student') return 'student';
+    if (activeTab === 'staff') return 'section_head,admin,hod,account_section,bus_section';
+    return filterRole;
+  }, [activeTab, filterRole]);
+
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page, limit: 20 };
-      if (filterRole) params.role = filterRole;
-      if (search) params.search = search;
+      const roleParam = getQueryRole();
+      if (roleParam) params.role = roleParam;
+      if (search.trim()) params.search = search.trim();
       const res = await api.get('/admin/users', { params });
       const data = res.data.data;
       setUsers(data.users || data || []);
-      setTotalPages(data.totalPages || 1);
+      setTotalPages(data.totalPages || data.pagination?.pages || 1);
+      setTotalCount(data.total || data.pagination?.total || (data.users?.length || 0));
     } catch (err) {
       toast.error(err.message || 'Failed to load users');
     } finally {
       setLoading(false);
     }
-  }, [page, filterRole, search]);
+  }, [page, getQueryRole, search]);
 
   useEffect(() => { fetchPrograms(); }, [fetchPrograms]);
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
-  useEffect(() => { setPage(1); }, [filterRole, search]);
+  useEffect(() => { setPage(1); }, [activeTab, filterRole, search]);
 
-  const openCreate = () => {
-    setForm(EMPTY_FORM);
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setSearch('');
+    if (tabId !== 'all') {
+      setFilterRole('');
+    }
+  };
+
+  const openCreate = (defaultRole) => {
+    let role = defaultRole || 'student';
+    if (activeTab === 'teacher') role = 'teacher';
+    else if (activeTab === 'class_incharge') role = 'class_incharge';
+    else if (activeTab === 'student') role = 'student';
+    else if (activeTab === 'staff') role = 'section_head';
+
+    setForm({
+      ...EMPTY_FORM,
+      role,
+    });
     setEditing(null);
     setModalOpen(true);
   };
@@ -105,6 +155,9 @@ export default function Users() {
       currentSemester: user.currentSemester || '',
       section: user.section || '',
       sectionType: user.sectionType || '',
+      assignedProgramId: user.assignedProgramId?._id || user.assignedProgramId || '',
+      assignedSemester: user.assignedSemester || '',
+      assignedSection: user.assignedSection || 'all',
     });
     setEditing(user._id);
     setModalOpen(true);
@@ -135,16 +188,24 @@ export default function Users() {
       if (payload.role !== 'section_head') {
         delete payload.sectionType;
       }
+      if (payload.role !== 'class_incharge') {
+        delete payload.assignedProgramId;
+        delete payload.assignedSemester;
+        delete payload.assignedSection;
+      }
       if (payload.currentSemester) {
         payload.currentSemester = Number(payload.currentSemester);
+      }
+      if (payload.assignedSemester) {
+        payload.assignedSemester = Number(payload.assignedSemester);
       }
 
       if (editing) {
         await api.put(`/admin/users/${editing}`, payload);
-        toast.success('User updated');
+        toast.success('User updated successfully');
       } else {
         await api.post('/admin/users', payload);
-        toast.success('User created');
+        toast.success('User created successfully');
       }
       setModalOpen(false);
       fetchUsers();
@@ -157,16 +218,16 @@ export default function Users() {
 
   const handleDeactivate = async (id) => {
     const target = users.find((u) => u._id === id);
-    if (target?.role === 'admin') {
+    if (target?.role === 'admin' || target?.role === 'super_admin') {
       toast.error('Admin accounts cannot be deactivated');
       return;
     }
     try {
       await api.patch(`/admin/users/${id}/deactivate`);
-      toast.success('User deactivated');
+      toast.success('User status updated');
       fetchUsers();
     } catch (err) {
-      toast.error(err.message || 'Failed to deactivate');
+      toast.error(err.message || 'Failed to update user status');
     }
   };
 
@@ -187,7 +248,6 @@ export default function Users() {
       const text = event.target?.result || '';
       setCsvData(text);
 
-      // Parse preview rows (first 10)
       const lines = text.split(/\r?\n/).filter((l) => l.trim());
       if (lines.length > 1) {
         const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''));
@@ -214,7 +274,6 @@ export default function Users() {
       link.click();
       link.remove();
     } catch {
-      // Fallback client-side generation
       const csvStr = 'student_id,full_name,email,department,semester,section\nEN2024CSE001,Aarav Sharma,aarav.sharma@sbjain.edu.in,CSE,6,A\nEN2024CSE002,Ananya Patel,ananya.patel@sbjain.edu.in,CSE,6,A\nEN2024ECE001,Rohan Verma,rohan.verma@sbjain.edu.in,ECE,4,B\n';
       const blob = new Blob([csvStr], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
@@ -299,16 +358,297 @@ export default function Users() {
     }
   };
 
-  const columns = [
+  // Columns for Teacher Tab
+  const teacherColumns = [
+    {
+      key: 'name',
+      label: 'Teacher Name',
+      render: (val, row) => (
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-brand-50 text-brand font-semibold flex items-center justify-center text-xs border border-brand/20">
+            {val?.[0]?.toUpperCase() || 'T'}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-ink-primary">{val}</p>
+            <p className="text-xs text-ink-muted">{row.email}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'role',
+      label: 'Role',
+      render: () => (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+          <HiOutlineBookOpen className="w-3.5 h-3.5" />
+          Faculty / Teacher
+        </span>
+      ),
+    },
+    {
+      key: 'isActive',
+      label: 'Status',
+      render: (val) => (
+        <Badge variant={val !== false ? 'success' : 'rejected'}>
+          {val !== false ? 'Active' : 'Inactive'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      label: '',
+      align: 'right',
+      render: (_, row) => (
+        <div className="flex items-center justify-end gap-1">
+          <Button variant="ghost" size="sm" onClick={() => openEdit(row)} title="Edit Teacher">
+            <HiOutlinePencilSquare className="w-4 h-4 text-ink-secondary hover:text-brand" />
+          </Button>
+          {row.isActive !== false && (
+            <Button variant="ghost" size="sm" onClick={() => handleDeactivate(row._id)} title="Deactivate">
+              <HiOutlineNoSymbol className="w-4 h-4 text-status-rejected" />
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  // Columns for Class Incharge Tab
+  const classInchargeColumns = [
+    {
+      key: 'name',
+      label: 'Class Incharge',
+      render: (val, row) => (
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-700 font-semibold flex items-center justify-center text-xs border border-amber-200">
+            {val?.[0]?.toUpperCase() || 'C'}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-ink-primary">{val}</p>
+            <p className="text-xs text-ink-muted">{row.email}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'assignedProgramId',
+      label: 'Assigned Department',
+      render: (val) => (
+        <span className="text-xs font-medium text-ink-primary">
+          {val?.name ? `${val.name} (${val.code})` : 'All Departments'}
+        </span>
+      ),
+    },
+    {
+      key: 'assignedScope',
+      label: 'Cohort Scope',
+      render: (_, row) => (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="px-2 py-0.5 rounded bg-brand-50 text-brand text-xs font-semibold border border-brand/20">
+            {row.assignedSemester ? `Sem ${row.assignedSemester}` : 'All Semesters'}
+          </span>
+          <span className="px-2 py-0.5 rounded bg-canvas text-ink-secondary text-xs font-medium border border-border-subtle">
+            {row.assignedSection && row.assignedSection !== 'all' ? `Sec ${row.assignedSection}` : 'All Sections'}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'assignedStudents',
+      label: 'Assigned Students',
+      render: (val) => {
+        const count = Array.isArray(val) ? val.length : 0;
+        return (
+          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+            count > 0 ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-surface-100 text-ink-muted'
+          }`}>
+            <HiOutlineUserGroup className="w-3.5 h-3.5" />
+            {count > 0 ? `${count} Students` : 'All Matching Cohort'}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'isActive',
+      label: 'Status',
+      render: (val) => (
+        <Badge variant={val !== false ? 'success' : 'rejected'}>
+          {val !== false ? 'Active' : 'Inactive'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      label: '',
+      align: 'right',
+      render: (_, row) => (
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={() => openAssignCI(row)}
+            className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-brand bg-brand-50 hover:bg-brand-100 border border-brand/20 rounded-md transition-colors shadow-xs"
+            title="Assign Specific Cohort / Students"
+          >
+            <HiOutlineUserGroup className="w-3.5 h-3.5" />
+            Assign Scope
+          </button>
+          <Button variant="ghost" size="sm" onClick={() => openEdit(row)} title="Edit">
+            <HiOutlinePencilSquare className="w-4 h-4 text-ink-secondary hover:text-brand" />
+          </Button>
+          {row.isActive !== false && (
+            <Button variant="ghost" size="sm" onClick={() => handleDeactivate(row._id)} title="Deactivate">
+              <HiOutlineNoSymbol className="w-4 h-4 text-status-rejected" />
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  // Columns for Student Tab
+  const studentColumns = [
+    {
+      key: 'name',
+      label: 'Student Name',
+      render: (val, row) => (
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-surface-100 text-ink-secondary font-semibold flex items-center justify-center text-xs">
+            {val?.[0]?.toUpperCase() || 'S'}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-ink-primary">{val}</p>
+            <p className="text-xs text-ink-muted">{row.email}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'enrollmentNo',
+      label: 'Enrollment No',
+      render: (val) => <span className="font-mono text-xs font-semibold text-ink-primary">{val || '—'}</span>,
+    },
+    {
+      key: 'programId',
+      label: 'Program',
+      render: (val) => (
+        <span className="text-xs text-ink-secondary">
+          {val?.code || val?.name || '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'cohort',
+      label: 'Sem & Sec',
+      render: (_, row) => (
+        <span className="text-xs font-medium text-ink-primary">
+          {row.currentSemester ? `Sem ${row.currentSemester}` : '—'} {row.section ? `• Sec ${row.section}` : ''}
+        </span>
+      ),
+    },
+    {
+      key: 'batchId',
+      label: 'Lab Batch',
+      render: (val) => <span className="text-xs text-ink-muted">{val?.name || '—'}</span>,
+    },
+    {
+      key: 'isActive',
+      label: 'Status',
+      render: (val) => (
+        <Badge variant={val !== false ? 'success' : 'rejected'}>
+          {val !== false ? 'Active' : 'Inactive'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      label: '',
+      align: 'right',
+      render: (_, row) => (
+        <div className="flex items-center justify-end gap-1">
+          <Button variant="ghost" size="sm" onClick={() => openEdit(row)} title="Edit Student">
+            <HiOutlinePencilSquare className="w-4 h-4 text-ink-secondary hover:text-brand" />
+          </Button>
+          {row.isActive !== false && (
+            <Button variant="ghost" size="sm" onClick={() => handleDeactivate(row._id)} title="Deactivate">
+              <HiOutlineNoSymbol className="w-4 h-4 text-status-rejected" />
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  // Columns for Staff Tab
+  const staffColumns = [
+    {
+      key: 'name',
+      label: 'Staff Member',
+      render: (val, row) => (
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-purple-50 text-purple-700 font-semibold flex items-center justify-center text-xs border border-purple-200">
+            {val?.[0]?.toUpperCase() || 'U'}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-ink-primary">{val}</p>
+            <p className="text-xs text-ink-muted">{row.email}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'role',
+      label: 'Role & Responsibility',
+      render: (val, row) => (
+        <div className="flex items-center gap-2">
+          <Badge variant={val === 'super_admin' ? 'purple' : val === 'admin' ? 'info' : 'default'}>
+            {ROLE_LABELS[val] || val}
+          </Badge>
+          {row.sectionType && (
+            <span className="text-xs font-semibold text-ink-muted capitalize">
+              ({DEPARTMENT_LABELS[row.sectionType] || row.sectionType})
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'isActive',
+      label: 'Status',
+      render: (val) => (
+        <Badge variant={val !== false ? 'success' : 'rejected'}>
+          {val !== false ? 'Active' : 'Inactive'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      label: '',
+      align: 'right',
+      render: (_, row) => (
+        <div className="flex items-center justify-end gap-1">
+          <Button variant="ghost" size="sm" onClick={() => openEdit(row)} title="Edit">
+            <HiOutlinePencilSquare className="w-4 h-4 text-ink-secondary hover:text-brand" />
+          </Button>
+          {row.isActive !== false && row.role !== 'admin' && row.role !== 'super_admin' && (
+            <Button variant="ghost" size="sm" onClick={() => handleDeactivate(row._id)} title="Deactivate">
+              <HiOutlineNoSymbol className="w-4 h-4 text-status-rejected" />
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  // Standard Columns for All Tab
+  const allColumns = [
     {
       key: 'name',
       label: 'Name',
-      render: (val) => <span className="text-sm font-medium text-ink-primary">{val}</span>,
-    },
-    {
-      key: 'email',
-      label: 'Email',
-      render: (val) => <span className="text-sm text-ink-secondary">{val}</span>,
+      render: (val, row) => (
+        <div>
+          <span className="text-sm font-semibold text-ink-primary">{val}</span>
+          <span className="block text-xs text-ink-muted">{row.email}</span>
+        </div>
+      ),
     },
     {
       key: 'role',
@@ -325,14 +665,19 @@ export default function Users() {
               {row.assignedStudents?.length > 0 ? ` (${row.assignedStudents.length} students)` : ''}
             </span>
           )}
+          {val === 'student' && row.enrollmentNo && (
+            <span className="text-[11px] font-mono text-ink-muted">{row.enrollmentNo}</span>
+          )}
         </div>
       ),
     },
     {
-      key: 'enrollmentNo',
-      label: 'Enrollment',
-      render: (val) => (
-        <span className="text-sm font-mono text-ink-muted">{val || '—'}</span>
+      key: 'department',
+      label: 'Program / Scope',
+      render: (_, row) => (
+        <span className="text-xs text-ink-secondary">
+          {row.programId?.code || row.assignedProgramId?.code || row.sectionType || '—'}
+        </span>
       ),
     },
     {
@@ -357,13 +702,13 @@ export default function Users() {
               title="Assign Students / Section to Class Incharge"
             >
               <HiOutlineUserGroup className="w-3.5 h-3.5" />
-              Assign Students
+              Assign Scope
             </button>
           )}
           <Button variant="ghost" size="sm" onClick={() => openEdit(row)}>
-            <HiOutlinePencilSquare className="w-4 h-4" />
+            <HiOutlinePencilSquare className="w-4 h-4 text-ink-secondary hover:text-brand" />
           </Button>
-          {row.isActive !== false && row.role !== 'admin' && (
+          {row.isActive !== false && row.role !== 'admin' && row.role !== 'super_admin' && (
             <Button variant="ghost" size="sm" onClick={() => handleDeactivate(row._id)}>
               <HiOutlineNoSymbol className="w-4 h-4 text-status-rejected" />
             </Button>
@@ -373,63 +718,124 @@ export default function Users() {
     },
   ];
 
+  const getActiveColumns = () => {
+    switch (activeTab) {
+      case 'teacher': return teacherColumns;
+      case 'class_incharge': return classInchargeColumns;
+      case 'student': return studentColumns;
+      case 'staff': return staffColumns;
+      default: return allColumns;
+    }
+  };
+
   const ROLE_OPTIONS = [
     { value: '', label: 'All roles' },
     ...Object.entries(ROLE_LABELS).map(([key, label]) => ({ value: key, label })),
   ];
 
+  const activeTabMeta = USER_TABS.find((t) => t.id === activeTab) || USER_TABS[0];
+
   return (
-    <DashboardLayout title="Users">
-      {/* Filter bar */}
+    <DashboardLayout title="User Management">
+      {/* ─── Top Section Tabs ─── */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 border-b border-border-subtle overflow-x-auto custom-scrollbar pb-1">
+          {USER_TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleTabChange(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 whitespace-nowrap transition-all duration-150 ${
+                  isActive
+                    ? 'border-brand text-brand bg-brand-50/40 rounded-t-md'
+                    : 'border-transparent text-ink-muted hover:text-ink-primary hover:bg-canvas rounded-t-md'
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${isActive ? 'text-brand' : 'text-ink-muted'}`} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Tab Description & Context Banner */}
+        <div className="mt-3 flex items-center justify-between text-xs text-ink-muted bg-canvas p-3 rounded-md border border-border-subtle flex-wrap gap-2">
+          <span>{activeTabMeta.desc}</span>
+          <span className="font-semibold text-ink-secondary">Showing {totalCount} accounts</span>
+        </div>
+      </div>
+
+      {/* Filter and Action Bar */}
       <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">
-          <select
-            id="filter-role"
-            name="filterRole"
-            className="select-base w-44"
-            value={filterRole}
-            onChange={(e) => setFilterRole(e.target.value)}
-          >
-            {ROLE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-          <input
-            id="filter-search"
-            name="search"
-            type="search"
-            className="input-base w-64"
-            placeholder="Search by name or email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          {activeTab === 'all' && (
+            <select
+              id="filter-role"
+              name="filterRole"
+              className="select-base w-44 text-xs"
+              value={filterRole}
+              onChange={(e) => setFilterRole(e.target.value)}
+            >
+              {ROLE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          )}
+          <div className="relative">
+            <HiOutlineMagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted" />
+            <input
+              id="filter-search"
+              name="search"
+              type="search"
+              className="input-base pl-9 w-64 text-xs"
+              placeholder={`Search ${activeTabMeta.label.toLowerCase()}...`}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         </div>
+
+        {/* Dynamic Action Buttons */}
         <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => { setBulkResults(null); setCsvData(''); setBulkOpen(true); }}
-            icon={<HiOutlineArrowUpTray className="w-4 h-4" />}
-          >
-            Bulk upload
-          </Button>
+          {(activeTab === 'student' || activeTab === 'all') && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => { setBulkResults(null); setCsvData(''); setBulkOpen(true); }}
+              icon={<HiOutlineArrowUpTray className="w-4 h-4" />}
+            >
+              Bulk Upload Students
+            </Button>
+          )}
           <Button
             variant="primary"
             size="sm"
-            onClick={openCreate}
+            onClick={() => openCreate()}
             icon={<HiOutlinePlusCircle className="w-4 h-4" />}
           >
-            Create user
+            {activeTab === 'teacher'
+              ? 'Add Teacher'
+              : activeTab === 'class_incharge'
+              ? 'Add Class Incharge'
+              : activeTab === 'student'
+              ? 'Add Student'
+              : activeTab === 'staff'
+              ? 'Add Staff Member'
+              : 'Create User'}
           </Button>
         </div>
       </div>
 
+      {/* Main Table */}
       <Table
-        columns={columns}
+        columns={getActiveColumns()}
         data={users}
         loading={loading}
-        emptyMessage="No users found"
-        emptyIcon={<HiOutlineUsers className="w-10 h-10" />}
+        emptyMessage={`No ${activeTabMeta.label.toLowerCase()} found`}
+        emptyIcon={<activeTabMeta.icon className="w-10 h-10 text-ink-muted" />}
         pagination={{ page, totalPages, onPageChange: setPage }}
       />
 
@@ -437,27 +843,27 @@ export default function Users() {
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editing ? 'Edit User' : 'Create User'}
+        title={editing ? `Edit ${ROLE_LABELS[form.role] || 'User'}` : `Create New ${ROLE_LABELS[form.role] || 'User'}`}
         size="lg"
         footer={
           <>
             <Button variant="secondary" size="sm" onClick={() => setModalOpen(false)}>Cancel</Button>
             <Button variant="primary" size="sm" onClick={handleSave} loading={saving}>
-              {editing ? 'Update' : 'Create'}
+              {editing ? 'Update Account' : 'Create Account'}
             </Button>
           </>
         }
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="user-form-name" className="label-base">Name</label>
+            <label htmlFor="user-form-name" className="label-base">Full Name</label>
             <input id="user-form-name" name="name" className="input-base" value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Prof. Rajesh Kumar" />
           </div>
           <div>
-            <label htmlFor="user-form-email" className="label-base">Email</label>
+            <label htmlFor="user-form-email" className="label-base">Email Address</label>
             <input id="user-form-email" name="email" className="input-base" type="email" value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="name@sbjain.edu.in" />
           </div>
           <div>
             <label htmlFor="user-form-password" className="label-base">
@@ -476,6 +882,60 @@ export default function Users() {
               ))}
             </select>
           </div>
+
+          {/* Class Incharge Specific Configuration */}
+          {form.role === 'class_incharge' && (
+            <>
+              <div>
+                <label htmlFor="ci-assign-program" className="label-base font-semibold">
+                  📋 Assigned Department / Program
+                </label>
+                <select
+                  id="ci-assign-program"
+                  className="select-base"
+                  value={form.assignedProgramId}
+                  onChange={(e) => setForm({ ...form, assignedProgramId: e.target.value })}
+                >
+                  <option value="">-- All Programs --</option>
+                  {programs.map((p) => (
+                    <option key={p._id} value={p._id}>{p.name} ({p.code})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="ci-assign-semester" className="label-base font-semibold">
+                  Assigned Semester
+                </label>
+                <select
+                  id="ci-assign-semester"
+                  className="select-base"
+                  value={form.assignedSemester}
+                  onChange={(e) => setForm({ ...form, assignedSemester: e.target.value })}
+                >
+                  <option value="">-- All Semesters --</option>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                    <option key={s} value={s}>Semester {s}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="ci-assign-section" className="label-base font-semibold">
+                  Assigned Section
+                </label>
+                <select
+                  id="ci-assign-section"
+                  className="select-base"
+                  value={form.assignedSection}
+                  onChange={(e) => setForm({ ...form, assignedSection: e.target.value })}
+                >
+                  <option value="all">All Sections (A, B, C, D)</option>
+                  {['A', 'B', 'C', 'D'].map((sec) => (
+                    <option key={sec} value={sec}>Section {sec}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
 
           {/* Admin / HOD / Student Branch & Program selector */}
           {(form.role === 'admin' || form.role === 'hod' || form.role === 'student') && (
@@ -509,14 +969,14 @@ export default function Users() {
             <>
               <div>
                 <label htmlFor="user-form-enrollment" className="label-base">Enrollment No</label>
-                <input id="user-form-enrollment" name="enrollmentNo" className="input-base" value={form.enrollmentNo}
-                  onChange={(e) => setForm({ ...form, enrollmentNo: e.target.value })} />
+                <input id="user-form-enrollment" name="enrollmentNo" className="input-base font-mono" value={form.enrollmentNo}
+                  onChange={(e) => setForm({ ...form, enrollmentNo: e.target.value })} placeholder="e.g. EN2024CSE001" />
               </div>
               <div>
                 <label htmlFor="user-form-semester" className="label-base">Current Semester</label>
                 <input id="user-form-semester" name="currentSemester" className="input-base" type="number" min="1" max="10"
                   value={form.currentSemester}
-                  onChange={(e) => setForm({ ...form, currentSemester: e.target.value })} />
+                  onChange={(e) => setForm({ ...form, currentSemester: e.target.value })} placeholder="e.g. 6" />
               </div>
               <div>
                 <label htmlFor="user-form-section" className="label-base">Section</label>
@@ -533,7 +993,7 @@ export default function Users() {
               <label htmlFor="user-form-section-type" className="label-base">Section Type</label>
               <select id="user-form-section-type" name="sectionType" className="select-base" value={form.sectionType}
                 onChange={(e) => setForm({ ...form, sectionType: e.target.value })}>
-                <option value="">Select type</option>
+                <option value="">Select Department Section</option>
                 {Object.entries(DEPARTMENT_LABELS).map(([key, label]) => (
                   <option key={key} value={key}>{label}</option>
                 ))}
@@ -586,7 +1046,6 @@ export default function Users() {
       >
         {!bulkResults ? (
           <div className="space-y-4">
-            {/* Header Action Bar */}
             <div className="flex items-center justify-between bg-canvas p-3 rounded-md border border-border-subtle">
               <div>
                 <p className="text-xs font-semibold text-ink-primary">Expected Columns:</p>
@@ -599,82 +1058,46 @@ export default function Users() {
                 onClick={handleDownloadTemplate}
                 className="px-2.5 py-1 bg-surface hover:bg-surface-hover border border-border-subtle text-brand text-xs font-medium rounded transition-all flex items-center gap-1.5"
               >
-                📥 Download Template
+                Download Sample CSV
               </button>
             </div>
 
-            {/* File Drop Area */}
-            <div>
-              <label htmlFor="bulk-file-upload" className="block text-xs font-semibold text-ink-primary mb-1">
-                Select CSV File from PC
-              </label>
+            <div className="border-2 border-dashed border-border-subtle hover:border-brand/40 rounded-lg p-6 text-center transition-colors">
               <input
-                id="bulk-file-upload"
-                name="csvFile"
                 type="file"
-                accept=".csv"
+                accept=".csv,text/csv"
                 onChange={handleFileSelect}
-                className="block w-full text-xs text-ink-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-brand file:text-white hover:file:bg-brand-hover cursor-pointer border border-border-subtle rounded-md p-1"
+                className="hidden"
+                id="csv-file-input"
               />
-              {fileName && (
-                <p className="text-xs text-status-success mt-1 font-medium">
-                  📄 Loaded: {fileName}
-                </p>
-              )}
-            </div>
-
-            {/* Manual CSV Textarea / Preview toggle */}
-            <div>
-              <label htmlFor="bulk-raw-csv" className="block text-xs font-semibold text-ink-primary mb-1">
-                Raw CSV Data (or Paste CSV)
+              <label htmlFor="csv-file-input" className="cursor-pointer flex flex-col items-center gap-2">
+                <HiOutlineArrowUpTray className="w-8 h-8 text-brand" />
+                <span className="text-sm font-medium text-ink-primary">
+                  {fileName || 'Click to choose or drag & drop CSV file'}
+                </span>
+                <span className="text-xs text-ink-muted">Supports .csv files up to 5MB</span>
               </label>
-              <textarea
-                id="bulk-raw-csv"
-                name="rawCsv"
-                className="input-base min-h-[100px] font-mono text-xs"
-                value={csvData}
-                onChange={(e) => {
-                  setCsvData(e.target.value);
-                  const lines = e.target.value.split(/\r?\n/).filter((l) => l.trim());
-                  if (lines.length > 1) {
-                    const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''));
-                    const rows = lines.slice(1, 11).map((line, idx) => {
-                      const cells = line.split(',').map((c) => c.trim().replace(/^"|"$/g, ''));
-                      return { rowNo: idx + 2, cells };
-                    });
-                    setPreviewRows({ headers, rows });
-                  } else {
-                    setPreviewRows({ headers: [], rows: [] });
-                  }
-                }}
-                placeholder="student_id,full_name,email,department,semester,section&#10;EN2024CSE001,Aarav Sharma,aarav.sharma@sbjain.edu.in,CSE,6,A"
-              />
             </div>
 
-            {/* Row Preview Table */}
             {previewRows?.rows?.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-ink-primary mb-1.5">
-                  🔍 Data Preview (First 10 rows):
-                </p>
-                <div className="border border-border-subtle rounded-md overflow-x-auto max-h-44 custom-scrollbar">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-ink-primary">Preview (First 10 rows):</p>
+                <div className="overflow-x-auto border border-border-subtle rounded-md max-h-48 custom-scrollbar">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-canvas border-b border-border-subtle text-ink-secondary">
+                    <thead className="bg-canvas text-ink-muted border-b border-border-subtle sticky top-0">
                       <tr>
-                        <th className="px-2.5 py-1.5 font-semibold">Row</th>
+                        <th className="p-2">#</th>
                         {previewRows.headers.map((h, i) => (
-                          <th key={i} className="px-2.5 py-1.5 font-semibold">{h}</th>
+                          <th key={i} className="p-2 font-medium">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border-subtle">
-                      {previewRows.rows.map((rowItem) => (
-                        <tr key={rowItem.rowNo} className="hover:bg-surface-hover">
-                          <td className="px-2.5 py-1 font-mono text-ink-muted text-[11px]">{rowItem.rowNo}</td>
-                          {rowItem.cells.map((cell, cIdx) => (
-                            <td key={cIdx} className="px-2.5 py-1 text-ink-primary truncate max-w-[120px]">
-                              {cell}
-                            </td>
+                      {previewRows.rows.map((r) => (
+                        <tr key={r.rowNo} className="hover:bg-canvas/50">
+                          <td className="p-2 text-ink-muted font-mono">{r.rowNo}</td>
+                          {r.cells.map((c, i) => (
+                            <td key={i} className="p-2">{c}</td>
                           ))}
                         </tr>
                       ))}
@@ -685,73 +1108,63 @@ export default function Users() {
             )}
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="flex gap-4">
-              <div className="px-4 py-3 bg-green-50 border border-green-200 rounded-md flex-1 text-center">
-                <p className="text-2xl font-bold text-status-success font-tabular">
-                  {bulkResults.createdCount ?? bulkResults.created?.length ?? 0}
-                </p>
-                <p className="text-xs font-semibold text-green-800">Students Created</p>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="p-3 bg-canvas border border-border-subtle rounded-md">
+                <p className="text-xs text-ink-muted">Processed</p>
+                <p className="text-xl font-bold text-ink-primary">{bulkResults.totalRows}</p>
               </div>
-              <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-md flex-1 text-center">
-                <p className="text-2xl font-bold text-status-rejected font-tabular">
-                  {bulkResults.failedCount ?? bulkResults.errors?.length ?? 0}
-                </p>
-                <p className="text-xs font-semibold text-red-800">Failed / Invalid Rows</p>
+              <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                <p className="text-xs text-green-700">Created</p>
+                <p className="text-xl font-bold text-green-700">{bulkResults.createdCount}</p>
+              </div>
+              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-xs text-red-700">Errors / Skipped</p>
+                <p className="text-xl font-bold text-red-700">{bulkResults.failedCount}</p>
               </div>
             </div>
 
             {bulkResults.errors?.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-status-rejected mb-1.5">
-                  ⚠️ Row Validation Failures ({bulkResults.errors.length}):
-                </p>
-                <div className="border border-red-200 bg-red-50/50 rounded-md max-h-56 overflow-y-auto custom-scrollbar p-2 space-y-1.5">
+              <div className="border border-red-200 bg-red-50/50 rounded-md p-3 max-h-44 overflow-y-auto custom-scrollbar">
+                <p className="text-xs font-bold text-red-700 mb-2">Error Details:</p>
+                <ul className="text-xs space-y-1 text-red-600">
                   {bulkResults.errors.map((err, i) => (
-                    <div key={i} className="text-xs text-status-rejected py-1 border-b border-red-200/60 last:border-0 flex items-start gap-2">
-                      <span className="font-bold px-1.5 py-0.5 bg-red-100 rounded text-[10px]">Row {err.row}</span>
-                      <div className="flex-1">
-                        <span className="font-medium text-ink-primary">{err.email}</span>: {err.reason}
-                      </div>
-                    </div>
+                    <li key={i}>
+                      Row {err.row} ({err.email}): {err.reason}
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
             )}
           </div>
         )}
       </Modal>
 
-      {/* ─── Assign Students to Class Incharge Modal ─── */}
+      {/* Class Incharge Assignment Scope Modal */}
       <Modal
         isOpen={ciModalOpen}
         onClose={() => setCiModalOpen(false)}
-        title={`Assign Students to Class Incharge: ${selectedCI?.name || ''}`}
+        title="Assign Students & Cohort to Class Incharge"
         size="lg"
         footer={
           <div className="flex items-center justify-between w-full">
-            <span className="text-xs font-semibold text-brand bg-brand-50 border border-brand/20 px-3 py-1.5 rounded-md">
-              {ciSelectedStudents.length} Students Assigned
+            <span className="text-xs text-ink-muted">
+              {ciSelectedStudents.length > 0
+                ? `${ciSelectedStudents.length} students explicitly assigned`
+                : 'All matching cohort students will be auto-assigned'}
             </span>
             <div className="flex items-center gap-2">
-              <Button variant="secondary" size="md" onClick={() => setCiModalOpen(false)}>
+              <Button variant="secondary" size="sm" onClick={() => setCiModalOpen(false)}>
                 Cancel
               </Button>
-              <Button
-                variant="primary"
-                size="md"
-                loading={ciSaving}
-                onClick={handleSaveCIAssignment}
-                icon={<HiOutlineCheckBadge className="w-4 h-4" />}
-              >
-                Save Assignment
+              <Button variant="primary" size="sm" onClick={handleSaveCIAssignment} loading={ciSaving}>
+                Save Assignment Scope
               </Button>
             </div>
           </div>
         }
       >
         <div className="space-y-4">
-          {/* Class Incharge Info Card */}
           <div className="flex items-center justify-between p-3 bg-brand-50/50 border border-brand/20 rounded-md">
             <div>
               <p className="text-xs font-bold text-brand uppercase tracking-wider">Faculty Member</p>
@@ -761,7 +1174,6 @@ export default function Users() {
             <Badge variant="warning">Class Incharge</Badge>
           </div>
 
-          {/* Filter / Scope Criteria */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-canvas border border-border-subtle rounded-md">
             <div>
               <label htmlFor="ci-program" className="label-base text-xs font-medium">
@@ -815,7 +1227,6 @@ export default function Users() {
             </div>
           </div>
 
-          {/* Student Selector Search & Bulk Select */}
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="relative flex-1 min-w-[200px]">
@@ -869,7 +1280,6 @@ export default function Users() {
               </div>
             </div>
 
-            {/* Students List Box */}
             <div className="border border-border-subtle rounded-md max-h-60 overflow-y-auto custom-scrollbar divide-y divide-border-subtle bg-surface">
               {ciLoadingStudents ? (
                 <div className="p-6 text-center text-xs text-ink-muted">Loading students roster...</div>
