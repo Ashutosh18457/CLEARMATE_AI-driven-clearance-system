@@ -21,6 +21,7 @@ import {
   HiOutlineBuildingOffice2,
   HiOutlineShieldCheck,
   HiOutlineIdentification,
+  HiOutlineCheckCircle,
 } from 'react-icons/hi2';
 
 const EMPTY_FORM = {
@@ -36,6 +37,7 @@ const EMPTY_FORM = {
   assignedProgramId: '',
   assignedSemester: '',
   assignedSection: 'all',
+  isActive: true,
 };
 
 const USER_TABS = [
@@ -139,6 +141,7 @@ export default function Users() {
     setForm({
       ...EMPTY_FORM,
       role,
+      isActive: true,
     });
     setEditing(null);
     setModalOpen(true);
@@ -158,6 +161,7 @@ export default function Users() {
       assignedProgramId: user.assignedProgramId?._id || user.assignedProgramId || '',
       assignedSemester: user.assignedSemester || '',
       assignedSection: user.assignedSection || 'all',
+      isActive: user.isActive !== false,
     });
     setEditing(user._id);
     setModalOpen(true);
@@ -216,15 +220,15 @@ export default function Users() {
     }
   };
 
-  const handleDeactivate = async (id) => {
-    const target = users.find((u) => u._id === id);
-    if (target?.role === 'admin' || target?.role === 'super_admin') {
+  const handleToggleStatus = async (user) => {
+    if (user.role === 'admin' || user.role === 'super_admin') {
       toast.error('Admin accounts cannot be deactivated');
       return;
     }
+    const isActivating = user.isActive === false;
     try {
-      await api.patch(`/admin/users/${id}/deactivate`);
-      toast.success('User status updated');
+      const res = await api.patch(`/admin/users/${user._id}/deactivate`);
+      toast.success(res.data?.message || (isActivating ? 'User account activated successfully' : 'User account deactivated'));
       fetchUsers();
     } catch (err) {
       toast.error(err.message || 'Failed to update user status');
@@ -403,11 +407,18 @@ export default function Users() {
           <Button variant="ghost" size="sm" onClick={() => openEdit(row)} title="Edit Teacher">
             <HiOutlinePencilSquare className="w-4 h-4 text-ink-secondary hover:text-brand" />
           </Button>
-          {row.isActive !== false && (
-            <Button variant="ghost" size="sm" onClick={() => handleDeactivate(row._id)} title="Deactivate">
-              <HiOutlineNoSymbol className="w-4 h-4 text-status-rejected" />
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleToggleStatus(row)}
+            title={row.isActive !== false ? 'Deactivate Account' : 'Reactivate / Enable Account'}
+          >
+            {row.isActive !== false ? (
+              <HiOutlineNoSymbol className="w-4 h-4 text-status-rejected hover:text-red-700 transition-colors" />
+            ) : (
+              <HiOutlineCheckCircle className="w-4 h-4 text-green-600 hover:text-green-700 transition-colors" />
+            )}
+          </Button>
         </div>
       ),
     },
@@ -494,11 +505,18 @@ export default function Users() {
           <Button variant="ghost" size="sm" onClick={() => openEdit(row)} title="Edit">
             <HiOutlinePencilSquare className="w-4 h-4 text-ink-secondary hover:text-brand" />
           </Button>
-          {row.isActive !== false && (
-            <Button variant="ghost" size="sm" onClick={() => handleDeactivate(row._id)} title="Deactivate">
-              <HiOutlineNoSymbol className="w-4 h-4 text-status-rejected" />
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleToggleStatus(row)}
+            title={row.isActive !== false ? 'Deactivate Account' : 'Reactivate / Enable Account'}
+          >
+            {row.isActive !== false ? (
+              <HiOutlineNoSymbol className="w-4 h-4 text-status-rejected hover:text-red-700 transition-colors" />
+            ) : (
+              <HiOutlineCheckCircle className="w-4 h-4 text-green-600 hover:text-green-700 transition-colors" />
+            )}
+          </Button>
         </div>
       ),
     },
@@ -567,11 +585,18 @@ export default function Users() {
           <Button variant="ghost" size="sm" onClick={() => openEdit(row)} title="Edit Student">
             <HiOutlinePencilSquare className="w-4 h-4 text-ink-secondary hover:text-brand" />
           </Button>
-          {row.isActive !== false && (
-            <Button variant="ghost" size="sm" onClick={() => handleDeactivate(row._id)} title="Deactivate">
-              <HiOutlineNoSymbol className="w-4 h-4 text-status-rejected" />
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleToggleStatus(row)}
+            title={row.isActive !== false ? 'Deactivate Account' : 'Reactivate / Enable Account'}
+          >
+            {row.isActive !== false ? (
+              <HiOutlineNoSymbol className="w-4 h-4 text-status-rejected hover:text-red-700 transition-colors" />
+            ) : (
+              <HiOutlineCheckCircle className="w-4 h-4 text-green-600 hover:text-green-700 transition-colors" />
+            )}
+          </Button>
         </div>
       ),
     },
@@ -628,9 +653,18 @@ export default function Users() {
           <Button variant="ghost" size="sm" onClick={() => openEdit(row)} title="Edit">
             <HiOutlinePencilSquare className="w-4 h-4 text-ink-secondary hover:text-brand" />
           </Button>
-          {row.isActive !== false && row.role !== 'admin' && row.role !== 'super_admin' && (
-            <Button variant="ghost" size="sm" onClick={() => handleDeactivate(row._id)} title="Deactivate">
-              <HiOutlineNoSymbol className="w-4 h-4 text-status-rejected" />
+          {row.role !== 'admin' && row.role !== 'super_admin' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleToggleStatus(row)}
+              title={row.isActive !== false ? 'Deactivate Account' : 'Reactivate / Enable Account'}
+            >
+              {row.isActive !== false ? (
+                <HiOutlineNoSymbol className="w-4 h-4 text-status-rejected hover:text-red-700 transition-colors" />
+              ) : (
+                <HiOutlineCheckCircle className="w-4 h-4 text-green-600 hover:text-green-700 transition-colors" />
+              )}
             </Button>
           )}
         </div>
@@ -705,12 +739,21 @@ export default function Users() {
               Assign Scope
             </button>
           )}
-          <Button variant="ghost" size="sm" onClick={() => openEdit(row)}>
+          <Button variant="ghost" size="sm" onClick={() => openEdit(row)} title="Edit User">
             <HiOutlinePencilSquare className="w-4 h-4 text-ink-secondary hover:text-brand" />
           </Button>
-          {row.isActive !== false && row.role !== 'admin' && row.role !== 'super_admin' && (
-            <Button variant="ghost" size="sm" onClick={() => handleDeactivate(row._id)}>
-              <HiOutlineNoSymbol className="w-4 h-4 text-status-rejected" />
+          {row.role !== 'admin' && row.role !== 'super_admin' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleToggleStatus(row)}
+              title={row.isActive !== false ? 'Deactivate Account' : 'Reactivate / Enable Account'}
+            >
+              {row.isActive !== false ? (
+                <HiOutlineNoSymbol className="w-4 h-4 text-status-rejected hover:text-red-700 transition-colors" />
+              ) : (
+                <HiOutlineCheckCircle className="w-4 h-4 text-green-600 hover:text-green-700 transition-colors" />
+              )}
             </Button>
           )}
         </div>
@@ -880,6 +923,21 @@ export default function Users() {
               {Object.entries(ROLE_LABELS).map(([key, label]) => (
                 <option key={key} value={key}>{label}</option>
               ))}
+            </select>
+          </div>
+
+          {/* Account Status */}
+          <div>
+            <label htmlFor="user-form-status" className="label-base font-semibold">Account Status</label>
+            <select
+              id="user-form-status"
+              name="isActive"
+              className="select-base"
+              value={form.isActive !== false ? 'true' : 'false'}
+              onChange={(e) => setForm({ ...form, isActive: e.target.value === 'true' })}
+            >
+              <option value="true">Active (Access Enabled)</option>
+              <option value="false">Inactive (Suspended)</option>
             </select>
           </div>
 

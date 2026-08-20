@@ -591,27 +591,31 @@ const adminService = {
     return user;
   },
 
-  async deactivateUser(id, requester) {
+  async toggleUserStatus(id, requester) {
     const targetUser = await User.findById(id);
     if (!targetUser) throw AppError.notFound('User not found');
 
-    if (targetUser.role === 'admin') {
+    if (targetUser.role === 'admin' || targetUser.role === 'super_admin') {
       throw AppError.badRequest('Admin accounts cannot be deactivated.');
     }
 
-    targetUser.isActive = false;
+    targetUser.isActive = targetUser.isActive === false ? true : false;
     await targetUser.save({ validateBeforeSave: false });
 
     const AuditLog = require('../models/AuditLog');
     new AuditLog({
       userId: requester ? requester.id : null,
-      action: 'account_deactivated',
+      action: targetUser.isActive ? 'account_activated' : 'account_deactivated',
       resource: 'User',
-      details: { targetUserId: id, role: targetUser.role },
+      details: { targetUserId: id, role: targetUser.role, isActive: targetUser.isActive },
     }).save().catch(() => {});
 
-    logger.info('User deactivated', { userId: id, role: targetUser.role });
+    logger.info(`User ${targetUser.isActive ? 'activated' : 'deactivated'}`, { userId: id, role: targetUser.role });
     return targetUser;
+  },
+
+  async deactivateUser(id, requester) {
+    return this.toggleUserStatus(id, requester);
   },
 
   // ══════════════════════════════════════════════

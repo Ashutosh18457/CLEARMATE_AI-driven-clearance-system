@@ -174,7 +174,8 @@ const adminController = {
   async deactivateUser(req, res, next) {
     try {
       const user = await adminService.deactivateUser(req.params.id, req.user);
-      sendSuccess(res, { data: { user }, message: 'User deactivated successfully' });
+      const actionMsg = user.isActive !== false ? 'User activated successfully' : 'User deactivated successfully';
+      sendSuccess(res, { data: { user }, message: actionMsg });
     } catch (error) { next(error); }
   },
 
