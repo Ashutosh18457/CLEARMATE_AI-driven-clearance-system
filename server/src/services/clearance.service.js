@@ -655,7 +655,6 @@ const clearanceService = {
 
     return Object.values(teacherMap);
   },
-  },
 
   /**
    * HOD final approval or rejection.
