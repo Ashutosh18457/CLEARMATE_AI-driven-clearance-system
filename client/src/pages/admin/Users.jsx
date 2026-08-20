@@ -312,17 +312,10 @@ export default function Users() {
     },
     {
       key: 'role',
-<<<<<<< HEAD
-      label: 'Role',
-      render: (val) => (
-        <Badge variant={val === 'super_admin' ? 'purple' : val === 'admin' ? 'info' : 'default'}>
-          {ROLE_LABELS[val] || val}
-        </Badge>
-=======
       label: 'Role & Assignment',
       render: (val, row) => (
         <div className="flex flex-col gap-0.5">
-          <Badge variant={val === 'admin' ? 'info' : val === 'class_incharge' ? 'warning' : 'default'}>
+          <Badge variant={val === 'super_admin' ? 'purple' : val === 'admin' ? 'info' : val === 'class_incharge' ? 'warning' : 'default'}>
             {ROLE_LABELS[val] || val}
           </Badge>
           {val === 'class_incharge' && (
@@ -333,7 +326,6 @@ export default function Users() {
             </span>
           )}
         </div>
->>>>>>> bf165cc (feat: add admin rights to assign students and sections to class incharge)
       ),
     },
     {
