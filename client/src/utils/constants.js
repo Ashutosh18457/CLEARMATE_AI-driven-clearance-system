@@ -8,6 +8,7 @@ export const ROLES = {
   CLASS_INCHARGE: 'class_incharge',
   HOD: 'hod',
   ADMIN: 'admin',
+  SUPER_ADMIN: 'super_admin',
 };
 
 export const ROLE_LABELS = {
@@ -18,7 +19,7 @@ export const ROLE_LABELS = {
   [ROLES.BUS_SECTION]: 'Bus Section',
   [ROLES.CLASS_INCHARGE]: 'Class Incharge',
   [ROLES.HOD]: 'HOD',
-  [ROLES.ADMIN]: 'Admin',
+  [ROLES.ADMIN]: 'Department Admin',
 };
 
 // ─── Role → Dashboard route mapping ───
@@ -31,6 +32,7 @@ export const ROLE_DASHBOARD_ROUTES = {
   [ROLES.CLASS_INCHARGE]: '/class-incharge',
   [ROLES.HOD]: '/hod',
   [ROLES.ADMIN]: '/admin',
+  [ROLES.SUPER_ADMIN]: '/super-admin',
 };
 
 // ─── Clearance Request Statuses ───

@@ -37,11 +37,16 @@ const adminService = {
         { department: { $regex: filters.search, $options: 'i' } },
       ];
     }
-    return await Program.find(query).sort({ degree: 1, name: 1 });
+    return await Program.find(query)
+      .populate('departmentAdminId', 'name email role')
+      .populate('hodId', 'name email role')
+      .sort({ degree: 1, name: 1 });
   },
 
   async getProgramById(id) {
-    const program = await Program.findById(id);
+    const program = await Program.findById(id)
+      .populate('departmentAdminId', 'name email role')
+      .populate('hodId', 'name email role');
     if (!program) throw AppError.notFound('Program not found');
     return program;
   },
@@ -50,8 +55,19 @@ const adminService = {
     const program = await Program.findByIdAndUpdate(id, data, {
       new: true,
       runValidators: true,
-    });
+    })
+      .populate('departmentAdminId', 'name email role')
+      .populate('hodId', 'name email role');
     if (!program) throw AppError.notFound('Program not found');
+
+    // Bi-directional sync: if departmentAdminId is set, update User's programId
+    if (data.departmentAdminId) {
+      await User.findByIdAndUpdate(data.departmentAdminId, { programId: id });
+    }
+    if (data.hodId) {
+      await User.findByIdAndUpdate(data.hodId, { programId: id });
+    }
+
     logger.info('Program updated', { programId: id });
     return program;
   },
@@ -649,6 +665,40 @@ const adminService = {
     if (!item) throw AppError.notFound('Clearance item not found');
     logger.info('ClearanceItem deleted', { itemId: id, title: item.title });
     return item;
+  },
+
+  // ══════════════════════════════════════════════
+  // AUDIT LOGS (Super Admin)
+  // ══════════════════════════════════════════════
+
+  async getAuditLogs(filters = {}) {
+    const page = parseInt(filters.page, 10) || 1;
+    const limit = parseInt(filters.limit, 10) || 20;
+    const skip = (page - 1) * limit;
+
+    const query = {};
+    if (filters.action) query.action = filters.action;
+    if (filters.userId) query.userId = filters.userId;
+
+    const AuditLog = require('../models/AuditLog');
+    const [logs, total] = await Promise.all([
+      AuditLog.find(query)
+        .populate('userId', 'name email role')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      AuditLog.countDocuments(query),
+    ]);
+
+    return {
+      logs,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    };
   },
 };
 

@@ -39,6 +39,16 @@ const programSchema = new mongoose.Schema(
       required: [true, 'Department is required'],
       trim: true,
     },
+    departmentAdminId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+    },
+    hodId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+    },
     isActive: {
       type: Boolean,
       default: true,

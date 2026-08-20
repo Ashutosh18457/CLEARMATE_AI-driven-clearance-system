@@ -1,7 +1,9 @@
 const Notification = require('../models/Notification');
+const User = require('../models/User');
 const AppError = require('../utils/AppError');
 const logger = require('../config/logger');
 const { emitToUser, emitToUsers } = require('../config/socket');
+const emailService = require('./email.service');
 
 const notificationService = {
   /**
@@ -180,12 +182,31 @@ const notificationService = {
   },
 
   async notifyItemClearanceRejected(studentId, itemTitle, remarks) {
-    return this.createNotification(studentId, {
+    // 1. In-app notification
+    const notification = await this.createNotification(studentId, {
       title: 'Clearance Item Rejected ❌',
       message: `"${itemTitle}" was rejected.${remarks ? ` Reason: ${remarks}` : ''} Your clearance has been halted.`,
       type: 'error',
       link: '/dashboard/clearance',
     });
+
+    // 2. Email notification (fire-and-forget)
+    try {
+      const student = await User.findById(studentId).select('email name');
+      if (student && student.email) {
+        emailService.sendClearanceRejectionEmail({
+          email: student.email,
+          name: student.name,
+          itemTitle,
+          stage: 'Items Review',
+          remarks,
+        });
+      }
+    } catch (err) {
+      logger.error('Failed to send item rejection email', { studentId, error: err.message });
+    }
+
+    return notification;
   },
 
   async notifyStageAdvanced(studentId, newStage) {
@@ -205,30 +226,83 @@ const notificationService = {
   },
 
   async notifyClearanceCompleted(studentId) {
-    return this.createNotification(studentId, {
+    // 1. In-app notification
+    const notification = await this.createNotification(studentId, {
       title: 'Clearance Complete! 🎓',
       message: 'Congratulations! Your semester clearance is complete. Your certificate will be generated shortly.',
       type: 'success',
       link: '/dashboard/clearance',
     });
+
+    // 2. Email notification (fire-and-forget)
+    try {
+      const student = await User.findById(studentId).select('email name');
+      if (student && student.email) {
+        emailService.sendClearanceCompletedEmail({
+          email: student.email,
+          name: student.name,
+        });
+      }
+    } catch (err) {
+      logger.error('Failed to send clearance completion email', { studentId, error: err.message });
+    }
+
+    return notification;
   },
 
   async notifyClearanceRejected(studentId, stage, remarks) {
-    return this.createNotification(studentId, {
+    // 1. In-app notification
+    const notification = await this.createNotification(studentId, {
       title: 'Clearance Rejected ❌',
       message: `Your clearance was rejected at the ${stage} stage.${remarks ? ` Reason: ${remarks}` : ''} Please resolve the issue and re-initiate.`,
       type: 'error',
       link: '/dashboard/clearance',
     });
+
+    // 2. Email notification (fire-and-forget)
+    try {
+      const student = await User.findById(studentId).select('email name');
+      if (student && student.email) {
+        emailService.sendClearanceRejectionEmail({
+          email: student.email,
+          name: student.name,
+          itemTitle: `Clearance Request`,
+          stage,
+          remarks,
+        });
+      }
+    } catch (err) {
+      logger.error('Failed to send clearance rejection email', { studentId, error: err.message });
+    }
+
+    return notification;
   },
 
   async notifyTeacherNewClearanceItem(teacherId, studentName, itemTitle) {
-    return this.createNotification(teacherId, {
+    // 1. In-app notification
+    const notification = await this.createNotification(teacherId, {
       title: 'New Clearance Review 📋',
       message: `${studentName} has initiated clearance. Please review "${itemTitle}".`,
       type: 'info',
       link: '/dashboard/clearance-reviews',
     });
+
+    // 2. Email notification (fire-and-forget)
+    try {
+      const teacher = await User.findById(teacherId).select('email name');
+      if (teacher && teacher.email) {
+        emailService.sendReviewRequestEmail({
+          email: teacher.email,
+          name: teacher.name,
+          studentName,
+          itemTitle,
+        });
+      }
+    } catch (err) {
+      logger.error('Failed to send review request email', { teacherId, error: err.message });
+    }
+
+    return notification;
   },
 };
 

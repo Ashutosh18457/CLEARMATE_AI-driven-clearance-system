@@ -41,8 +41,10 @@ const ClassInchargeDashboard = lazy(() => import('./pages/class-incharge/ClassIn
 // HOD
 const HODDashboard = lazy(() => import('./pages/hod/HODDashboard'));
 
-// Admin
+// Admin & Super Admin
+const SuperAdminDashboard = lazy(() => import('./pages/admin/SuperAdminDashboard'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const AuditLogs = lazy(() => import('./pages/admin/AuditLogs'));
 const Programs = lazy(() => import('./pages/admin/Programs'));
 const Semesters = lazy(() => import('./pages/admin/Semesters'));
 const Batches = lazy(() => import('./pages/admin/Batches'));
@@ -265,11 +267,29 @@ export default function App() {
             }
           />
 
+          {/* ─── Super Admin Routes ─── */}
+          <Route
+            path="/super-admin"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>
+                <SuperAdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/super-admin/audit"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+                <AuditLogs />
+              </ProtectedRoute>
+            }
+          />
+
           {/* ─── Admin Routes ─── */}
           <Route
             path="/admin"
             element={
-              <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
                 <AdminDashboard />
               </ProtectedRoute>
             }
@@ -277,7 +297,7 @@ export default function App() {
           <Route
             path="/admin/programs"
             element={
-              <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
                 <Programs />
               </ProtectedRoute>
             }
@@ -285,7 +305,7 @@ export default function App() {
           <Route
             path="/admin/semesters"
             element={
-              <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
                 <Semesters />
               </ProtectedRoute>
             }
@@ -293,7 +313,7 @@ export default function App() {
           <Route
             path="/admin/batches"
             element={
-              <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
                 <Batches />
               </ProtectedRoute>
             }
@@ -301,7 +321,7 @@ export default function App() {
           <Route
             path="/admin/users"
             element={
-              <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
                 <Users />
               </ProtectedRoute>
             }
@@ -309,7 +329,7 @@ export default function App() {
           <Route
             path="/admin/clearance-items"
             element={
-              <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
                 <ClearanceItems />
               </ProtectedRoute>
             }

@@ -311,7 +311,14 @@ export default function LoginPage() {
                 onClick={() => { setEmail('admin@sbjit.edu.in'); setPassword('Password123!'); }}
                 className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all"
               >
-                ⚙️ Admin
+                👑 Super Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => { setEmail('deptadmin@sbjit.edu.in'); setPassword('Password123!'); }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all"
+              >
+                ⚙️ Dept Admin
               </button>
             </div>
           </div>

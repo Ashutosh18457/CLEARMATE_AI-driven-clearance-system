@@ -4,8 +4,8 @@ const { protect, restrictTo } = require('../middleware/auth');
 
 const router = express.Router();
 
-// All analytics routes require authentication + admin or hod role
-router.use(protect, restrictTo('admin', 'hod'));
+// All analytics routes require authentication + admin, super_admin, or hod role
+router.use(protect, restrictTo('admin', 'super_admin', 'hod'));
 
 router.get('/clearance-overview', analyticsController.getClearanceOverview);
 router.get('/stage-distribution', analyticsController.getStageDistribution);

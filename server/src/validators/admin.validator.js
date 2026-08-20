@@ -23,6 +23,8 @@ const adminValidator = {
     totalSemesters: Joi.number().integer().min(1).max(12).optional().default(8),
     department: Joi.string().trim().required()
       .messages({ 'any.required': 'Department is required' }),
+    departmentAdminId: objectId.optional().allow('', null),
+    hodId: objectId.optional().allow('', null),
     isActive: Joi.boolean().optional(),
   }),
 
@@ -33,6 +35,8 @@ const adminValidator = {
     branch: Joi.string().trim().optional().allow('', null),
     totalSemesters: Joi.number().integer().min(1).max(12).optional(),
     department: Joi.string().trim(),
+    departmentAdminId: objectId.optional().allow('', null),
+    hodId: objectId.optional().allow('', null),
     isActive: Joi.boolean(),
   }).min(1).messages({ 'object.min': 'At least one field must be provided for update' }),
 
@@ -94,9 +98,9 @@ const adminValidator = {
       .messages({ 'any.required': 'Email is required' }),
     password: Joi.string().min(8).optional().default('Pass@123')
       .messages({ 'string.min': 'Password must be at least 8 characters' }),
-    role: Joi.string().valid('student', 'teacher', 'section_head', 'account_section', 'bus_section', 'class_incharge', 'hod', 'admin').required()
+    role: Joi.string().valid('student', 'teacher', 'section_head', 'account_section', 'bus_section', 'class_incharge', 'hod', 'admin', 'super_admin').required()
       .messages({ 'any.required': 'Role is required' }),
-    // Student-specific (optional defaults if omitted)
+    // Student, Admin, HOD-specific
     programId: objectId.optional().allow('', null),
     enrollmentNo: Joi.string().trim().optional().allow('', null),
     currentSemester: Joi.number().integer().min(1).max(10).optional().allow('', null),
@@ -127,7 +131,7 @@ const adminValidator = {
     name: Joi.string().trim().max(100),
     email: Joi.string().email(),
     password: Joi.string().min(8).optional().allow('', null),
-    role: Joi.string().valid('student', 'teacher', 'section_head', 'account_section', 'bus_section', 'class_incharge', 'hod', 'admin'),
+    role: Joi.string().valid('student', 'teacher', 'section_head', 'account_section', 'bus_section', 'class_incharge', 'hod', 'admin', 'super_admin'),
     programId: objectId.optional().allow('', null),
     enrollmentNo: Joi.string().trim().optional().allow('', null),
     currentSemester: Joi.number().integer().min(1).max(10).optional().allow('', null),

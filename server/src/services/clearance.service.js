@@ -10,6 +10,7 @@ const Batch = require('../models/Batch');
 const AppError = require('../utils/AppError');
 const logger = require('../config/logger');
 const notificationService = require('./notification.service');
+const auditService = require('./audit.service');
 
 const SECTION_DEPARTMENTS = ['library', 'accounts', 'bus'];
 
@@ -141,14 +142,66 @@ const clearanceService = {
       if (existing.status !== 'rejected') {
         throw AppError.badRequest('A clearance request is already in progress for this semester');
       }
-      // If rejected, delete old records and allow re-initiation
-      await ItemClearance.deleteMany({ clearanceRequestId: existing._id });
-      await SectionClearance.deleteMany({ clearanceRequestId: existing._id });
-      await ClearanceRequest.findByIdAndDelete(existing._id);
-      logger.info('Previous rejected clearance cleaned up for re-initiation', { studentId, semesterId: semester._id });
+
+      // NON-DESTRUCTIVE RE-INITIATION:
+      // Only reset rejected items back to pending; preserve all approved records.
+      const [resetItems, resetSections] = await Promise.all([
+        ItemClearance.updateMany(
+          { clearanceRequestId: existing._id, status: 'rejected' },
+          { $set: { status: 'pending', remarks: '', reviewedAt: null } }
+        ),
+        SectionClearance.updateMany(
+          { clearanceRequestId: existing._id, status: 'rejected' },
+          { $set: { status: 'pending', remarks: '', reviewerId: null, reviewedAt: null } }
+        ),
+      ]);
+
+      // Determine which stage to resume from based on remaining pending items
+      const pendingItems = await ItemClearance.countDocuments({
+        clearanceRequestId: existing._id,
+        status: 'pending',
+      });
+
+      let resumeStatus = 'items_review';
+      let resumeStage = 'items';
+      if (pendingItems === 0) {
+        // All items are approved; check sections
+        const pendingSections = await SectionClearance.countDocuments({
+          clearanceRequestId: existing._id,
+          status: 'pending',
+        });
+        if (pendingSections === 0) {
+          resumeStatus = 'ci_review';
+          resumeStage = 'class_incharge';
+        } else {
+          resumeStatus = 'sections_review';
+          resumeStage = 'sections';
+        }
+      }
+
+      existing.status = resumeStatus;
+      existing.currentStage = resumeStage;
+      await existing.save();
+
+      logger.info('Clearance re-initiated (non-destructive)', {
+        requestId: existing._id,
+        studentId,
+        resetItems: resetItems.modifiedCount,
+        resetSections: resetSections.modifiedCount,
+        resumeStatus,
+      });
+
+      return {
+        clearanceRequest: existing,
+        itemClearancesCreated: 0,
+        sectionClearancesCreated: 0,
+        reInitiated: true,
+        resetItemCount: resetItems.modifiedCount,
+        resetSectionCount: resetSections.modifiedCount,
+      };
     }
 
-    // 5. Create the ClearanceRequest
+    // 4. Create the ClearanceRequest (first-time initiation)
     const clearanceRequest = await ClearanceRequest.create({
       studentId,
       semesterId: semester._id,
@@ -196,6 +249,14 @@ const clearanceService = {
       studentId,
       semesterId: semester._id,
       itemClearancesCreated: itemClearances.length,
+    });
+
+    // Audit log
+    auditService.logAction(studentId, 'clearance.initiate', {
+      resource: 'ClearanceRequest',
+      targetId: clearanceRequest._id,
+      targetModel: 'ClearanceRequest',
+      details: { semesterId: semester._id, itemClearancesCreated: itemClearances.length },
     });
 
     return {
@@ -295,6 +356,16 @@ const clearanceService = {
       teacherId,
       status,
       studentId: itemClearance.studentId,
+    });
+
+    // Audit log
+    auditService.logAction(teacherId, `item.${status}`, {
+      resource: 'ItemClearance',
+      targetId: itemClearance._id,
+      targetModel: 'ItemClearance',
+      oldValue: { status: 'pending' },
+      newValue: { status, remarks: remarks || '' },
+      details: { itemTitle: itemClearance.itemTitle, studentId: itemClearance.studentId },
     });
 
     // Handle stage advancement or rejection
@@ -399,13 +470,27 @@ const clearanceService = {
   // ══════════════════════════════════════════════
 
   /**
-   * Gets all clearances pending CI review.
+   * Gets clearances pending CI review, scoped to the CI's section.
+   * @param {string} classInchargeId - The CI user's ID for scope lookup
    */
-  async getPendingCIReviews() {
-    return await ClearanceRequest.find({ status: 'ci_review' })
-      .populate('studentId', 'name email enrollmentNo section')
+  async getPendingCIReviews(classInchargeId) {
+    // Lookup the CI's section to scope results
+    const ciUser = await User.findById(classInchargeId).select('section programId');
+    const query = { status: 'ci_review' };
+
+    let results = await ClearanceRequest.find(query)
+      .populate('studentId', 'name email enrollmentNo section programId')
       .populate('semesterId', 'name semNumber academicYear')
       .sort({ createdAt: 1 });
+
+    // Filter by CI's section if available (scoped authorization)
+    if (ciUser && ciUser.section) {
+      results = results.filter(
+        (r) => r.studentId && r.studentId.section === ciUser.section
+      );
+    }
+
+    return results;
   },
 
   /**
@@ -452,7 +537,9 @@ const clearanceService = {
   // ══════════════════════════════════════════════
 
   /**
-   * Gets all clearances pending HOD review with full teacher item clearances breakdown.
+  /**
+   * Gets clearances pending HOD review with full teacher item clearances breakdown, scoped to the HOD's program.
+   * @param {string} hodId - The HOD user's ID for scope lookup
    */
   async getPendingHODReviews(hodId) {
     let query = { status: 'hod_review' };
@@ -560,6 +647,7 @@ const clearanceService = {
 
     return Object.values(teacherMap);
   },
+  },
 
   /**
    * HOD final approval or rejection.
@@ -595,6 +683,15 @@ const clearanceService = {
         studentId: clearanceRequest.studentId,
       });
       await notificationService.notifyClearanceCompleted(clearanceRequest.studentId);
+
+      // Audit log for clearance completion
+      auditService.logAction(hodId, 'clearance.completed', {
+        resource: 'ClearanceRequest',
+        targetId: clearanceRequest._id,
+        targetModel: 'ClearanceRequest',
+        newValue: { status: 'completed' },
+        details: { studentId: clearanceRequest.studentId },
+      });
     }
 
     return clearanceRequest;

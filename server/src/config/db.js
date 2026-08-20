@@ -40,7 +40,8 @@ const autoSeed = async () => {
     }
 
     const demoUsers = [
-      { name: 'Admin User', email: 'admin@sbjit.edu.in', password: 'Password123!', role: 'admin' },
+      { name: 'Super Admin', email: 'admin@sbjit.edu.in', password: 'Password123!', role: 'super_admin' },
+      { name: 'Dept Admin (CSE)', email: 'deptadmin@sbjit.edu.in', password: 'Password123!', role: 'admin' },
       { name: 'Prof. Sharma', email: 'teacher@sbjit.edu.in', password: 'Password123!', role: 'teacher' },
       {
         name: 'Rahul Verma',

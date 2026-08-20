@@ -110,9 +110,11 @@ export default function Users() {
       }
       if (payload.role !== 'student') {
         delete payload.enrollmentNo;
-        delete payload.programId;
         delete payload.currentSemester;
         delete payload.section;
+      }
+      if (payload.role !== 'student' && payload.role !== 'admin' && payload.role !== 'hod') {
+        delete payload.programId;
       }
       if (payload.role !== 'section_head') {
         delete payload.sectionType;
@@ -246,7 +248,7 @@ export default function Users() {
       key: 'role',
       label: 'Role',
       render: (val) => (
-        <Badge variant={val === 'admin' ? 'info' : 'default'}>
+        <Badge variant={val === 'super_admin' ? 'purple' : val === 'admin' ? 'info' : 'default'}>
           {ROLE_LABELS[val] || val}
         </Badge>
       ),
@@ -390,6 +392,33 @@ export default function Users() {
             </select>
           </div>
 
+          {/* Admin / HOD / Student Branch & Program selector */}
+          {(form.role === 'admin' || form.role === 'hod' || form.role === 'student') && (
+            <div>
+              <label htmlFor="user-form-program" className="label-base font-semibold">
+                {form.role === 'admin'
+                  ? '🛡️ Assigned Branch / Department (Admin Scope)'
+                  : form.role === 'hod'
+                  ? '👨‍💼 Assigned Department (HOD Scope)'
+                  : '🎓 Academic Program'}
+              </label>
+              <select
+                id="user-form-program"
+                name="programId"
+                className="select-base"
+                value={form.programId}
+                onChange={(e) => setForm({ ...form, programId: e.target.value })}
+              >
+                <option value="">-- Select Branch / Program --</option>
+                {programs.map((p) => (
+                  <option key={p._id} value={p._id}>
+                    {p.name} ({p.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Student-specific fields */}
           {form.role === 'student' && (
             <>
@@ -397,16 +426,6 @@ export default function Users() {
                 <label htmlFor="user-form-enrollment" className="label-base">Enrollment No</label>
                 <input id="user-form-enrollment" name="enrollmentNo" className="input-base" value={form.enrollmentNo}
                   onChange={(e) => setForm({ ...form, enrollmentNo: e.target.value })} />
-              </div>
-              <div>
-                <label htmlFor="user-form-program" className="label-base">Program</label>
-                <select id="user-form-program" name="programId" className="select-base" value={form.programId}
-                  onChange={(e) => setForm({ ...form, programId: e.target.value })}>
-                  <option value="">Select program</option>
-                  {programs.map((p) => (
-                    <option key={p._id} value={p._id}>{p.name} ({p.code})</option>
-                  ))}
-                </select>
               </div>
               <div>
                 <label htmlFor="user-form-semester" className="label-base">Current Semester</label>

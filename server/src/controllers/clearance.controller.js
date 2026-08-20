@@ -93,7 +93,7 @@ const clearanceController = {
   /** @route GET /api/clearances/ci/pending */
   async getPendingCIReviews(req, res, next) {
     try {
-      const requests = await clearanceService.getPendingCIReviews();
+      const requests = await clearanceService.getPendingCIReviews(req.user.id);
       sendSuccess(res, { data: requests, message: 'Pending CI reviews retrieved' });
     } catch (error) { next(error); }
   },

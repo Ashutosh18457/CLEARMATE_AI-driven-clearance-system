@@ -109,11 +109,15 @@ const EMPTY_FORM = {
   code: '',
   department: 'Computer Science',
   totalSemesters: 8,
+  departmentAdminId: '',
+  hodId: '',
   isActive: true,
 };
 
 export default function Programs() {
   const [programs, setPrograms] = useState([]);
+  const [admins, setAdmins] = useState([]);
+  const [hods, setHods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [search, setSearch] = useState('');
@@ -123,6 +127,19 @@ export default function Programs() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+
+  const fetchStaff = useCallback(async () => {
+    try {
+      const [adminRes, hodRes] = await Promise.all([
+        api.get('/admin/users', { params: { role: 'admin', limit: 100 } }),
+        api.get('/admin/users', { params: { role: 'hod', limit: 100 } }),
+      ]);
+      setAdmins(adminRes.data.data?.users || adminRes.data.data || []);
+      setHods(hodRes.data.data?.users || hodRes.data.data || []);
+    } catch {
+      /* non-critical */
+    }
+  }, []);
 
   const fetchPrograms = useCallback(async () => {
     setLoading(true);
@@ -138,7 +155,8 @@ export default function Programs() {
 
   useEffect(() => {
     fetchPrograms();
-  }, [fetchPrograms]);
+    fetchStaff();
+  }, [fetchPrograms, fetchStaff]);
 
   // Compute live branch counts per degree category
   const categoryCounts = useMemo(() => {
@@ -181,6 +199,8 @@ export default function Programs() {
       code: program.code,
       department: program.department,
       totalSemesters: program.totalSemesters || 8,
+      departmentAdminId: program.departmentAdminId?._id || program.departmentAdminId || '',
+      hodId: program.hodId?._id || program.hodId || '',
       isActive: program.isActive !== false,
     });
     setEditing(program._id);
@@ -311,6 +331,50 @@ export default function Programs() {
             {sems} Sem ({years} Yrs)
           </span>
         );
+      },
+    },
+    {
+      key: 'departmentAdminId',
+      label: 'Dept Admin (Manager)',
+      render: (val, row) => {
+        if (val && val.name) {
+          return (
+            <div>
+              <p className="text-xs font-semibold text-ink-primary flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-purple-600"></span>
+                {val.name}
+              </p>
+              <p className="text-2xs text-ink-muted">{val.email}</p>
+            </div>
+          );
+        }
+        return (
+          <button
+            type="button"
+            onClick={() => openEdit(row)}
+            className="text-2xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded border border-amber-200 transition-colors"
+          >
+            + Assign Admin
+          </button>
+        );
+      },
+    },
+    {
+      key: 'hodId',
+      label: 'Head of Dept (HOD)',
+      render: (val, row) => {
+        if (val && val.name) {
+          return (
+            <div>
+              <p className="text-xs font-semibold text-ink-primary flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                {val.name}
+              </p>
+              <p className="text-2xs text-ink-muted">{val.email}</p>
+            </div>
+          );
+        }
+        return <span className="text-2xs text-ink-muted">Unassigned</span>;
       },
     },
     {
@@ -557,6 +621,49 @@ export default function Programs() {
                 value={form.totalSemesters}
                 onChange={(e) => setForm({ ...form, totalSemesters: e.target.value })}
               />
+            </div>
+          </div>
+
+          {/* Department Admin & HOD Assignment */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 bg-canvas border border-border-subtle rounded-lg">
+            <div>
+              <label htmlFor="modal-deptAdmin" className="label-base text-purple-900 font-semibold">
+                🛡️ Assigned Department Admin
+              </label>
+              <select
+                id="modal-deptAdmin"
+                name="departmentAdminId"
+                className="select-base text-xs"
+                value={form.departmentAdminId || ''}
+                onChange={(e) => setForm({ ...form, departmentAdminId: e.target.value })}
+              >
+                <option value="">-- Unassigned --</option>
+                {admins.map((adm) => (
+                  <option key={adm._id} value={adm._id}>
+                    {adm.name} ({adm.email})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="modal-hod" className="label-base text-blue-900 font-semibold">
+                👨‍💼 Head of Department (HOD)
+              </label>
+              <select
+                id="modal-hod"
+                name="hodId"
+                className="select-base text-xs"
+                value={form.hodId || ''}
+                onChange={(e) => setForm({ ...form, hodId: e.target.value })}
+              >
+                <option value="">-- Unassigned --</option>
+                {hods.map((h) => (
+                  <option key={h._id} value={h._id}>
+                    {h.name} ({h.email})
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 

@@ -47,11 +47,17 @@ const seedDatabase = async () => {
       });
     }
 
-    // 2. Create Demo Accounts for all 6 Roles
+    // 2. Create Demo Accounts for all Roles
     const users = [
       {
-        name: 'Admin User',
+        name: 'Super Admin',
         email: 'admin@sbjit.edu.in',
+        password: 'Password123!',
+        role: 'super_admin',
+      },
+      {
+        name: 'Dept Admin (CSE)',
+        email: 'deptadmin@sbjit.edu.in',
         password: 'Password123!',
         role: 'admin',
       },
@@ -101,12 +107,13 @@ const seedDatabase = async () => {
     console.log('-------------------------------------------');
     console.log('Demo Login Credentials (Password for all: Password123!):');
     console.log('-------------------------------------------');
-    console.log('⚙️ Admin:          admin@sbjit.edu.in');
-    console.log('🎓 Student:        student@sbjit.edu.in');
-    console.log('👩‍🏫 Teacher:        teacher@sbjit.edu.in');
-    console.log('📚 Section Head:   library@sbjit.edu.in');
-    console.log('👔 Class Incharge: ci@sbjit.edu.in');
-    console.log('👨‍💼 HOD:            hod@sbjit.edu.in');
+    console.log('👑 Super Admin:     admin@sbjit.edu.in');
+    console.log('⚙️ Dept Admin:      deptadmin@sbjit.edu.in');
+    console.log('🎓 Student:         student@sbjit.edu.in');
+    console.log('👩‍🏫 Teacher:         teacher@sbjit.edu.in');
+    console.log('📚 Section Head:    library@sbjit.edu.in');
+    console.log('👔 Class Incharge:  ci@sbjit.edu.in');
+    console.log('👨‍💼 HOD:             hod@sbjit.edu.in');
     console.log('-------------------------------------------');
 
     process.exit(0);

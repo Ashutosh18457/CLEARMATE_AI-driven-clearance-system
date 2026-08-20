@@ -213,6 +213,14 @@ const adminController = {
       sendSuccess(res, { message: 'Clearance item deleted successfully' });
     } catch (error) { next(error); }
   },
+
+  /** @route GET /api/admin/audit-logs */
+  async getAuditLogs(req, res, next) {
+    try {
+      const data = await adminService.getAuditLogs(req.query);
+      sendSuccess(res, { data, message: 'Audit logs retrieved' });
+    } catch (error) { next(error); }
+  },
 };
 
 module.exports = adminController;

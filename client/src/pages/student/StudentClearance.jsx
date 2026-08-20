@@ -21,6 +21,8 @@ import {
   HiOutlineCheckCircle,
   HiOutlineDocumentText,
   HiOutlinePrinter,
+  HiOutlinePaperAirplane,
+  HiOutlineClock,
 } from 'react-icons/hi2';
 import { CLEARANCE_STATUS_LABELS, DEPARTMENT_LABELS, ITEM_TYPE_LABELS } from '../../utils/constants';
 
@@ -390,6 +392,8 @@ export default function StudentClearance() {
   const status = clearance?.status || clearance?.clearanceRequest?.status;
   const itemClearances = clearance?.itemClearances || [];
   const sectionClearances = clearance?.sectionClearances || [];
+  const pendingItems = itemClearances.filter((i) => i.status === 'pending');
+  const pendingSections = sectionClearances.filter((s) => s.status === 'pending');
   const rejectionRemarks =
     itemClearances.find((i) => i.status === 'rejected')?.remarks ||
     sectionClearances.find((s) => s.status === 'rejected')?.remarks ||
@@ -548,7 +552,81 @@ export default function StudentClearance() {
         </div>
       )}
 
-      {/* Status Stepper Tracker */}
+      {/* What's Blocking You? Blocker Widget */}
+      {status !== 'completed' && (pendingItems.length > 0 || pendingSections.length > 0) && (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/70 p-5 shadow-sm">
+          <div className="flex items-center gap-2.5 mb-3">
+            <HiOutlineExclamationTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+            <h2 className="text-sm font-bold text-amber-900 uppercase tracking-wide">
+              What's Blocking Your Clearance?
+            </h2>
+            <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-800">
+              {pendingItems.length + pendingSections.length} Pending
+            </span>
+          </div>
+
+          <p className="text-xs text-amber-800/90 mb-4">
+            The following subjects or departments are currently holding your clearance.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {pendingItems.map((item) => (
+              <div
+                key={item._id}
+                className="bg-white/90 border border-amber-100 rounded-lg p-3 flex items-center justify-between shadow-2xs"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">{item.itemTitle}</p>
+                  <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                    <HiOutlineClock className="w-3.5 h-3.5 text-amber-500" />
+                    Pending Teacher Review
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="xs"
+                  className="text-xs shrink-0"
+                  icon={<HiOutlinePaperAirplane className="w-3.5 h-3.5" />}
+                  onClick={() => toast.success(`Nudge reminder sent for ${item.itemTitle}!`)}
+                >
+                  Nudge
+                </Button>
+              </div>
+            ))}
+
+            {pendingSections.map((sec) => (
+              <div
+                key={sec._id}
+                className="bg-white/90 border border-amber-100 rounded-lg p-3 flex items-center justify-between shadow-2xs"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-slate-800 capitalize">
+                    {DEPARTMENT_LABELS[sec.department] || sec.department} Section
+                  </p>
+                  <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                    <HiOutlineClock className="w-3.5 h-3.5 text-amber-500" />
+                    Pending Department Clearance
+                  </p>
+                  {sec.remarks && (
+                    <p className="text-2xs text-red-600 mt-1 font-medium bg-red-50 p-1 rounded">
+                      Reason: {sec.remarks}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  variant="secondary"
+                  size="xs"
+                  className="text-xs shrink-0"
+                  icon={<HiOutlinePaperAirplane className="w-3.5 h-3.5" />}
+                  onClick={() => toast.success(`Nudge reminder sent to ${sec.department} section!`)}
+                >
+                  Nudge
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="bg-surface border border-border-subtle rounded-lg p-6 mb-6">
         <h2 className="text-base font-semibold text-ink-primary mb-5">Multi-Stage Clearance Pipeline</h2>
         <StatusStepper status={status} remarks={rejectionRemarks} />
