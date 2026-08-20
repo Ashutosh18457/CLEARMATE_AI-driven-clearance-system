@@ -1,20 +1,51 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import api from '../api/axios';
+import toast from 'react-hot-toast';
 
 const AuthContext = createContext(null);
 
+const INACTIVITY_TIMEOUT_MS = 25 * 60 * 1000; // 25 minutes of inactivity
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const stored = localStorage.getItem('clearmate_user');
+    const stored = sessionStorage.getItem('clearmate_user') || localStorage.getItem('clearmate_user');
     return stored ? JSON.parse(stored) : null;
   });
-  const [token, setToken] = useState(() => localStorage.getItem('clearmate_token'));
-  const [loading, setLoading] = useState(true);
 
-  // Verify token on mount
+  const [token, setToken] = useState(() => {
+    return sessionStorage.getItem('clearmate_token') || localStorage.getItem('clearmate_token');
+  });
+
+  const [loading, setLoading] = useState(true);
+  const activityTimerRef = useRef(null);
+
+  const clearAuthStorage = useCallback(() => {
+    sessionStorage.removeItem('clearmate_token');
+    sessionStorage.removeItem('clearmate_user');
+    localStorage.removeItem('clearmate_token');
+    localStorage.removeItem('clearmate_user');
+    localStorage.removeItem('token');
+  }, []);
+
+  const logout = useCallback((reason) => {
+    setUser(null);
+    setToken(null);
+    clearAuthStorage();
+    if (activityTimerRef.current) {
+      clearTimeout(activityTimerRef.current);
+    }
+    if (reason) {
+      toast.error(reason);
+    }
+  }, [clearAuthStorage]);
+
+  // ─── Verify token on mount ───
   useEffect(() => {
     const verifyAuth = async () => {
-      if (!token) {
+      const currentToken = sessionStorage.getItem('clearmate_token') || localStorage.getItem('clearmate_token');
+      if (!currentToken) {
+        setUser(null);
+        setToken(null);
         setLoading(false);
         return;
       }
@@ -22,27 +53,59 @@ export function AuthProvider({ children }) {
         const res = await api.get('/auth/me');
         const userData = res.data.data.user || res.data.data;
         setUser(userData);
-        localStorage.setItem('clearmate_user', JSON.stringify(userData));
-      } catch {
-        // Token invalid or expired — clean up
-        setUser(null);
-        setToken(null);
+        // Persist strictly in sessionStorage for session-only isolation
+        sessionStorage.setItem('clearmate_user', JSON.stringify(userData));
+        sessionStorage.setItem('clearmate_token', currentToken);
         localStorage.removeItem('clearmate_token');
         localStorage.removeItem('clearmate_user');
+      } catch {
+        // Token invalid or expired — clean up immediately
+        logout('Session expired. Please log in again.');
       } finally {
         setLoading(false);
       }
     };
     verifyAuth();
-  }, [token]);
+  }, [logout]);
+
+  // ─── Inactivity Auto-Logout Mechanism ───
+  useEffect(() => {
+    if (!token || !user) return;
+
+    const resetInactivityTimer = () => {
+      if (activityTimerRef.current) {
+        clearTimeout(activityTimerRef.current);
+      }
+      activityTimerRef.current = setTimeout(() => {
+        logout('Session timed out due to 25 minutes of inactivity.');
+      }, INACTIVITY_TIMEOUT_MS);
+    };
+
+    // Events to monitor user activity
+    const activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    activityEvents.forEach((evt) => window.addEventListener(evt, resetInactivityTimer, { passive: true }));
+    resetInactivityTimer();
+
+    return () => {
+      if (activityTimerRef.current) {
+        clearTimeout(activityTimerRef.current);
+      }
+      activityEvents.forEach((evt) => window.removeEventListener(evt, resetInactivityTimer));
+    };
+  }, [token, user, logout]);
 
   const login = useCallback(async (email, password) => {
     const res = await api.post('/auth/login', { email, password });
     const { token: newToken, user: userData } = res.data.data;
     setToken(newToken);
     setUser(userData);
-    localStorage.setItem('clearmate_token', newToken);
-    localStorage.setItem('clearmate_user', JSON.stringify(userData));
+
+    // Save exclusively to sessionStorage (destroyed on tab/browser close)
+    sessionStorage.setItem('clearmate_token', newToken);
+    sessionStorage.setItem('clearmate_user', JSON.stringify(userData));
+    localStorage.removeItem('clearmate_token');
+    localStorage.removeItem('clearmate_user');
+
     return userData;
   }, []);
 
@@ -51,16 +114,13 @@ export function AuthProvider({ children }) {
     const { token: newToken, user: userData } = res.data.data;
     setToken(newToken);
     setUser(userData);
-    localStorage.setItem('clearmate_token', newToken);
-    localStorage.setItem('clearmate_user', JSON.stringify(userData));
-    return userData;
-  }, []);
 
-  const logout = useCallback(() => {
-    setUser(null);
-    setToken(null);
+    sessionStorage.setItem('clearmate_token', newToken);
+    sessionStorage.setItem('clearmate_user', JSON.stringify(userData));
     localStorage.removeItem('clearmate_token');
     localStorage.removeItem('clearmate_user');
+
+    return userData;
   }, []);
 
   const value = {

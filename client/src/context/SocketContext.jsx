@@ -12,7 +12,7 @@ export function SocketProvider({ children }) {
   const audioRef = useRef(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('clearmate_token') || localStorage.getItem('clearmate_token') || localStorage.getItem('token');
     if (!token || !user) {
       if (socket) {
         socket.disconnect();

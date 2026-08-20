@@ -11,7 +11,7 @@ const api = axios.create({
 // ─── Request Interceptor: Attach JWT ───
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('clearmate_token');
+    const token = sessionStorage.getItem('clearmate_token') || localStorage.getItem('clearmate_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -23,8 +23,6 @@ api.interceptors.request.use(
 // ─── Response Interceptor: Unwrap envelope & handle 401 ───
 api.interceptors.response.use(
   (response) => {
-    // API returns { success: true, message, data }
-    // Return the full response so callers can access response.data.data, response.data.message, etc.
     return response;
   },
   (error) => {
@@ -33,8 +31,11 @@ api.interceptors.response.use(
 
     // 401 Unauthorized — token expired or invalid
     if (status === 401) {
+      sessionStorage.removeItem('clearmate_token');
+      sessionStorage.removeItem('clearmate_user');
       localStorage.removeItem('clearmate_token');
       localStorage.removeItem('clearmate_user');
+      localStorage.removeItem('token');
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
@@ -59,13 +60,10 @@ api.interceptors.response.use(
       }
     }
 
-    // Enrich the error object with our API message
-    const enrichedError = new Error(message);
-    enrichedError.status = status;
-    enrichedError.code = error.response?.data?.error?.code;
-    enrichedError.originalError = error;
-
-    return Promise.reject(enrichedError);
+    const customError = new Error(message);
+    customError.status = status;
+    customError.response = error.response;
+    return Promise.reject(customError);
   }
 );
 
