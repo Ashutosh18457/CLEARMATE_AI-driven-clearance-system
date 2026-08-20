@@ -1,20 +1,34 @@
 const Notification = require('../models/Notification');
 const AppError = require('../utils/AppError');
 const logger = require('../config/logger');
+const { emitToUser, emitToUsers } = require('../config/socket');
 
 const notificationService = {
   /**
-   * Creates a notification for a user.
-   * This is the central method called by other services (clearance, submission).
+   * Creates a notification for a user and emits socket event.
+   * This is the central method called by other services (clearance, submission, task).
    */
-  async createNotification(userId, { title, message, type = 'info', link = '' }) {
+  async createNotification(userId, { title, message, type = 'info', link = '', senderId, taskId }) {
     const notification = await Notification.create({
       userId,
       title,
       message,
       type,
       link,
+      senderId,
+      taskId,
     });
+
+    // Real-time WebSocket event emission
+    try {
+      const unreadCount = await Notification.countDocuments({ userId, isRead: false });
+      emitToUser(userId, 'new_notification', {
+        notification,
+        unreadCount,
+      });
+    } catch (err) {
+      logger.debug('Socket emit error on createNotification', { error: err.message });
+    }
 
     logger.debug('Notification created', { userId, title, type });
     return notification;
@@ -22,18 +36,34 @@ const notificationService = {
 
   /**
    * Bulk-create notifications for multiple users with the same content.
-   * Useful for broadcasting (e.g., deadline reminders to all students).
+   * Useful for broadcasting (e.g., deadline reminders, task assignments).
    */
-  async createBulkNotifications(userIds, { title, message, type = 'info', link = '' }) {
+  async createBulkNotifications(userIds, { title, message, type = 'info', link = '', senderId, taskId }) {
     const docs = userIds.map((userId) => ({
       userId,
       title,
       message,
       type,
       link,
+      senderId,
+      taskId,
     }));
 
     const notifications = await Notification.insertMany(docs);
+
+    // Real-time WebSocket event emission for each user
+    for (const notif of notifications) {
+      try {
+        const unreadCount = await Notification.countDocuments({ userId: notif.userId, isRead: false });
+        emitToUser(notif.userId, 'new_notification', {
+          notification: notif,
+          unreadCount,
+        });
+      } catch (err) {
+        logger.debug('Socket emit error in createBulkNotifications', { error: err.message });
+      }
+    }
+
     logger.debug('Bulk notifications created', { count: notifications.length, title });
     return notifications;
   },

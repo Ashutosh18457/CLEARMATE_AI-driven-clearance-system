@@ -78,9 +78,12 @@ export default function StudentSubmissions() {
     setSelectedSubIds([]);
     try {
       const res = await api.get(`/submissions/items/${selectedItemId}/students`);
-      setStudents(res.data.data || []);
+      const payload = res.data?.data;
+      const studentList = Array.isArray(payload) ? payload : (payload?.students || []);
+      setStudents(studentList);
     } catch (err) {
       setError(err.message);
+      setStudents([]);
       toast.error(err.message);
     } finally {
       setLoading(false);
@@ -93,6 +96,7 @@ export default function StudentSubmissions() {
 
   // Extract all currently selectable submissions (only 'submitted' status)
   const selectableRows = useMemo(() => {
+    if (!Array.isArray(students)) return [];
     return students.filter(
       (row) =>
         (row.submission?.status === 'submitted' || row.status === 'submitted') &&
@@ -238,6 +242,7 @@ export default function StudentSubmissions() {
 
   // Selected students details for preview in modal
   const selectedStudentsList = useMemo(() => {
+    if (!Array.isArray(students)) return [];
     return students
       .filter((s) => selectedSubIds.includes((s.submission?._id || s._id)?.toString()))
       .map((s) => ({

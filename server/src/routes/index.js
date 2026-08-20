@@ -32,6 +32,7 @@ router.use('/bus-section', require('./busSection.routes'));
 router.use('/clearances', require('./clearance.routes'));
 router.use('/submissions', require('./submission.routes'));
 router.use('/notifications', require('./notification.routes'));
+router.use('/tasks', require('./task.routes'));
 router.use('/chatbot', require('./chatbot.routes'));
 router.use('/analytics', require('./analytics.routes'));
 router.use('/certificate', require('./certificate.routes'));

@@ -17,6 +17,14 @@ const clearanceController = {
     } catch (error) { next(error); }
   },
 
+  /** @route GET /api/clearances/prerequisites?semesterId= */
+  async getPrerequisites(req, res, next) {
+    try {
+      const data = await clearanceService.checkPrerequisites(req.user.id, req.query.semesterId);
+      sendSuccess(res, { data, message: 'Prerequisites status retrieved' });
+    } catch (error) { next(error); }
+  },
+
   /** @route GET /api/clearances/my?semesterId= */
   async getMyClearanceStatus(req, res, next) {
     try {
@@ -106,8 +114,16 @@ const clearanceController = {
   /** @route GET /api/clearances/hod/pending */
   async getPendingHODReviews(req, res, next) {
     try {
-      const requests = await clearanceService.getPendingHODReviews();
+      const requests = await clearanceService.getPendingHODReviews(req.user.id);
       sendSuccess(res, { data: requests, message: 'Pending HOD reviews retrieved' });
+    } catch (error) { next(error); }
+  },
+
+  /** @route GET /api/clearances/hod/teachers-overview */
+  async getHODDepartmentTeachers(req, res, next) {
+    try {
+      const teachers = await clearanceService.getHODDepartmentTeachers(req.user.id);
+      sendSuccess(res, { data: teachers, message: 'Department teachers retrieved' });
     } catch (error) { next(error); }
   },
 

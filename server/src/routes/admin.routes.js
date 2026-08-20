@@ -13,10 +13,10 @@ router.get('/clearance-items', protect, restrictTo('admin', 'hod', 'teacher'), a
 router.use(protect);
 
 // ──────────────────────────────────────────────
-// USERS (Admin: Full Control, HOD: Department Modify/Read)
+// USERS (Admin: Full Control, HOD: Department Modify/Read, Teacher: Read)
 // ──────────────────────────────────────────────
-router.get('/users', restrictTo('admin', 'hod'), adminController.getUsers);
-router.get('/users/:id', restrictTo('admin', 'hod'), adminController.getUserById);
+router.get('/users', restrictTo('admin', 'hod', 'teacher'), adminController.getUsers);
+router.get('/users/:id', restrictTo('admin', 'hod', 'teacher'), adminController.getUserById);
 router.put('/users/:id', restrictTo('admin', 'hod'), validate(v.updateUserSchema), adminController.updateUser);
 
 // Admin-only creation, bulk upload, and deactivation

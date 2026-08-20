@@ -72,13 +72,13 @@ router.patch(
 // ──────────────────────────────────────────────
 router.get(
   '/my',
-  restrictTo('student'),
+  restrictTo('student', 'admin'),
   submissionController.getMySubmissions
 );
 
 router.post(
   '/submit',
-  restrictTo('student'),
+  restrictTo('student', 'admin'),
   validate(v.submitWorkSchema),
   submissionController.submitWork
 );

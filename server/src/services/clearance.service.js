@@ -2,6 +2,8 @@ const ClearanceRequest = require('../models/ClearanceRequest');
 const ItemClearance = require('../models/ItemClearance');
 const SectionClearance = require('../models/SectionClearance');
 const ClearanceItem = require('../models/ClearanceItem');
+const SubmissionItem = require('../models/SubmissionItem');
+const Submission = require('../models/Submission');
 const Semester = require('../models/Semester');
 const User = require('../models/User');
 const Batch = require('../models/Batch');
@@ -15,6 +17,83 @@ const clearanceService = {
   // ══════════════════════════════════════════════
   // STUDENT OPERATIONS
   // ══════════════════════════════════════════════
+
+  /**
+   * Checks whether student has completed & verified all required submissions.
+   */
+  async checkPrerequisites(studentId, semesterId) {
+    const student = await User.findById(studentId);
+    if (!student || student.role !== 'student') {
+      throw AppError.badRequest('Invalid student');
+    }
+
+    let targetSemesterId = semesterId;
+    if (!targetSemesterId) {
+      const activeSemester = await Semester.findOne({
+        programId: student.programId,
+        semNumber: student.currentSemester,
+        isActive: true,
+      });
+      if (activeSemester) targetSemesterId = activeSemester._id;
+    }
+
+    if (!targetSemesterId) {
+      return { allCleared: true, totalRequired: 0, verifiedCount: 0, pendingItems: [] };
+    }
+
+    // Get all applicable clearance items for this student in this semester
+    const clearanceItems = await ClearanceItem.find({ semesterId: targetSemesterId });
+    const relevantItems = clearanceItems.filter((item) => {
+      if (item.type === 'theory' || item.type === 'special') return true;
+      if (item.type === 'lab') {
+        if (!student.batchId) return false;
+        return item.labBatchTeachers?.some(
+          (lbt) => lbt.batchId?.toString() === student.batchId?.toString()
+        );
+      }
+      if (item.type === 'elective') {
+        if (!student.selectedElective) return false;
+        return item.electiveOptions?.some(
+          (opt) => opt._id?.toString() === student.selectedElective?.toString()
+        );
+      }
+      return false;
+    });
+
+    const relevantItemIds = relevantItems.map((i) => i._id);
+    const requiredSubmissionItems = await SubmissionItem.find({
+      clearanceItemId: { $in: relevantItemIds },
+      isRequired: true,
+    }).populate('clearanceItemId', 'title type subjectCode');
+
+    if (requiredSubmissionItems.length === 0) {
+      return { allCleared: true, totalRequired: 0, verifiedCount: 0, pendingItems: [] };
+    }
+
+    const verifiedSubmissions = await Submission.find({
+      studentId,
+      submissionItemId: { $in: requiredSubmissionItems.map((si) => si._id) },
+      status: 'verified',
+    });
+
+    const verifiedSet = new Set(verifiedSubmissions.map((s) => s.submissionItemId.toString()));
+    const pendingItems = requiredSubmissionItems
+      .filter((si) => !verifiedSet.has(si._id.toString()))
+      .map((si) => ({
+        _id: si._id,
+        title: si.title,
+        type: si.type,
+        deadline: si.deadline,
+        subject: si.clearanceItemId?.title || 'Subject',
+      }));
+
+    return {
+      allCleared: pendingItems.length === 0,
+      totalRequired: requiredSubmissionItems.length,
+      verifiedCount: verifiedSet.size,
+      pendingItems,
+    };
+  },
 
   /**
    * Initiates clearance for a student.
@@ -44,7 +123,16 @@ const clearanceService = {
     if (!semester) throw AppError.notFound('Semester not found');
     if (!semester.isActive) throw AppError.badRequest('This semester is no longer active');
 
-    // 3. Check for existing clearance request
+    // 3. Prerequisite check: Verify all required student submissions are completed & verified
+    const prereq = await this.checkPrerequisites(studentId, semester._id);
+    if (!prereq.allCleared && prereq.pendingItems.length > 0) {
+      const pendingNames = prereq.pendingItems.map((p) => `"${p.title}" (${p.subject})`).join(', ');
+      throw AppError.badRequest(
+        `Cannot initiate clearance yet. All required submissions must be verified by teachers first. Pending items: ${pendingNames}`
+      );
+    }
+
+    // 4. Check for existing clearance request
     const existing = await ClearanceRequest.findOne({ studentId, semesterId: semester._id });
     if (existing) {
       if (existing.status === 'completed') {
@@ -60,7 +148,7 @@ const clearanceService = {
       logger.info('Previous rejected clearance cleaned up for re-initiation', { studentId, semesterId: semester._id });
     }
 
-    // 4. Create the ClearanceRequest
+    // 5. Create the ClearanceRequest
     const clearanceRequest = await ClearanceRequest.create({
       studentId,
       semesterId: semester._id,
@@ -364,13 +452,113 @@ const clearanceService = {
   // ══════════════════════════════════════════════
 
   /**
-   * Gets all clearances pending HOD review.
+   * Gets all clearances pending HOD review with full teacher item clearances breakdown.
    */
-  async getPendingHODReviews() {
-    return await ClearanceRequest.find({ status: 'hod_review' })
-      .populate('studentId', 'name email enrollmentNo section')
+  async getPendingHODReviews(hodId) {
+    let query = { status: 'hod_review' };
+    if (hodId) {
+      const hod = await User.findById(hodId);
+      if (hod && hod.programId) {
+        const studentIds = await User.find({ programId: hod.programId, role: 'student' }).select('_id');
+        query.studentId = { $in: studentIds.map((s) => s._id) };
+      }
+    }
+
+    const requests = await ClearanceRequest.find(query)
+      .populate('studentId', 'name email enrollmentNo section programId')
       .populate('semesterId', 'name semNumber academicYear')
       .sort({ createdAt: 1 });
+
+    const results = await Promise.all(
+      requests.map(async (req) => {
+        const [items, sections] = await Promise.all([
+          ItemClearance.find({ clearanceRequestId: req._id })
+            .populate('teacherId', 'name email')
+            .sort({ itemTitle: 1 }),
+          SectionClearance.find({ clearanceRequestId: req._id })
+            .populate('reviewerId', 'name email')
+            .sort({ department: 1 }),
+        ]);
+        return {
+          ...req.toObject(),
+          itemClearances: items,
+          sectionClearances: sections,
+        };
+      })
+    );
+
+    return results;
+  },
+
+  /**
+   * Gets department teachers, assigned subjects, and verification counts for HOD.
+   */
+  async getHODDepartmentTeachers(hodId) {
+    const hod = await User.findById(hodId);
+    if (!hod) throw AppError.notFound('HOD not found');
+
+    const teachers = await User.find({ role: 'teacher' }).select('name email');
+    const clearanceItems = await ClearanceItem.find()
+      .populate('semesterId', 'name semNumber academicYear programId')
+      .populate('theoryTeacherId', 'name email')
+      .populate('labBatchTeachers.batchId', 'name')
+      .populate('labBatchTeachers.teacherId', 'name email')
+      .populate('electiveOptions.teacherId', 'name email');
+
+    // Build teacher-to-subject map
+    const teacherMap = {};
+    for (const t of teachers) {
+      teacherMap[t._id.toString()] = {
+        _id: t._id,
+        name: t.name,
+        email: t.email,
+        assignedItems: [],
+        totalItemsCount: 0,
+      };
+    }
+
+    for (const item of clearanceItems) {
+      if (item.theoryTeacherId && teacherMap[item.theoryTeacherId._id.toString()]) {
+        teacherMap[item.theoryTeacherId._id.toString()].assignedItems.push({
+          _id: item._id,
+          title: item.title,
+          type: 'theory',
+          code: item.subjectCode || item.srNo,
+          semester: item.semesterId?.name,
+        });
+        teacherMap[item.theoryTeacherId._id.toString()].totalItemsCount += 1;
+      }
+      if (item.labBatchTeachers) {
+        for (const lbt of item.labBatchTeachers) {
+          if (lbt.teacherId && teacherMap[lbt.teacherId._id.toString()]) {
+            teacherMap[lbt.teacherId._id.toString()].assignedItems.push({
+              _id: item._id,
+              title: `${item.title} (${lbt.batchId?.name || 'Lab Batch'})`,
+              type: 'lab',
+              code: item.subjectCode || item.srNo,
+              semester: item.semesterId?.name,
+            });
+            teacherMap[lbt.teacherId._id.toString()].totalItemsCount += 1;
+          }
+        }
+      }
+      if (item.electiveOptions) {
+        for (const opt of item.electiveOptions) {
+          if (opt.teacherId && teacherMap[opt.teacherId._id.toString()]) {
+            teacherMap[opt.teacherId._id.toString()].assignedItems.push({
+              _id: item._id,
+              title: `${item.title} - Option: ${opt.name}`,
+              type: 'elective',
+              code: item.subjectCode || item.srNo,
+              semester: item.semesterId?.name,
+            });
+            teacherMap[opt.teacherId._id.toString()].totalItemsCount += 1;
+          }
+        }
+      }
+    }
+
+    return Object.values(teacherMap);
   },
 
   /**

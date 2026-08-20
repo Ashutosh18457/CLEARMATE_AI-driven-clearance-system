@@ -14,14 +14,20 @@ router.use(protect);
 // ──────────────────────────────────────────────
 router.post(
   '/initiate',
-  restrictTo('student'),
+  restrictTo('student', 'admin'),
   validate(v.initiateClearanceSchema),
   clearanceController.initiateClearance
 );
 
 router.get(
+  '/prerequisites',
+  restrictTo('student', 'admin'),
+  clearanceController.getPrerequisites
+);
+
+router.get(
   '/my',
-  restrictTo('student'),
+  restrictTo('student', 'admin'),
   clearanceController.getMyClearanceStatus
 );
 
@@ -80,6 +86,12 @@ router.get(
   '/hod/pending',
   restrictTo('hod'),
   clearanceController.getPendingHODReviews
+);
+
+router.get(
+  '/hod/teachers-overview',
+  restrictTo('hod'),
+  clearanceController.getHODDepartmentTeachers
 );
 
 router.patch(

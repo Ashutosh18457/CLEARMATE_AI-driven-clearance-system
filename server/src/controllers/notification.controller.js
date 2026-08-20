@@ -2,11 +2,12 @@ const notificationService = require('../services/notification.service');
 const { sendSuccess } = require('../utils/response');
 
 const notificationController = {
-  /** @route GET /api/notifications */
+  /** @route GET /api/notifications or GET /api/notifications/:studentId */
   async getNotifications(req, res, next) {
     try {
+      const targetUserId = req.params.studentId || req.user.id;
       const { page, limit, unreadOnly } = req.query;
-      const data = await notificationService.getUserNotifications(req.user.id, {
+      const data = await notificationService.getUserNotifications(targetUserId, {
         page: parseInt(page, 10) || 1,
         limit: parseInt(limit, 10) || 20,
         unreadOnly: unreadOnly === 'true',

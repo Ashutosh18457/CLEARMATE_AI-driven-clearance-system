@@ -21,6 +21,7 @@ const StudentClearance = lazy(() => import('./pages/student/StudentClearance'));
 
 // Teacher
 const TeacherDashboard = lazy(() => import('./pages/teacher/TeacherDashboard'));
+const TeacherTasks = lazy(() => import('./pages/teacher/TeacherTasks'));
 const SubmissionItems = lazy(() => import('./pages/teacher/SubmissionItems'));
 const TeacherStudentSubmissions = lazy(() => import('./pages/teacher/StudentSubmissions'));
 const ItemClearances = lazy(() => import('./pages/teacher/ItemClearances'));
@@ -178,6 +179,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={[ROLES.TEACHER]}>
                 <TeacherDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher/tasks"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.TEACHER, ROLES.ADMIN]}>
+                <TeacherTasks />
               </ProtectedRoute>
             }
           />

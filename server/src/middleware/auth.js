@@ -37,10 +37,16 @@ const protect = async (req, res, next) => {
         return next(AppError.forbidden('Your account has been deactivated.'));
       }
 
-      // Attach minimal user info to request
+      // Attach user info to request
       req.user = {
-        id: decoded.id,
-        role: decoded.role,
+        id: currentUser._id.toString(),
+        role: currentUser.role || decoded.role,
+        name: currentUser.name,
+        email: currentUser.email,
+        programId: currentUser.programId,
+        currentSemester: currentUser.currentSemester,
+        section: currentUser.section,
+        batchId: currentUser.batchId,
       };
 
       next();

@@ -22,8 +22,16 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['info', 'success', 'warning', 'error', 'deadline'],
+      enum: ['info', 'success', 'warning', 'error', 'deadline', 'task'],
       default: 'info',
+    },
+    senderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    taskId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Task',
     },
     isRead: {
       type: Boolean,

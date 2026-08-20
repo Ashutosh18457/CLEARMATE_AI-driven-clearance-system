@@ -112,9 +112,17 @@ export default function TeacherDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="flex items-center gap-3 mb-8">
+      <div className="flex flex-wrap items-center gap-3 mb-8">
         <Button
           variant="primary"
+          size="sm"
+          icon={<HiOutlinePlusCircle className="w-4 h-4" />}
+          onClick={() => navigate('/teacher/tasks')}
+        >
+          Assign Task & Real-Time Alert
+        </Button>
+        <Button
+          variant="secondary"
           size="sm"
           icon={<HiOutlinePlusCircle className="w-4 h-4" />}
           onClick={() => navigate('/teacher/submission-items')}

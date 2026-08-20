@@ -444,26 +444,38 @@ const submissionService = {
     const student = await User.findById(studentId);
     if (!student) throw AppError.notFound('Student not found');
 
-    // Get all clearance items for this semester
-    const allClearanceItems = await ClearanceItem.find({ semesterId });
+    let targetSemesterId = semesterId;
+    if (!targetSemesterId && student.programId) {
+      const activeSemester = await Semester.findOne({
+        programId: student.programId,
+        isActive: true,
+      });
+      if (activeSemester) targetSemesterId = activeSemester._id;
+    }
+
+    // Get all clearance items for this semester (or all items if no semester filter)
+    const allClearanceItems = targetSemesterId
+      ? await ClearanceItem.find({ semesterId: targetSemesterId })
+      : await ClearanceItem.find();
 
     // Filter to only items relevant to this student
     const relevantItems = allClearanceItems.filter((item) => {
       if (item.type === 'theory' || item.type === 'special') return true;
       if (item.type === 'lab') {
         // Student must be in one of the lab batches
-        return item.labBatchTeachers.some(
-          (lbt) => student.batchId && lbt.batchId.toString() === student.batchId.toString()
+        if (!student.batchId) return true; // If batch not assigned yet, show all
+        return item.labBatchTeachers?.some(
+          (lbt) => lbt.batchId?.toString() === student.batchId?.toString()
         );
       }
       if (item.type === 'elective') {
         // Student must have selected this elective
         if (!student.selectedElective) return false;
-        return item.electiveOptions.some(
-          (opt) => opt._id.toString() === student.selectedElective.toString()
+        return item.electiveOptions?.some(
+          (opt) => opt._id?.toString() === student.selectedElective?.toString()
         );
       }
-      return false;
+      return true;
     });
 
     const relevantItemIds = relevantItems.map((item) => item._id);

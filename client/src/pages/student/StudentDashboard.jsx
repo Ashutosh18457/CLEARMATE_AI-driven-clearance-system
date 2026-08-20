@@ -8,6 +8,8 @@ import {
   HiOutlineRocketLaunch,
   HiOutlineArrowRight,
   HiOutlineInboxStack,
+  HiOutlineDocumentArrowDown,
+  HiOutlineCheckBadge,
 } from 'react-icons/hi2';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -80,6 +82,7 @@ export default function StudentDashboard() {
 
   const [submissions, setSubmissions] = useState([]);
   const [clearance, setClearance] = useState(null);
+  const [prereq, setPrereq] = useState(null);
   const [loadingSubmissions, setLoadingSubmissions] = useState(true);
   const [loadingClearance, setLoadingClearance] = useState(true);
   const [error, setError] = useState(null);
@@ -100,13 +103,14 @@ export default function StudentDashboard() {
   const fetchClearance = useCallback(async () => {
     try {
       setLoadingClearance(true);
-      const res = await api.get('/clearances/my');
-      setClearance(res.data.data || null);
+      const [clearanceRes, prereqRes] = await Promise.all([
+        api.get('/clearances/my').catch((err) => (err.status === 404 ? { data: { data: null } } : Promise.reject(err))),
+        api.get('/clearances/prerequisites').catch(() => ({ data: { data: null } })),
+      ]);
+      setClearance(clearanceRes.data?.data || null);
+      setPrereq(prereqRes.data?.data || null);
     } catch (err) {
-      // 404 means no clearance exists, which is a valid state
-      if (err.status === 404) {
-        setClearance(null);
-      } else {
+      if (err.status !== 404) {
         setError(err.message);
       }
     } finally {
@@ -120,6 +124,15 @@ export default function StudentDashboard() {
   }, [fetchSubmissions, fetchClearance]);
 
   const handleInitiateClearance = async () => {
+    if (prereq && !prereq.allCleared && prereq.pendingItems?.length > 0) {
+      toast.error(
+        `Cannot initiate clearance yet. You have ${prereq.pendingItems.length} required submissions pending verification.`,
+        { duration: 4000 }
+      );
+      navigate('/student/clearance');
+      return;
+    }
+
     const semId = user?.currentSemester?._id || user?.currentSemester;
     const isValidObjectId = typeof semId === 'string' && semId.length === 24;
     try {
@@ -246,7 +259,7 @@ export default function StudentDashboard() {
           icon={<HiOutlineShieldCheck className="w-5 h-5" />}
           label="Clearance"
           value={loadingClearance ? '—' : clearanceStatus}
-          variant="success"
+          variant={currentClearanceStatus === 'completed' ? 'success' : 'brand'}
         />
       </div>
 
@@ -261,7 +274,7 @@ export default function StudentDashboard() {
               icon={<HiOutlineArrowRight className="w-4 h-4" />}
               onClick={() => navigate('/student/clearance')}
             >
-              View Details
+              View Pipeline Details
             </Button>
           )}
         </div>
@@ -269,29 +282,63 @@ export default function StudentDashboard() {
         {loadingClearance ? (
           <Skeleton rows={2} columns={6} />
         ) : clearance ? (
-          <StatusStepper
-            status={clearance.status || clearance.clearanceRequest?.status}
-            remarks={clearance.remarks || clearance.clearanceRequest?.remarks}
-          />
+          <div>
+            {currentClearanceStatus === 'completed' && (
+              <div className="mb-4 p-4 rounded-lg bg-green-50 border border-green-200 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <HiOutlineCheckBadge className="w-6 h-6 text-status-success shrink-0" />
+                  <div>
+                    <p className="text-sm font-bold text-green-900">FULL CLEARED — Clearance Complete</p>
+                    <p className="text-xs text-green-700">Official certificate issued by HOD and Examination Cell.</p>
+                  </div>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => navigate('/student/clearance')}
+                  icon={<HiOutlineDocumentArrowDown className="w-4 h-4" />}
+                >
+                  View / Print Certificate
+                </Button>
+              </div>
+            )}
+            <StatusStepper
+              status={clearance.status || clearance.clearanceRequest?.status}
+              remarks={clearance.remarks || clearance.clearanceRequest?.remarks}
+            />
+          </div>
         ) : (
           <div className="text-center py-8">
             <div className="w-12 h-12 rounded-full bg-brand-50 flex items-center justify-center mx-auto mb-3">
               <HiOutlineRocketLaunch className="w-6 h-6 text-brand" />
             </div>
-            <p className="text-sm font-medium text-ink-primary mb-1">
-              No clearance request found
+            <p className="text-base font-semibold text-ink-primary mb-1">
+              {prereq?.allCleared
+                ? 'All Submissions Verified! Ready to Initiate Clearance'
+                : 'No clearance request initiated yet'}
             </p>
-            <p className="text-sm text-ink-muted mb-4">
-              Initiate your clearance request to begin the process.
+            <p className="text-xs text-ink-muted mb-4 max-w-md mx-auto">
+              {prereq?.allCleared
+                ? 'Your teachers have verified all required assignments and labs. Start your clearance to generate multi-stage approvals.'
+                : 'Complete and obtain teacher verification on all course submissions, then initiate your clearance pipeline.'}
             </p>
-            <Button
-              variant="primary"
-              loading={initiating}
-              onClick={handleInitiateClearance}
-              icon={<HiOutlineRocketLaunch className="w-4 h-4" />}
-            >
-              Initiate Clearance
-            </Button>
+            <div className="flex items-center justify-center gap-3">
+              <Button
+                variant={prereq?.allCleared ? 'primary' : 'secondary'}
+                loading={initiating}
+                onClick={handleInitiateClearance}
+                icon={<HiOutlineRocketLaunch className="w-4 h-4" />}
+              >
+                Initiate Clearance
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/student/clearance')}
+              >
+                Check Requirements
+              </Button>
+            </div>
           </div>
         )}
       </section>
