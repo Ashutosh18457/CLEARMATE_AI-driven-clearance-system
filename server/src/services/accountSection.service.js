@@ -234,6 +234,24 @@ const accountSectionService = {
 
     await sectionClearance.save();
 
+    if (clearanceRequest) {
+      if (clearanceRequest.sectionClearances) {
+        let secSummary = clearanceRequest.sectionClearances.find((s) => s.department === 'accounts');
+        if (secSummary) {
+          secSummary.status = sectionClearance.status;
+          secSummary.reviewerId = updatedByUserId;
+          secSummary.reviewedAt = new Date();
+          secSummary.remarks = sectionClearance.remarks;
+          await clearanceRequest.save();
+        }
+      }
+
+      if (status === 'paid') {
+        const clearanceService = require('./clearance.service');
+        await clearanceService._checkAndAdvanceFromSections(clearanceRequest._id);
+      }
+    }
+
     logger.info('Student fee status updated by Account Section', {
       studentId,
       status,

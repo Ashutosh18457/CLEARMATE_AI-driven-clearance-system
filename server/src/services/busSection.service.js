@@ -226,15 +226,22 @@ const busSectionService = {
 
     await sc.save();
 
-    // If an active ClearanceRequest exists, update department clearance summary
-    if (activeRequest && activeRequest.sectionClearances) {
-      let secSummary = activeRequest.sectionClearances.find((s) => s.department === 'bus');
-      if (secSummary) {
-        secSummary.status = sc.status;
-        secSummary.reviewerId = updatedByUserId;
-        secSummary.reviewedAt = new Date();
-        secSummary.remarks = sc.remarks;
-        await activeRequest.save();
+    // If an active ClearanceRequest exists, update department clearance summary and check advancement
+    if (activeRequest) {
+      if (activeRequest.sectionClearances) {
+        let secSummary = activeRequest.sectionClearances.find((s) => s.department === 'bus');
+        if (secSummary) {
+          secSummary.status = sc.status;
+          secSummary.reviewerId = updatedByUserId;
+          secSummary.reviewedAt = new Date();
+          secSummary.remarks = sc.remarks;
+          await activeRequest.save();
+        }
+      }
+
+      if (status === 'paid') {
+        const clearanceService = require('./clearance.service');
+        await clearanceService._checkAndAdvanceFromSections(activeRequest._id);
       }
     }
 

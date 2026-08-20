@@ -299,6 +299,21 @@ const clearanceService = {
         .sort({ department: 1 }),
     ]);
 
+    // Auto-advance if all sections/items are approved but stage was not transitioned
+    if (clearanceRequest.status === 'sections_review' || clearanceRequest.status === 'items_review') {
+      const allItemsApproved = itemClearances.length > 0 && itemClearances.every((i) => i.status === 'approved');
+      const allSectionsApproved = sectionClearances.length > 0 && sectionClearances.every((s) => s.status === 'approved');
+      if (allItemsApproved && allSectionsApproved && clearanceRequest.status !== 'ci_review') {
+        clearanceRequest.status = 'ci_review';
+        clearanceRequest.currentStage = 'class_incharge';
+        await clearanceRequest.save();
+      } else if (allItemsApproved && clearanceRequest.status === 'items_review') {
+        clearanceRequest.status = 'sections_review';
+        clearanceRequest.currentStage = 'sections';
+        await clearanceRequest.save();
+      }
+    }
+
     return {
       clearanceRequest,
       itemClearances,
@@ -474,6 +489,23 @@ const clearanceService = {
    * @param {string} classInchargeId - The CI user's ID for scope lookup
    */
   async getPendingCIReviews(classInchargeId) {
+    // Auto-sync any requests that are at sections_review but have all sections and items approved
+    const pendingSecReqs = await ClearanceRequest.find({ status: 'sections_review' });
+    for (const req of pendingSecReqs) {
+      const [items, sections] = await Promise.all([
+        ItemClearance.find({ clearanceRequestId: req._id }),
+        SectionClearance.find({ clearanceRequestId: req._id }),
+      ]);
+      const itemsOk = items.length > 0 && items.every((i) => i.status === 'approved');
+      const sectionsOk = sections.length > 0 && sections.every((s) => s.status === 'approved');
+      if (itemsOk && sectionsOk) {
+        req.status = 'ci_review';
+        req.currentStage = 'class_incharge';
+        await req.save();
+        logger.info('Auto-synced request to ci_review', { requestId: req._id });
+      }
+    }
+
     let query = { status: 'ci_review' };
     if (classInchargeId) {
       const ci = await User.findById(classInchargeId);
@@ -484,10 +516,10 @@ const clearanceService = {
           const studentQuery = { role: 'student' };
           if (ci.assignedProgramId) studentQuery.programId = ci.assignedProgramId;
           if (ci.assignedSemester) studentQuery.currentSemester = ci.assignedSemester;
-          if (ci.assignedSection && ci.assignedSection !== 'all') {
-            studentQuery.section = ci.assignedSection;
-          } else if (ci.section) {
-            studentQuery.section = ci.section;
+          const sec = ci.assignedSection || ci.section;
+          if (sec && sec !== 'all') {
+            const cleanSec = sec.replace(/^Sec\s*/i, '').trim();
+            studentQuery.section = new RegExp(`^${cleanSec}$`, 'i');
           }
           const studentIds = await User.find(studentQuery).select('_id');
           query.studentId = { $in: studentIds.map((s) => s._id) };
@@ -720,11 +752,13 @@ const clearanceService = {
       const request = await ClearanceRequest.findByIdAndUpdate(clearanceRequestId, {
         status: 'sections_review',
         currentStage: 'sections',
-      }, { new: true });
+      }, { returnDocument: 'after' });
       logger.info('Auto-advanced to sections_review', { requestId: clearanceRequestId });
       if (request) {
         await notificationService.notifyStageAdvanced(request.studentId, 'sections_review');
       }
+      // Check if all sections were also already approved
+      await this._checkAndAdvanceFromSections(clearanceRequestId);
     }
   },
 
@@ -740,7 +774,7 @@ const clearanceService = {
       const request = await ClearanceRequest.findByIdAndUpdate(clearanceRequestId, {
         status: 'ci_review',
         currentStage: 'class_incharge',
-      }, { new: true });
+      }, { returnDocument: 'after' });
       logger.info('Auto-advanced to ci_review', { requestId: clearanceRequestId });
       if (request) {
         await notificationService.notifyStageAdvanced(request.studentId, 'ci_review');
