@@ -94,6 +94,49 @@ const busSectionController = {
       next(err);
     }
   },
+
+  /**
+   * Bulk update student bus fee clearance statuses
+   * POST /api/bus-section/students/bulk-update
+   */
+  async bulkUpdateFees(req, res, next) {
+    try {
+      const { studentIds, studentIdentifiers, status = 'paid', remark_text } = req.body;
+      const idsToUpdate = studentIds || studentIdentifiers || [];
+      const updatedByUserId = req.user.id;
+
+      const result = await busSectionService.bulkUpdateStudentBusFees(
+        idsToUpdate,
+        status,
+        remark_text || 'Bulk bus fee clearance granted',
+        updatedByUserId
+      );
+
+      sendSuccess(res, {
+        data: result,
+        message: `Successfully updated bus fee clearance for ${result.count} students`,
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  /**
+   * Delete student from bus section
+   * DELETE /api/bus-section/students/:id
+   */
+  async deleteStudent(req, res, next) {
+    try {
+      const studentId = req.params.id;
+      const result = await busSectionService.deleteStudent(studentId);
+      sendSuccess(res, {
+        data: result,
+        message: 'Student deleted successfully from Bus Section',
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
 };
 
 module.exports = busSectionController;

@@ -25,4 +25,10 @@ router.patch(
   accountSectionController.updateFees
 );
 
+router.post(
+  '/students/bulk-update',
+  auditLogger('bulk_update_fees', 'AccountSection'),
+  accountSectionController.bulkUpdateFees
+);
+
 module.exports = router;

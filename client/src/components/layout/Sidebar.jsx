@@ -37,6 +37,15 @@ const NAV_ITEMS = {
   [ROLES.SECTION_HEAD]: [
     { to: '/section-head', icon: HiOutlineHome, label: 'Dashboard', end: true },
   ],
+  [ROLES.ACCOUNT_SECTION]: [
+    { to: '/account-section', icon: HiOutlineHome, label: 'Dashboard', end: true },
+  ],
+  [ROLES.BUS_SECTION]: [
+    { to: '/bus-section', icon: HiOutlineHome, label: 'Dashboard', end: true },
+  ],
+  [ROLES.LIBRARY_SECTION]: [
+    { to: '/library-section', icon: HiOutlineHome, label: 'Dashboard', end: true },
+  ],
   [ROLES.CLASS_INCHARGE]: [
     { to: '/class-incharge', icon: HiOutlineHome, label: 'Dashboard', end: true },
   ],

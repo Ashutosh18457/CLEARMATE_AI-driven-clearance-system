@@ -1,11 +1,11 @@
-const accountSectionService = require('../services/accountSection.service');
+const librarySectionService = require('../services/librarySection.service');
 const authService = require('../services/auth.service');
 const { sendSuccess } = require('../utils/response');
 
-const accountSectionController = {
+const librarySectionController = {
   /**
-   * Dedicated login endpoint for Account Section
-   * POST /api/account-section/login
+   * Dedicated login endpoint for Library Section
+   * POST /api/library-section/login
    */
   async login(req, res, next) {
     try {
@@ -20,7 +20,7 @@ const accountSectionController = {
 
       sendSuccess(res, {
         data: { user, token },
-        message: 'Account Section login successful',
+        message: 'Library Section login successful',
       });
     } catch (err) {
       next(err);
@@ -29,11 +29,11 @@ const accountSectionController = {
 
   /**
    * Get metadata: active branches (programs) and semesters
-   * GET /api/account-section/branches
+   * GET /api/library-section/branches
    */
   async getBranches(req, res, next) {
     try {
-      const data = await accountSectionService.getBranchesAndSemesters();
+      const data = await librarySectionService.getBranchesAndSemesters();
       sendSuccess(res, {
         data,
         message: 'Branches and semesters metadata fetched successfully',
@@ -44,16 +44,16 @@ const accountSectionController = {
   },
 
   /**
-   * List students with fee status
-   * GET /api/account-section/students
+   * List students with library clearance status
+   * GET /api/library-section/students
    */
   async getStudents(req, res, next) {
     try {
-      const result = await accountSectionService.getStudentsFeeStatus(req.query);
+      const result = await librarySectionService.getStudentsLibraryStatus(req.query);
       sendSuccess(res, {
         data: result.students,
         pagination: result.pagination,
-        message: 'Students fee clearance status fetched successfully',
+        message: 'Students library clearance status fetched successfully',
       });
     } catch (err) {
       next(err);
@@ -61,16 +61,16 @@ const accountSectionController = {
   },
 
   /**
-   * Get single student fee details + audit trail
-   * GET /api/account-section/students/:id
+   * Get single student library details + audit trail
+   * GET /api/library-section/students/:id
    */
   async getStudentDetail(req, res, next) {
     try {
       const { id } = req.params;
-      const result = await accountSectionService.getStudentFeeDetail(id);
+      const result = await librarySectionService.getStudentLibraryDetail(id);
       sendSuccess(res, {
         data: result,
-        message: 'Student fee clearance details fetched successfully',
+        message: 'Student library clearance details fetched successfully',
       });
     } catch (err) {
       next(err);
@@ -78,17 +78,17 @@ const accountSectionController = {
   },
 
   /**
-   * Update student fee clearance status
-   * PATCH /api/account-section/students/:id/fees
+   * Update student library clearance status
+   * PATCH /api/library-section/students/:id/status
    */
-  async updateFees(req, res, next) {
+  async updateStatus(req, res, next) {
     try {
       const { id } = req.params;
       const updatedByUserId = req.user.id;
-      const result = await accountSectionService.updateStudentFees(id, req.body, updatedByUserId);
+      const result = await librarySectionService.updateStudentLibraryStatus(id, req.body, updatedByUserId);
       sendSuccess(res, {
         data: result,
-        message: 'Student fee status updated successfully',
+        message: 'Student library clearance status updated successfully',
       });
     } catch (err) {
       next(err);
@@ -96,25 +96,25 @@ const accountSectionController = {
   },
 
   /**
-   * Bulk update student fee clearance statuses
-   * POST /api/account-section/students/bulk-update
+   * Bulk update student library clearance status
+   * POST /api/library-section/students/bulk-update
    */
-  async bulkUpdateFees(req, res, next) {
+  async bulkUpdateStatus(req, res, next) {
     try {
       const { studentIds, studentIdentifiers, status = 'paid', remark_text } = req.body;
       const idsToUpdate = studentIds || studentIdentifiers || [];
       const updatedByUserId = req.user.id;
 
-      const result = await accountSectionService.bulkUpdateStudentFees(
+      const result = await librarySectionService.bulkUpdateStudentLibraryStatus(
         idsToUpdate,
         status,
-        remark_text || 'Bulk fee clearance granted',
+        remark_text || 'Bulk library clearance granted',
         updatedByUserId
       );
 
       sendSuccess(res, {
         data: result,
-        message: `Successfully updated fee clearance for ${result.count} students`,
+        message: `Successfully updated library clearance for ${result.count} students`,
       });
     } catch (err) {
       next(err);
@@ -122,4 +122,4 @@ const accountSectionController = {
   },
 };
 
-module.exports = accountSectionController;
+module.exports = librarySectionController;

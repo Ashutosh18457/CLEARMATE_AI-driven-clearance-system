@@ -33,4 +33,16 @@ router.patch(
   busSectionController.updateFees
 );
 
+router.post(
+  '/students/bulk-update',
+  auditLogger('bulk_update_bus_fees', 'BusSection'),
+  busSectionController.bulkUpdateFees
+);
+
+router.delete(
+  '/students/:id',
+  auditLogger('delete_student_bus_section', 'BusSection'),
+  busSectionController.deleteStudent
+);
+
 module.exports = router;

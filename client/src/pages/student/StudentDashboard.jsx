@@ -92,7 +92,7 @@ export default function StudentDashboard() {
     try {
       setLoadingSubmissions(true);
       const res = await api.get('/submissions/my');
-      const raw = res.data.data || [];
+      const raw = res.data?.data || [];
       const normalized = Array.isArray(raw)
         ? raw.map((item) => {
             if (item.submissionItem) {
@@ -113,7 +113,8 @@ export default function StudentDashboard() {
         : [];
       setSubmissions(normalized);
     } catch (err) {
-      setError(err.message);
+      console.warn('Submissions fetch notice:', err.message);
+      setSubmissions([]);
     } finally {
       setLoadingSubmissions(false);
     }
@@ -123,14 +124,24 @@ export default function StudentDashboard() {
     try {
       setLoadingClearance(true);
       const [clearanceRes, prereqRes] = await Promise.all([
-        api.get('/clearances/my').catch((err) => (err.status === 404 ? { data: { data: null } } : Promise.reject(err))),
-        api.get('/clearances/prerequisites').catch(() => ({ data: { data: null } })),
+        api.get('/clearances/my').catch((err) => {
+          const status = err.status || err.response?.status;
+          if (status === 404 || err.message?.includes('404') || err.message?.includes('not found')) {
+            return { data: { data: null } };
+          }
+          return Promise.reject(err);
+        }),
+        api.get('/clearances/prerequisites').catch((err) => {
+          console.warn('Prerequisites fetch notice:', err.message);
+          return { data: { data: null } };
+        }),
       ]);
       setClearance(clearanceRes.data?.data || null);
       setPrereq(prereqRes.data?.data || null);
     } catch (err) {
-      if (err.status !== 404) {
-        setError(err.message);
+      const status = err.status || err.response?.status;
+      if (status !== 404 && !err.message?.includes('404')) {
+        console.warn('Clearance fetch warning:', err.message);
       }
     } finally {
       setLoadingClearance(false);

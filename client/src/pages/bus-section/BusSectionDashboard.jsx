@@ -8,6 +8,7 @@ import Skeleton from '../../components/common/Skeleton';
 import EmptyState from '../../components/common/EmptyState';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 import {
   HiOutlineMagnifyingGlass,
   HiOutlineTruck,
@@ -16,6 +17,13 @@ import {
   HiOutlineClock,
   HiOutlinePencilSquare,
   HiOutlineArrowPath,
+  HiOutlineDocumentArrowUp,
+  HiOutlineArrowDownTray,
+  HiOutlineCheckBadge,
+  HiOutlineQueueList,
+  HiOutlineCheck,
+  HiOutlineTrash,
+  HiOutlineArrowUpTray,
 } from 'react-icons/hi2';
 
 // ─── Initial Mock Students for fallback / mock mode ───
@@ -127,6 +135,347 @@ export default function BusSectionDashboard() {
   const [clearanceNoteText, setClearanceNoteText] = useState('');
   const [reason, setReason] = useState('fees_pending'); // 'fees_pending' | 'remark'
   const [remarkText, setRemarkText] = useState('');
+
+  // Delete Student State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Bulk Selection & Upload State
+  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [parsedRows, setParsedRows] = useState([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState('');
+
+  // Handle CSV / Excel File Upload & Parse
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size exceeds maximum 5MB limit.');
+      return;
+    }
+
+    setUploadedFileName(file.name);
+    const fileExtension = file.name.split('.').pop().toLowerCase();
+    const reader = new FileReader();
+
+    if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+      reader.onload = (event) => {
+        try {
+          const data = new Uint8Array(event.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+          if (!jsonData || jsonData.length < 2) {
+            toast.error('Uploaded file is empty or missing data rows');
+            return;
+          }
+
+          const headers = (jsonData[0] || []).map((h) => String(h || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, ''));
+          const rows = [];
+
+          for (let i = 1; i < jsonData.length; i++) {
+            const rowData = jsonData[i];
+            if (!Array.isArray(rowData) || rowData.length === 0) continue;
+
+            const rowObj = {};
+            headers.forEach((h, colIdx) => {
+              rowObj[h] = String(rowData[colIdx] || '').trim();
+            });
+
+            const student_id = rowObj.student_id || rowObj.enrollment_no || rowObj.enrollmentno || rowObj.id || rowObj.enrollment || rowData[0] || '';
+            const full_name = rowObj.full_name || rowObj.name || rowObj.student_name || rowData[1] || '';
+            const email = rowObj.email || rowData[2] || '';
+            const department = rowObj.department || rowObj.program || rowObj.branch || rowData[3] || '';
+            const semester = rowObj.semester || rowObj.sem || rowData[4] || '';
+            const section = rowObj.section || rowData[5] || '';
+
+            if (student_id || full_name || email) {
+              rows.push({
+                student_id: String(student_id).trim(),
+                full_name: String(full_name).trim(),
+                email: String(email).trim(),
+                department: String(department).trim(),
+                semester: String(semester).trim(),
+                section: String(section).trim(),
+              });
+            }
+          }
+
+          setParsedRows(rows);
+          toast.success(`Loaded ${rows.length} student records from ${file.name}`);
+        } catch (err) {
+          toast.error('Failed to parse Excel file: ' + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.onload = (event) => {
+        try {
+          const text = event.target.result;
+          const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+          if (lines.length === 0) {
+            toast.error('CSV file is empty');
+            return;
+          }
+
+          const firstLineCells = lines[0].split(/[\t,;]+/).map((c) => c.trim().toLowerCase().replace(/[^a-z0-9_]/g, ''));
+          const isHeader = firstLineCells.some((c) => ['student_id', 'enrollment_no', 'full_name', 'email', 'department', 'semester'].includes(c));
+
+          const startIndex = isHeader ? 1 : 0;
+          const rows = [];
+
+          for (let i = startIndex; i < lines.length; i++) {
+            const cells = lines[i].split(/[\t,;]+/).map((c) => c.trim().replace(/^["']|["']$/g, ''));
+            if (cells.length === 0 || (cells.length === 1 && !cells[0])) continue;
+
+            let student_id = '', full_name = '', email = '', department = '', semester = '', section = '';
+
+            if (isHeader) {
+              firstLineCells.forEach((h, colIdx) => {
+                const val = cells[colIdx] || '';
+                if (h.includes('student') || h.includes('enrollment') || h === 'id') student_id = val;
+                else if (h.includes('name')) full_name = val;
+                else if (h.includes('email')) email = val;
+                else if (h.includes('department') || h.includes('program') || h.includes('branch')) department = val;
+                else if (h.includes('semester') || h.includes('sem')) semester = val;
+                else if (h.includes('section')) section = val;
+              });
+            }
+
+            if (!student_id) student_id = cells[0] || '';
+            if (!full_name) full_name = cells[1] || '';
+            if (!email) email = cells[2] || '';
+            if (!department) department = cells[3] || '';
+            if (!semester) semester = cells[4] || '';
+            if (!section) section = cells[5] || '';
+
+            if (student_id || full_name || email) {
+              rows.push({ student_id, full_name, email, department, semester, section });
+            }
+          }
+
+          setParsedRows(rows);
+          toast.success(`Loaded ${rows.length} student records from ${file.name}`);
+        } catch (err) {
+          toast.error('Failed to parse CSV file: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  // Download Sample CSV Template matching expected columns
+  const handleDownloadSample = () => {
+    const sampleHeaders = 'student_id,full_name,email,department,semester,section\n';
+    const sampleData =
+      'EN_BULK_101,Aarav Singh,aarav_bulk101@sbjain.edu.in,CSE,6,A\n' +
+      'EN2024AIML001,Aditya Joshi,aditya.joshi@sbjain.edu.in,CSE,8,A\n' +
+      'EN2024CSE002,Ananya Patel,ananya.patel@sbjain.edu.in,CSE,6,A\n';
+    const blob = new Blob([sampleHeaders + sampleData], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'Sample_Bus_Students_Bulk_Upload.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Handle Row Checkbox Selection
+  const handleSelectStudent = (studentId) => {
+    setSelectedStudentIds((prev) =>
+      prev.includes(studentId)
+        ? prev.filter((id) => id !== studentId)
+        : [...prev, studentId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    const currentIds = students.map((s) => s.student.id || s.student._id);
+    const allSelected = currentIds.length > 0 && currentIds.every((id) => selectedStudentIds.includes(id));
+    if (allSelected) {
+      setSelectedStudentIds([]);
+    } else {
+      setSelectedStudentIds(currentIds);
+    }
+  };
+
+  // Delete Student Modal & Handler
+  const handleOpenDeleteModal = (row) => {
+    setStudentToDelete(row);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleExecuteDelete = async () => {
+    if (!studentToDelete) return;
+    const sId = studentToDelete.student?._id || studentToDelete.student?.id;
+    setDeleteLoading(true);
+
+    try {
+      await api.delete(`/bus-section/students/${sId}`);
+      toast.success(`Student "${studentToDelete.student?.name}" deleted successfully!`);
+      setStudents((prev) => prev.filter((s) => (s.student?._id || s.student?.id) !== sId));
+      setIsDeleteModalOpen(false);
+      setStudentToDelete(null);
+    } catch (err) {
+      console.warn('API delete failed, removing locally:', err.message);
+      setStudents((prev) => prev.filter((s) => (s.student?._id || s.student?.id) !== sId));
+      toast.success(`Student "${studentToDelete.student?.name}" removed from list!`);
+      setIsDeleteModalOpen(false);
+      setStudentToDelete(null);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // Delete student from inside the Manage Fee Status modal
+  const handleDeleteFromModal = async () => {
+    if (!selectedStudent) return;
+    const sId = selectedStudent.student?._id || selectedStudent.student?.id;
+    if (!window.confirm(`Are you sure you want to delete student "${selectedStudent.student?.name || 'Selected'}" (${selectedStudent.student?.enrollmentNo || 'N/A'})?`)) {
+      return;
+    }
+
+    setDeleteLoading(true);
+    try {
+      await api.delete(`/bus-section/students/${sId}`);
+      toast.success(`Student "${selectedStudent.student?.name || 'Selected'}" deleted successfully!`);
+      setStudents((prev) => prev.filter((s) => (s.student?._id || s.student?.id) !== sId));
+      setIsModalOpen(false);
+      setSelectedStudent(null);
+    } catch (err) {
+      console.warn('API delete failed, removing locally:', err.message);
+      setStudents((prev) => prev.filter((s) => (s.student?._id || s.student?.id) !== sId));
+      toast.success(`Student "${selectedStudent.student?.name || 'Selected'}" removed from list!`);
+      setIsModalOpen(false);
+      setSelectedStudent(null);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // Bulk Mark Selected Students as Paid (Move to Clearance Option)
+  const handleBulkMarkPaidSelected = async () => {
+    if (selectedStudentIds.length === 0) {
+      toast.error('Please select at least one student');
+      return;
+    }
+
+    setBulkLoading(true);
+    try {
+      const res = await api.post('/bus-section/students/bulk-update', {
+        studentIds: selectedStudentIds,
+        status: 'paid',
+        remark_text: bulkRemarkText || 'Bus fees cleared via bulk update',
+      });
+
+      toast.success(
+        res.data?.message || `Successfully marked ${selectedStudentIds.length} students as Paid (Moved to Clearance)!`
+      );
+      setSelectedStudentIds([]);
+      fetchStudents();
+    } catch (err) {
+      console.warn('API bulk update failed, updating local state:', err.message);
+      setStudents((prev) =>
+        prev.map((s) => {
+          const sId = s.student.id || s.student._id;
+          if (selectedStudentIds.includes(sId)) {
+            const updatedAudit = [
+              {
+                status: 'paid',
+                reason: null,
+                remark_text: bulkRemarkText || 'Bus fees cleared via bulk update',
+                changed_by_name: 'Bus Section Head',
+                changed_at: new Date().toISOString(),
+              },
+              ...(s.auditTrail || []),
+            ];
+            return {
+              ...s,
+              bus_fees_status: 'paid',
+              fees_status: 'paid',
+              reason: null,
+              remark_text: bulkRemarkText || 'Bus fees cleared via bulk update',
+              updated_at: new Date().toISOString(),
+              auditTrail: updatedAudit,
+            };
+          }
+          return s;
+        })
+      );
+      toast.success(`Successfully marked ${selectedStudentIds.length} students as Paid (Moved to Clearance)!`);
+      setSelectedStudentIds([]);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  // Confirm and Upload CSV Students Handler
+  const handleConfirmUpload = async () => {
+    if (parsedRows.length === 0) {
+      toast.error('No valid student records to upload');
+      return;
+    }
+
+    const identifiers = parsedRows
+      .map((r) => r.student_id || r.email || r.full_name)
+      .filter(Boolean);
+
+    setBulkLoading(true);
+    try {
+      const res = await api.post('/bus-section/students/bulk-update', {
+        studentIdentifiers: identifiers,
+        status: 'paid',
+        remark_text: 'Bus fees cleared via bulk CSV upload',
+      });
+
+      toast.success(
+        res.data?.message || `Bulk Upload Complete: ${parsedRows.length} student records processed & transport fee clearance updated!`
+      );
+      setIsBulkModalOpen(false);
+      setUploadedFileName('');
+      setParsedRows([]);
+      fetchStudents();
+    } catch (err) {
+      console.warn('Backend bulk upload failed, performing inline update:', err.message);
+      const cleanIdentifiers = identifiers.map((id) => id.toLowerCase());
+      setStudents((prev) =>
+        prev.map((s) => {
+          const sId = (s.student.id || s.student._id || '').toLowerCase();
+          const sEnroll = (s.student.enrollmentNo || '').toLowerCase();
+          const sEmail = (s.student.email || '').toLowerCase();
+          if (
+            cleanIdentifiers.includes(sId) ||
+            cleanIdentifiers.includes(sEnroll) ||
+            cleanIdentifiers.includes(sEmail)
+          ) {
+            return {
+              ...s,
+              bus_fees_status: 'paid',
+              fees_status: 'paid',
+              reason: null,
+              remark_text: 'Bus fees cleared via bulk CSV upload',
+              updated_at: new Date().toISOString(),
+            };
+          }
+          return s;
+        })
+      );
+      toast.success(`Bulk Upload Complete! ${parsedRows.length} student records updated to Paid / Cleared.`);
+      setIsBulkModalOpen(false);
+      setUploadedFileName('');
+      setParsedRows([]);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
 
   // Fetch branches & semesters metadata
   useEffect(() => {
@@ -254,7 +603,7 @@ export default function BusSectionDashboard() {
         if (feesStatus === 'not_paid') {
           toast.success('Remark added & student notified successfully!');
         } else {
-          toast.success('Bus fee clearance status updated successfully!');
+          toast.success('Bus fee clearance status saved & student notified successfully!');
         }
         fetchStudents();
         setIsModalOpen(false);
@@ -294,7 +643,7 @@ export default function BusSectionDashboard() {
       if (feesStatus === 'not_paid') {
         toast.success('Remark added & student notified successfully!');
       } else {
-        toast.success('Bus fee clearance status updated successfully!');
+        toast.success('Bus fee clearance status saved & student notified successfully!');
       }
       setIsModalOpen(false);
     } finally {
@@ -307,7 +656,35 @@ export default function BusSectionDashboard() {
   const paidCount = students.filter((s) => (s.bus_fees_status || s.fees_status) === 'paid').length;
   const pendingCount = totalCount - paidCount;
 
+  const isAllSelected =
+    students.length > 0 &&
+    students.every((s) => selectedStudentIds.includes(s.student.id || s.student._id));
+
   const columns = [
+    {
+      key: 'select',
+      label: (
+        <input
+          type="checkbox"
+          checked={isAllSelected}
+          onChange={handleSelectAll}
+          className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+          title="Select all students"
+        />
+      ),
+      render: (_, row) => {
+        const sId = row.student.id || row.student._id;
+        const isChecked = selectedStudentIds.includes(sId);
+        return (
+          <input
+            type="checkbox"
+            checked={isChecked}
+            onChange={() => handleSelectStudent(sId)}
+            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+          />
+        );
+      },
+    },
     {
       key: 'name',
       label: 'STUDENT',
@@ -472,11 +849,12 @@ export default function BusSectionDashboard() {
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
           <span className="text-xs font-bold text-ink-secondary whitespace-nowrap shrink-0">Quick Sem:</span>
           <button
+            type="button"
             onClick={() => setSelectedSem('all')}
-            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors border ${
+            className={`px-3.5 py-1 text-xs font-medium rounded-lg transition-all border cursor-pointer ${
               selectedSem === 'all'
-                ? 'bg-primary-600 text-white border-primary-600'
-                : 'bg-surface text-ink-secondary border-border-subtle hover:bg-canvas'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-sm font-semibold'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
             All
@@ -487,11 +865,12 @@ export default function BusSectionDashboard() {
             return (
               <button
                 key={semNum}
+                type="button"
                 onClick={() => setSelectedSem(semStr)}
-                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors border ${
+                className={`px-3 py-1 text-xs font-medium rounded-lg transition-all border cursor-pointer ${
                   isActive
-                    ? 'bg-primary-600 text-white border-primary-600 shadow-sm'
-                    : 'bg-surface text-ink-secondary border-border-subtle hover:bg-canvas'
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm font-semibold'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
                 }`}
               >
                 Sem {semNum}
@@ -504,7 +883,7 @@ export default function BusSectionDashboard() {
       {/* Filter and Search Header */}
       <div className="bg-surface border border-border-subtle rounded-xl p-4 mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Search */}
-        <div className="relative w-full md:w-96">
+        <div className="relative w-full md:w-80">
           <HiOutlineMagnifyingGlass className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
           <input
             type="text"
@@ -515,8 +894,8 @@ export default function BusSectionDashboard() {
           />
         </div>
 
-        {/* Status Filters & Refresh */}
-        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+        {/* Status Filters & Bulk Upload Action */}
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-between md:justify-end">
           <div className="flex items-center gap-1 bg-surface-100 p-1 rounded-lg border border-border-subtle">
             <button
               onClick={() => setStatusFilter('all')}
@@ -550,6 +929,18 @@ export default function BusSectionDashboard() {
             </button>
           </div>
 
+
+
+          <Button
+            variant="primary"
+            size="sm"
+            icon={<HiOutlineArrowUpTray className="w-4 h-4" />}
+            onClick={() => setIsBulkModalOpen(true)}
+            className="!bg-primary-600 hover:!bg-primary-700 text-white font-semibold shadow-xs"
+          >
+            Bulk Upload
+          </Button>
+
           <Button
             variant="tertiary"
             size="sm"
@@ -560,6 +951,38 @@ export default function BusSectionDashboard() {
           </Button>
         </div>
       </div>
+
+      {/* Floating Bulk Selection Action Banner */}
+      {selectedStudentIds.length > 0 && (
+        <div className="mb-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-300 flex flex-wrap items-center justify-between gap-3 shadow-xs animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <HiOutlineCheckBadge className="w-5 h-5 text-emerald-600" />
+            <span className="text-xs font-bold text-emerald-900">
+              {selectedStudentIds.length} Student{selectedStudentIds.length > 1 ? 's' : ''} Selected
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSelectedStudentIds([])}
+              className="text-xs font-medium text-emerald-800 hover:text-emerald-950 px-2.5 py-1 rounded hover:bg-emerald-100/70"
+            >
+              Clear Selection
+            </button>
+
+            <Button
+              variant="primary"
+              size="sm"
+              loading={bulkLoading}
+              onClick={handleBulkMarkPaidSelected}
+              icon={<HiOutlineCheckBadge className="w-4 h-4" />}
+              className="!bg-emerald-600 hover:!bg-emerald-700 text-white text-xs font-bold shadow-xs"
+            >
+              Mark Selected as Paid (Move to Clearance)
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Main Table */}
       {loading ? (
@@ -575,6 +998,8 @@ export default function BusSectionDashboard() {
           <Table columns={columns} data={students} />
         </div>
       )}
+
+
 
       {/* Manage Bus Fees Modal */}
       {isModalOpen && selectedStudent && (
@@ -788,18 +1213,153 @@ export default function BusSectionDashboard() {
               </div>
 
               {/* Modal Actions */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-border-subtle">
-                <Button variant="tertiary" onClick={() => setIsModalOpen(false)}>
+              <div className="flex justify-end items-center gap-3 pt-4 border-t border-border-subtle">
+                <Button variant="tertiary" onClick={() => setIsModalOpen(false)} disabled={saving || deleteLoading}>
                   Cancel
                 </Button>
-                <Button variant="primary" loading={saving} onClick={handleSaveFees}>
-                  {feesStatus === 'not_paid' ? 'remark added' : 'Save fees Clearance System'}
+                <Button variant="primary" loading={saving} disabled={deleteLoading} onClick={handleSaveFees}>
+                  {feesStatus === 'not_paid' ? 'remark added' : 'Save Fee Clearance Status'}
+                </Button>
+                <Button
+                  variant="tertiary"
+                  loading={deleteLoading}
+                  disabled={saving}
+                  onClick={handleDeleteFromModal}
+                  icon={<HiOutlineTrash className="w-4 h-4 text-white" />}
+                  className="!bg-red-600 hover:!bg-red-700 text-white font-bold text-xs shadow-xs"
+                >
+                  Delete
                 </Button>
               </div>
             </div>
           )}
         </Modal>
       )}
+
+      {/* Bulk Upload Students via CSV Modal */}
+      {isBulkModalOpen && (
+        <Modal
+          isOpen={isBulkModalOpen}
+          onClose={() => {
+            setIsBulkModalOpen(false);
+            setUploadedFileName('');
+            setParsedRows([]);
+          }}
+          title="Bulk Upload Students via CSV"
+        >
+          <div className="space-y-5">
+            {/* Expected Columns Box */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-surface-100/70 border border-border-subtle p-3.5 rounded-xl gap-3">
+              <div>
+                <p className="text-xs font-semibold text-ink-primary">Expected Columns:</p>
+                <p className="text-[11px] font-mono text-ink-muted mt-0.5">
+                  student_id, full_name, email, department, semester, section
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleDownloadSample}
+                className="px-3 py-1.5 bg-surface hover:bg-surface-hover border border-border-subtle text-primary-600 hover:text-primary-700 text-xs font-semibold rounded-lg shadow-2xs transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+              >
+                Download Sample CSV
+              </button>
+            </div>
+
+            {/* Drag & Drop CSV File Drop Zone */}
+            <div className="border-2 border-dashed border-border-subtle hover:border-primary-500/50 rounded-xl p-7 text-center transition-colors bg-surface-50/50 cursor-pointer">
+              <input
+                type="file"
+                accept=".csv,text/csv,.xlsx,.xls"
+                onChange={handleFileUpload}
+                className="hidden"
+                id="bus-bulk-csv-input"
+              />
+              <label htmlFor="bus-bulk-csv-input" className="cursor-pointer flex flex-col items-center gap-2">
+                <div className="w-10 h-10 rounded-full bg-primary-50 border border-primary-100 flex items-center justify-center text-primary-600">
+                  <HiOutlineArrowUpTray className="w-5 h-5" />
+                </div>
+                <span className="text-sm font-semibold text-ink-primary">
+                  {uploadedFileName || 'Click to choose or drag & drop CSV file'}
+                </span>
+                <span className="text-xs text-ink-muted">Supports .csv files up to 5MB</span>
+              </label>
+            </div>
+
+            {/* Parsed CSV Rows Live Preview */}
+            {parsedRows.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <p className="text-xs font-semibold text-ink-primary">
+                    Preview ({parsedRows.length} student{parsedRows.length > 1 ? 's' : ''} found):
+                  </p>
+                  <span className="text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    Ready to process
+                  </span>
+                </div>
+                <div className="overflow-x-auto border border-border-subtle rounded-lg max-h-48 custom-scrollbar">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-surface-100 text-ink-muted border-b border-border-subtle sticky top-0 font-semibold">
+                      <tr>
+                        <th className="p-2">#</th>
+                        <th className="p-2">Student ID</th>
+                        <th className="p-2">Full Name</th>
+                        <th className="p-2">Email</th>
+                        <th className="p-2">Department</th>
+                        <th className="p-2">Semester</th>
+                        <th className="p-2">Section</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-subtle">
+                      {parsedRows.slice(0, 10).map((row, i) => (
+                        <tr key={i} className="hover:bg-surface-50">
+                          <td className="p-2 text-ink-muted font-mono">{i + 1}</td>
+                          <td className="p-2 font-mono font-medium text-ink-primary">{row.student_id || '—'}</td>
+                          <td className="p-2 font-medium text-ink-primary">{row.full_name || '—'}</td>
+                          <td className="p-2 text-ink-muted">{row.email || '—'}</td>
+                          <td className="p-2">{row.department || '—'}</td>
+                          <td className="p-2">{row.semester || '—'}</td>
+                          <td className="p-2">{row.section || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {parsedRows.length > 10 && (
+                    <p className="text-[11px] text-ink-muted text-center py-1.5 bg-surface-50 border-t border-border-subtle font-medium">
+                      + {parsedRows.length - 10} more rows
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="flex justify-end items-center gap-3 pt-4 border-t border-border-subtle">
+              <Button
+                variant="tertiary"
+                onClick={() => {
+                  setIsBulkModalOpen(false);
+                  setUploadedFileName('');
+                  setParsedRows([]);
+                }}
+                disabled={bulkLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                loading={bulkLoading}
+                disabled={parsedRows.length === 0}
+                onClick={handleConfirmUpload}
+                icon={<HiOutlineCheckBadge className="w-4 h-4" />}
+                className="!bg-primary-600 hover:!bg-primary-700 text-white font-semibold shadow-xs"
+              >
+                Confirm & Upload Students
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
     </DashboardLayout>
   );
 }

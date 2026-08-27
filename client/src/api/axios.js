@@ -27,7 +27,7 @@ api.interceptors.response.use(
   },
   (error) => {
     const status = error.response?.status;
-    let message = error.response?.data?.message;
+    let message = error.response?.data?.message || error.response?.data?.error?.message;
 
     // 401 Unauthorized — token expired or invalid
     if (status === 401) {
@@ -43,18 +43,18 @@ api.interceptors.response.use(
 
     const rawData = error.response?.data;
     if (typeof rawData === 'string' && (rawData.includes('ECONNREFUSED') || rawData.includes('500 Internal Server Error'))) {
-      message = 'Backend server is offline on port 5000. Please start the backend server ("npm start" inside server/).';
+      message = 'Backend server is offline on port 5000. Please ensure backend server is running.';
     }
 
     if (!message) {
       if (status === 429) {
         message = 'Too many requests. Please wait a moment before trying again.';
       } else if (status === 500) {
-        message = 'Backend server is offline or encountered an unexpected error. Please ensure backend server is running.';
+        message = 'Backend server encountered an unexpected error. Please ensure backend server is running.';
       } else if (status === 404) {
         message = 'Requested API resource was not found.';
       } else if (!status) {
-        message = 'Network error: Cannot reach the backend server. Please ensure the backend is running.';
+        message = 'Network error: Cannot reach the backend server. Please ensure backend server is running.';
       } else {
         message = error.message || 'Something went wrong';
       }

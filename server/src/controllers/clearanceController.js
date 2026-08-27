@@ -1,10 +1,10 @@
-import ClearanceRequest from '../models/ClearanceRequest.js';
-import ClearanceItem from '../models/ClearanceItem.js';
-import ItemClearance from '../models/ItemClearance.js';
-import SectionClearance from '../models/SectionClearance.js';
-import Semester from '../models/Semester.js';
-import AppError from '../utils/AppError.js';
-import { success, created } from '../utils/response.js';
+const ClearanceRequest = require('../models/ClearanceRequest');
+const ClearanceItem = require('../models/ClearanceItem');
+const ItemClearance = require('../models/ItemClearance');
+const SectionClearance = require('../models/SectionClearance');
+const Semester = require('../models/Semester');
+const AppError = require('../utils/AppError');
+const { success, created } = require('../utils/response');
 
 const SECTION_DEPARTMENTS = ['library', 'accounts', 'bus'];
 
@@ -13,7 +13,7 @@ const SECTION_DEPARTMENTS = ['library', 'accounts', 'bus'];
 /**
  * POST /clearances/initiate — start the clearance process
  */
-export const initiateClearance = async (req, res) => {
+const initiateClearance = async (req, res) => {
   const student = req.user;
 
   // Find active semester for student's program
@@ -94,7 +94,7 @@ export const initiateClearance = async (req, res) => {
 /**
  * GET /clearances/my — get current student's clearance status
  */
-export const getMyClearance = async (req, res) => {
+const getMyClearance = async (req, res) => {
   const clearance = await ClearanceRequest.findOne({ studentId: req.user._id })
     .populate('semesterId', 'name academicYear')
     .sort('-createdAt');
@@ -119,7 +119,7 @@ export const getMyClearance = async (req, res) => {
 /**
  * GET /clearances/items/pending — get items pending review by this teacher
  */
-export const getPendingItemClearances = async (req, res) => {
+const getPendingItemClearances = async (req, res) => {
   const items = await ItemClearance.find({
     teacherId: req.user._id,
     status: 'pending',
@@ -134,7 +134,7 @@ export const getPendingItemClearances = async (req, res) => {
 /**
  * PATCH /clearances/items/:id/review — teacher approves/rejects an item clearance
  */
-export const reviewItemClearance = async (req, res) => {
+const reviewItemClearance = async (req, res) => {
   const { status, remarks } = req.body;
 
   const itemClearance = await ItemClearance.findById(req.params.id);
@@ -179,7 +179,7 @@ export const reviewItemClearance = async (req, res) => {
 /**
  * GET /clearances/sections/pending — get sections pending review by this section head
  */
-export const getPendingSectionClearances = async (req, res) => {
+const getPendingSectionClearances = async (req, res) => {
   const sectionType = req.user.sectionType;
   if (!sectionType) throw AppError.badRequest('Section type not configured for your account');
 
@@ -201,7 +201,7 @@ export const getPendingSectionClearances = async (req, res) => {
 /**
  * PATCH /clearances/sections/:id/review — section head approves/rejects
  */
-export const reviewSectionClearance = async (req, res) => {
+const reviewSectionClearance = async (req, res) => {
   const { status, remarks } = req.body;
 
   const section = await SectionClearance.findById(req.params.id);
@@ -245,7 +245,7 @@ export const reviewSectionClearance = async (req, res) => {
 /**
  * GET /clearances/ci/pending — get clearances pending CI review
  */
-export const getPendingCIClearances = async (req, res) => {
+const getPendingCIClearances = async (req, res) => {
   const clearances = await ClearanceRequest.find({ status: 'ci_review' })
     .populate('studentId', 'name enrollmentNo email section')
     .populate('semesterId', 'name academicYear')
@@ -257,7 +257,7 @@ export const getPendingCIClearances = async (req, res) => {
 /**
  * PATCH /clearances/ci/:id/review — class incharge approves/rejects
  */
-export const reviewCIClearance = async (req, res) => {
+const reviewCIClearance = async (req, res) => {
   const { status, remarks } = req.body;
 
   const clearance = await ClearanceRequest.findById(req.params.id);
@@ -286,7 +286,7 @@ export const reviewCIClearance = async (req, res) => {
 /**
  * GET /clearances/hod/pending — get clearances pending HOD review
  */
-export const getPendingHODClearances = async (req, res) => {
+const getPendingHODClearances = async (req, res) => {
   const clearances = await ClearanceRequest.find({ status: 'hod_review' })
     .populate('studentId', 'name enrollmentNo email section programId')
     .populate({
@@ -302,7 +302,7 @@ export const getPendingHODClearances = async (req, res) => {
 /**
  * PATCH /clearances/hod/:id/review — HOD gives final approval/rejection
  */
-export const reviewHODClearance = async (req, res) => {
+const reviewHODClearance = async (req, res) => {
   const { status, remarks } = req.body;
 
   const clearance = await ClearanceRequest.findById(req.params.id);
@@ -325,4 +325,17 @@ export const reviewHODClearance = async (req, res) => {
   await clearance.save();
 
   return success(res, 'Clearance completed — certificate can be generated', clearance);
+};
+
+module.exports = {
+  initiateClearance,
+  getMyClearance,
+  getPendingItemClearances,
+  reviewItemClearance,
+  getPendingSectionClearances,
+  reviewSectionClearance,
+  getPendingCIClearances,
+  reviewCIClearance,
+  getPendingHODClearances,
+  reviewHODClearance,
 };

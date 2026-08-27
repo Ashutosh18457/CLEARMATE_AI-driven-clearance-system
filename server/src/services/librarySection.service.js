@@ -8,7 +8,7 @@ const AppError = require('../utils/AppError');
 const logger = require('../config/logger');
 const notificationService = require('./notification.service');
 
-const busSectionService = {
+const librarySectionService = {
   /**
    * Gets list of active branches (programs) and semesters for filtering
    */
@@ -19,15 +19,15 @@ const busSectionService = {
   },
 
   /**
-   * Gets list of students with bus fee clearance status, searchable & paginated.
+   * Gets list of students with library clearance status, searchable & paginated.
    * Supports filtering by status, branch (programId), and semester (currentSemester).
    */
-  async getStudentsBusFeeStatus(queryParams = {}) {
+  async getStudentsLibraryStatus(queryParams = {}) {
     const page = parseInt(queryParams.page, 10) || 1;
     const limit = parseInt(queryParams.limit, 10) || 50;
     const skip = (page - 1) * limit;
     const search = queryParams.search ? queryParams.search.trim() : '';
-    const statusFilter = queryParams.status; // 'paid' | 'not_paid'
+    const statusFilter = queryParams.status; // 'paid' | 'not_paid' or 'cleared' | 'pending'
     const programFilter = queryParams.programId || queryParams.program || queryParams.branch;
     const semFilter = queryParams.currentSemester || queryParams.sem || queryParams.semester;
 
@@ -69,10 +69,10 @@ const busSectionService = {
 
     const studentIds = students.map((s) => s._id);
 
-    // Fetch bus SectionClearances for these students
+    // Fetch library SectionClearances for these students
     const sectionClearances = await SectionClearance.find({
       studentId: { $in: studentIds },
-      department: 'bus',
+      department: 'library',
     }).populate('updated_by', 'name email');
 
     const clearanceMap = new Map();
@@ -82,7 +82,7 @@ const busSectionService = {
 
     let results = students.map((student) => {
       const sc = clearanceMap.get(student._id.toString());
-      const fees_status = sc ? (sc.bus_fees_status || sc.fees_status || (sc.status === 'approved' ? 'paid' : 'not_paid')) : 'not_paid';
+      const fees_status = sc ? (sc.fees_status || (sc.status === 'approved' ? 'paid' : 'not_paid')) : 'not_paid';
       return {
         student: {
           id: student._id,
@@ -94,7 +94,7 @@ const busSectionService = {
           currentSemester: student.currentSemester,
           program: student.programId ? student.programId.code : 'N/A',
         },
-        bus_fees_status: fees_status,
+        library_status: fees_status,
         fees_status: fees_status,
         reason: sc ? sc.reason || null : null,
         remark_text: sc ? sc.remark_text || sc.remarks || '' : '',
@@ -105,8 +105,10 @@ const busSectionService = {
     });
 
     // Apply status filter if requested
-    if (statusFilter === 'paid' || statusFilter === 'not_paid') {
-      results = results.filter((r) => r.bus_fees_status === statusFilter);
+    if (statusFilter === 'paid' || statusFilter === 'cleared') {
+      results = results.filter((r) => r.fees_status === 'paid');
+    } else if (statusFilter === 'not_paid' || statusFilter === 'pending') {
+      results = results.filter((r) => r.fees_status === 'not_paid');
     }
 
     return {
@@ -121,9 +123,9 @@ const busSectionService = {
   },
 
   /**
-   * Gets single student bus fee detail + audit trail
+   * Gets single student library status detail + audit trail
    */
-  async getStudentBusFeeDetail(studentId) {
+  async getStudentLibraryDetail(studentId) {
     const student = await User.findOne({ _id: studentId }).populate('programId', 'name code degree department');
     if (!student) {
       throw AppError.notFound('Student not found');
@@ -131,10 +133,10 @@ const busSectionService = {
 
     const sc = await SectionClearance.findOne({
       studentId: student._id,
-      department: 'bus',
+      department: 'library',
     }).populate('updated_by', 'name email');
 
-    const fees_status = sc ? (sc.bus_fees_status || sc.fees_status || (sc.status === 'approved' ? 'paid' : 'not_paid')) : 'not_paid';
+    const fees_status = sc ? (sc.fees_status || (sc.status === 'approved' ? 'paid' : 'not_paid')) : 'not_paid';
 
     return {
       student: {
@@ -147,7 +149,7 @@ const busSectionService = {
         currentSemester: student.currentSemester,
         program: student.programId ? student.programId.code : 'N/A',
       },
-      bus_fees_status: fees_status,
+      library_status: fees_status,
       fees_status: fees_status,
       reason: sc ? sc.reason || null : null,
       remark_text: sc ? sc.remark_text || sc.remarks || '' : '',
@@ -158,13 +160,16 @@ const busSectionService = {
   },
 
   /**
-   * Updates student bus fee status and logs audit trail.
+   * Updates student library status and logs audit trail.
    */
-  async updateStudentBusFees(studentId, updateData, updatedByUserId) {
-    const { status, reason, remark_text } = updateData; // status: 'paid' | 'not_paid'
+  async updateStudentLibraryStatus(studentId, updateData, updatedByUserId) {
+    let { status, fees_status, reason, remark_text } = updateData;
+    status = status || fees_status;
+    if (status === 'cleared') status = 'paid';
+    if (status === 'pending') status = 'not_paid';
 
     if (status !== 'paid' && status !== 'not_paid') {
-      throw AppError.badRequest('Status must be paid or not_paid');
+      throw AppError.badRequest('Status must be paid/cleared or not_paid/pending');
     }
 
     const student = await User.findOne({ _id: studentId });
@@ -173,7 +178,7 @@ const busSectionService = {
     }
 
     const updater = await User.findById(updatedByUserId);
-    const updaterName = updater ? updater.name : 'Bus Section Admin';
+    const updaterName = updater ? updater.name : 'Library Section Head';
 
     // Find active ClearanceRequest for student if one exists
     const activeRequest = await ClearanceRequest.findOne({
@@ -183,22 +188,21 @@ const busSectionService = {
 
     let sc = await SectionClearance.findOne({
       studentId: student._id,
-      department: 'bus',
+      department: 'library',
     });
 
     if (!sc) {
       sc = new SectionClearance({
         clearanceRequestId: activeRequest ? activeRequest._id : undefined,
         studentId: student._id,
-        department: 'bus',
+        department: 'library',
       });
     } else if (!sc.clearanceRequestId && activeRequest) {
       sc.clearanceRequestId = activeRequest._id;
     }
 
-    // Set bus fee clearance status and department approval status
+    // Set library status and department approval status
     sc.fees_status = status;
-    sc.bus_fees_status = status;
     sc.status = status === 'paid' ? 'approved' : 'rejected';
     sc.reviewerId = updatedByUserId;
     sc.updated_by = updatedByUserId;
@@ -207,11 +211,11 @@ const busSectionService = {
 
     if (status === 'paid') {
       sc.reason = reason || undefined;
-      sc.remark_text = remark_text && remark_text.trim() ? remark_text.trim() : 'Bus fees cleared';
+      sc.remark_text = remark_text && remark_text.trim() ? remark_text.trim() : 'Library clearance granted';
       sc.remarks = sc.remark_text;
     } else {
       sc.reason = reason || 'fees_pending';
-      sc.remark_text = reason === 'remark' ? (remark_text || 'Bus fees pending') : 'Bus fees pending';
+      sc.remark_text = remark_text && remark_text.trim() ? remark_text.trim() : 'Books or dues pending with Library';
       sc.remarks = sc.remark_text;
     }
 
@@ -228,53 +232,40 @@ const busSectionService = {
 
     await sc.save();
 
-    // If an active ClearanceRequest exists, update department clearance summary and check advancement
-    if (activeRequest) {
-      if (activeRequest.sectionClearances) {
-        let secSummary = activeRequest.sectionClearances.find((s) => s.department === 'bus');
-        if (secSummary) {
-          secSummary.status = sc.status;
-          secSummary.reviewerId = updatedByUserId;
-          secSummary.reviewedAt = new Date();
-          secSummary.remarks = sc.remarks;
-          await activeRequest.save();
-        }
-      }
-
-      if (status === 'paid') {
-        try {
-          const clearanceService = require('./clearance.service');
-          await clearanceService._checkAndAdvanceFromSections(activeRequest._id);
-        } catch (err) {
-          logger.warn('Failed to auto-advance clearance request from bus section', { error: err.message });
-        }
+    // Auto-advance clearance request if all section clearances are approved
+    if (sc.status === 'approved' && sc.clearanceRequestId) {
+      try {
+        const clearanceService = require('./clearance.service');
+        await clearanceService._checkAndAdvanceFromSections(sc.clearanceRequestId);
+      } catch (err) {
+        logger.warn('Failed to auto-advance clearance request from library', { error: err.message });
       }
     }
 
     // Send Notification to student
     try {
       if (status === 'not_paid') {
-        const notifMsg = sc.remark_text || 'Bus fees pending. Please resolve with Bus Section.';
+        const notifMsg = sc.remark_text || 'Library books or dues pending.';
         await notificationService.createNotification(student._id, {
-          title: 'Bus Transport Fee Remark 🚌',
-          message: `Bus Section Remark: ${notifMsg}`,
+          title: 'Library Clearance Remark 📚',
+          message: `Library Section Remark: ${notifMsg}`,
           type: 'warning',
           link: '/dashboard/clearance',
         });
       } else if (status === 'paid') {
-        const notifMsg = sc.remark_text || 'Bus fees cleared';
+        const notifMsg = sc.remark_text || 'Library clearance granted';
         await notificationService.createNotification(student._id, {
-          title: 'Bus Transport Fee Cleared 🚌',
-          message: `Your Bus Fee status has been updated to Paid (${notifMsg}).`,
+          title: 'Library Clearance Approved 📚',
+          message: `Your Library status has been updated to Cleared (${notifMsg}).`,
           type: 'success',
           link: '/dashboard/clearance',
         });
       }
     } catch (notifErr) {
-      logger.warn('Failed to send notification to student for bus fee update', { error: notifErr.message });
+      logger.warn('Failed to send notification to student for library update', { error: notifErr.message });
     }
 
-    logger.info('Student bus fee status updated by Bus Section', {
+    logger.info('Student library status updated by Library Section', {
       studentId,
       status,
       reason,
@@ -283,7 +274,7 @@ const busSectionService = {
 
     return {
       studentId,
-      bus_fees_status: sc.fees_status,
+      library_status: sc.fees_status,
       fees_status: sc.fees_status,
       reason: sc.reason,
       remark_text: sc.remark_text,
@@ -294,9 +285,9 @@ const busSectionService = {
   },
 
   /**
-   * Bulk updates student bus fee status to paid / cleared
+   * Bulk updates student library status to paid / cleared
    */
-  async bulkUpdateStudentBusFees(studentIdentifiers, status = 'paid', remarkText = 'Bulk bus fee clearance granted', updatedByUserId) {
+  async bulkUpdateStudentLibraryStatus(studentIdentifiers, status = 'paid', remarkText = 'Bulk library clearance granted', updatedByUserId) {
     if (!Array.isArray(studentIdentifiers) || studentIdentifiers.length === 0) {
       throw AppError.badRequest('studentIdentifiers array is required');
     }
@@ -329,14 +320,14 @@ const busSectionService = {
     const updatedResults = [];
     for (const student of students) {
       try {
-        const res = await this.updateStudentBusFees(
+        const res = await this.updateStudentLibraryStatus(
           student._id,
           { status, reason: undefined, remark_text: remarkText },
           updatedByUserId
         );
         updatedResults.push(res);
       } catch (err) {
-        logger.warn(`Failed bulk update for student ${student._id}`, { error: err.message });
+        logger.warn(`Failed bulk library update for student ${student._id}`, { error: err.message });
       }
     }
 
@@ -345,25 +336,6 @@ const busSectionService = {
       updatedStudents: updatedResults,
     };
   },
-
-  /**
-   * Deletes a student from Bus Section and User database
-   */
-  async deleteStudent(studentId) {
-    const student = await User.findById(studentId);
-    if (!student) {
-      throw AppError.notFound('Student not found');
-    }
-
-    // Delete section clearance record for bus section
-    await SectionClearance.deleteMany({ studentId, department: 'bus' });
-
-    // Delete user document
-    await User.findByIdAndDelete(studentId);
-
-    logger.info('Student deleted from Bus Section', { studentId });
-    return { success: true, message: 'Student deleted successfully' };
-  },
 };
 
-module.exports = busSectionService;
+module.exports = librarySectionService;

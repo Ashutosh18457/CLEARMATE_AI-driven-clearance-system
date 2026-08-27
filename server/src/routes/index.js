@@ -29,6 +29,7 @@ router.use('/admin', require('./admin.routes'));
 // router.use('/section', require('./section.routes'));
 router.use('/account-section', require('./accountSection.routes'));
 router.use('/bus-section', require('./busSection.routes'));
+router.use('/library-section', require('./librarySection.routes'));
 router.use('/clearances', require('./clearance.routes'));
 router.use('/submissions', require('./submission.routes'));
 router.use('/notifications', require('./notification.routes'));

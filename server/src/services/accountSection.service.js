@@ -6,6 +6,7 @@ const Program = require('../models/Program');
 const Semester = require('../models/Semester');
 const AppError = require('../utils/AppError');
 const logger = require('../config/logger');
+const notificationService = require('./notification.service');
 
 const accountSectionService = {
   /**
@@ -197,6 +198,8 @@ const accountSectionService = {
         department: 'accounts',
         auditTrail: [],
       });
+    } else if (!sectionClearance.clearanceRequestId && clearanceRequest) {
+      sectionClearance.clearanceRequestId = clearanceRequest._id;
     }
 
     const finalRemark = status === 'paid' ? 'Fees cleared' : reason === 'remark' ? remark_text.trim() : 'Fees pending';
@@ -247,11 +250,36 @@ const accountSectionService = {
       }
 
       if (status === 'paid') {
-        const clearanceService = require('./clearance.service');
-        await clearanceService._checkAndAdvanceFromSections(clearanceRequest._id);
+        try {
+          const clearanceService = require('./clearance.service');
+          await clearanceService._checkAndAdvanceFromSections(clearanceRequest._id);
+        } catch (err) {
+          logger.warn('Failed to auto-advance clearance request from accounts', { error: err.message });
+        }
       }
     }
 
+    // Send Notification to student
+    try {
+      if (status === 'not_paid') {
+        const notifMsg = finalRemark || 'Tuition / College fees pending.';
+        await notificationService.createNotification(studentId, {
+          title: 'Account Fee Clearance Remark 💰',
+          message: `Account Section Remark: ${notifMsg}`,
+          type: 'warning',
+          link: '/dashboard/clearance',
+        });
+      } else if (status === 'paid') {
+        await notificationService.createNotification(studentId, {
+          title: 'Account Fee Clearance Approved 💰',
+          message: 'Your Fee Clearance status has been updated to Paid. All fees cleared.',
+          type: 'success',
+          link: '/dashboard/clearance',
+        });
+      }
+    } catch (notifErr) {
+      logger.warn('Failed to send notification to student for fee update', { error: notifErr.message });
+    }
     logger.info('Student fee status updated by Account Section', {
       studentId,
       status,
@@ -267,6 +295,59 @@ const accountSectionService = {
       updated_by: { id: updatedByUserId, name: updatedByName },
       updated_at: sectionClearance.updated_at,
       auditTrail: sectionClearance.auditTrail,
+    };
+  },
+
+  /**
+   * Bulk updates student fee status to paid / cleared
+   */
+  async bulkUpdateStudentFees(studentIdentifiers, status = 'paid', remarkText = 'Bulk fee clearance granted', updatedByUserId) {
+    if (!Array.isArray(studentIdentifiers) || studentIdentifiers.length === 0) {
+      throw AppError.badRequest('studentIdentifiers array is required');
+    }
+
+    // Find students by ID, Enrollment Number, or Email
+    const validObjectIds = studentIdentifiers.filter((id) => mongoose.Types.ObjectId.isValid(id));
+    const stringIdentifiers = studentIdentifiers.filter((id) => typeof id === 'string').map((s) => s.trim());
+
+    const orConditions = [];
+    if (validObjectIds.length > 0) {
+      orConditions.push({ _id: { $in: validObjectIds } });
+    }
+    if (stringIdentifiers.length > 0) {
+      const regexes = stringIdentifiers.map((e) => new RegExp(`^${e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'));
+      orConditions.push({ enrollmentNo: { $in: regexes } });
+      orConditions.push({ email: { $in: regexes } });
+    }
+
+    const students = orConditions.length > 0 ? await User.find({ $or: orConditions }) : [];
+
+    if (students.length === 0) {
+      logger.info('No matching database students found for bulk update; returning 0 count.');
+      return {
+        count: 0,
+        updatedStudents: [],
+        message: 'No matching database students found for bulk update',
+      };
+    }
+
+    const updatedResults = [];
+    for (const student of students) {
+      try {
+        const res = await this.updateStudentFees(
+          student._id,
+          { status, reason: undefined, remark_text: remarkText },
+          updatedByUserId
+        );
+        updatedResults.push(res);
+      } catch (err) {
+        logger.warn(`Failed bulk fee update for student ${student._id}`, { error: err.message });
+      }
+    }
+
+    return {
+      count: updatedResults.length,
+      updatedStudents: updatedResults,
     };
   },
 };

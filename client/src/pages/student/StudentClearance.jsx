@@ -53,7 +53,8 @@ export default function StudentClearance() {
       }
       setPrereq(prereqRes.data?.data || null);
     } catch (err) {
-      if (err.status === 404) {
+      const status = err.status || err.response?.status;
+      if (status === 404 || err.message?.includes('404') || err.message?.includes('not found')) {
         setNoClearance(true);
       } else {
         toast.error(err.message || 'Failed to load clearance status');

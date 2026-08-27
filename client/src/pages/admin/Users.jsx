@@ -880,7 +880,7 @@ export default function Users() {
 
         {/* Dynamic Action Buttons */}
         <div className="flex items-center gap-2">
-          {(activeTab === 'student' || activeTab === 'all') && (
+          {activeTab === 'student' && (
             <Button
               variant="secondary"
               size="sm"

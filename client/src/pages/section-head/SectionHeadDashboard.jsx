@@ -11,8 +11,23 @@ import Badge, { getStatusVariant } from '../../components/common/Badge';
 import Skeleton from '../../components/common/Skeleton';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 
+import AccountSectionDashboard from '../account-section/AccountSectionDashboard';
+import BusSectionDashboard from '../bus-section/BusSectionDashboard';
+import LibrarySectionDashboard from '../library-section/LibrarySectionDashboard';
+
 export default function SectionHeadDashboard() {
   const { user } = useAuth();
+
+  if (user?.sectionType === 'accounts' || user?.role === 'account_section') {
+    return <AccountSectionDashboard />;
+  }
+  if (user?.sectionType === 'bus' || user?.role === 'bus_section') {
+    return <BusSectionDashboard />;
+  }
+  if (user?.sectionType === 'library' || user?.role === 'library_section') {
+    return <LibrarySectionDashboard />;
+  }
+
   const [clearances, setClearances] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
