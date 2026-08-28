@@ -53,9 +53,20 @@ const autoSeed = async () => {
         currentSemester: 6,
         section: 'A',
       },
+      {
+        name: 'Phalguni',
+        email: 'phalguni@sbjit.edu.in',
+        password: 'Password123!',
+        role: 'student',
+        programId: program._id,
+        enrollmentNo: 'EN2021CSE099',
+        currentSemester: 6,
+        section: 'A',
+      },
       { name: 'Library Head', email: 'library@sbjit.edu.in', password: 'Password123!', role: 'section_head', sectionType: 'library' },
       { name: 'Account Section Admin', email: 'accounts@sbjit.edu.in', password: 'Password123!', role: 'account_section' },
       { name: 'Bus Section Admin', email: 'bus@sbjit.edu.in', password: 'Password123!', role: 'bus_section' },
+      { name: 'Disciplinary Section Head', email: 'disciplinary@sbjit.edu.in', password: 'Password123!', role: 'disciplinary_section', sectionType: 'disciplinary' },
       { name: 'Class Incharge (Sec A)', email: 'ci@sbjit.edu.in', password: 'Password123!', role: 'class_incharge' },
       { name: 'Dr. Kulkarni (HOD)', email: 'hod@sbjit.edu.in', password: 'Password123!', role: 'hod' },
       // Also seed @sbjain.edu.in accounts for backwards compatibility
@@ -74,6 +85,7 @@ const autoSeed = async () => {
       { name: 'Library Head (Legacy)', email: 'library@sbjain.edu.in', password: 'Password123!', role: 'section_head', sectionType: 'library' },
       { name: 'Account Section Admin (Legacy)', email: 'accounts@sbjain.edu.in', password: 'Password123!', role: 'account_section' },
       { name: 'Bus Section Admin (Legacy)', email: 'bus@sbjain.edu.in', password: 'Password123!', role: 'bus_section' },
+      { name: 'Disciplinary Head (Legacy)', email: 'disciplinary@sbjain.edu.in', password: 'Password123!', role: 'disciplinary_section', sectionType: 'disciplinary' },
       { name: 'Class Incharge (Legacy)', email: 'ci@sbjain.edu.in', password: 'Password123!', role: 'class_incharge' },
       { name: 'Dr. Kulkarni (Legacy HOD)', email: 'hod@sbjain.edu.in', password: 'Password123!', role: 'hod' },
     ];

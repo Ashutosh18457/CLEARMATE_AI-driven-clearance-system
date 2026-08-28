@@ -294,6 +294,20 @@ export default function LoginPage() {
               </button>
               <button
                 type="button"
+                onClick={() => { setEmail('disciplinary@sbjit.edu.in'); setPassword('Password123!'); }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all text-left"
+              >
+                ⚖️ Disciplinary
+              </button>
+              <button
+                type="button"
+                onClick={() => { setEmail('bus@sbjit.edu.in'); setPassword('Password123!'); }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all text-left"
+              >
+                🚌 Bus / Transport
+              </button>
+              <button
+                type="button"
                 onClick={() => { setEmail('ci@sbjit.edu.in'); setPassword('Password123!'); }}
                 className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all"
               >

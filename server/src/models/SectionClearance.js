@@ -19,7 +19,7 @@ const sectionClearanceSchema = new mongoose.Schema(
       ref: 'User',
     },
     department: {
-      type: String, // library | accounts | bus
+      type: String, // library | accounts | bus | disciplinary
       required: true,
       index: true,
     },
@@ -37,15 +37,20 @@ const sectionClearanceSchema = new mongoose.Schema(
       type: Date,
     },
 
-    // ─── Fee Clearance Fields (Account Section) ───
+    // ─── Fee Clearance Fields (Account / Bus / Library / Disciplinary Section) ───
     fees_status: {
       type: String,
       enum: ['paid', 'not_paid'],
       default: 'not_paid',
     },
+    disciplinary_status: {
+      type: String,
+      enum: ['cleared', 'not_cleared'],
+      default: 'not_cleared',
+    },
     reason: {
       type: String,
-      enum: ['fees_pending', 'remark'],
+      enum: ['fees_pending', 'books_pending', 'fine_pending', 'misconduct_record', 'community_service_pending', 'remark', 'other_remark'],
     },
     remark_text: {
       type: String,

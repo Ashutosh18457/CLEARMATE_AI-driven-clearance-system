@@ -112,7 +112,7 @@ const adminValidator = {
     assignedSemester: Joi.alternatives().try(Joi.number(), Joi.string().trim()).optional().allow('', null),
     assignedSection: Joi.string().trim().optional().allow('', null),
     // Section Head-specific
-    sectionType: Joi.string().valid('library', 'accounts', 'bus', 'student_section').optional().allow('', null),
+    sectionType: Joi.string().valid('library', 'accounts', 'bus', 'student_section', 'disciplinary').optional().allow('', null),
     // Class Incharge-specific
     assignedProgramId: objectId.optional().allow('', null),
     assignedSemester: Joi.alternatives().try(Joi.number().integer().min(1).max(12), Joi.string().allow('', null)).optional(),
@@ -143,12 +143,12 @@ const adminValidator = {
     name: Joi.string().trim().max(100),
     email: Joi.string().email(),
     password: Joi.string().min(8).optional().allow('', null),
-    role: Joi.string().valid('student', 'teacher', 'section_head', 'account_section', 'bus_section', 'library_section', 'class_incharge', 'hod', 'admin', 'super_admin'),
+    role: Joi.string().valid('student', 'teacher', 'section_head', 'account_section', 'bus_section', 'library_section', 'disciplinary_section', 'class_incharge', 'hod', 'admin', 'super_admin'),
     programId: objectId.optional().allow('', null),
     enrollmentNo: Joi.string().trim().optional().allow('', null),
     currentSemester: Joi.alternatives().try(Joi.number().integer().min(1).max(12), Joi.string().allow('', null)).optional(),
     section: Joi.string().trim().optional().allow('', null),
-    sectionType: Joi.string().valid('library', 'accounts', 'bus', 'student_section').optional().allow('', null),
+    sectionType: Joi.string().valid('library', 'accounts', 'bus', 'student_section', 'disciplinary').optional().allow('', null),
     assignedSemester: Joi.alternatives().try(Joi.number().integer().min(1).max(12), Joi.string().trim().allow('', null)).optional().allow('', null),
     assignedSection: Joi.string().trim().optional().allow('', null),
     assignedStudents: Joi.array().items(objectId).optional(),

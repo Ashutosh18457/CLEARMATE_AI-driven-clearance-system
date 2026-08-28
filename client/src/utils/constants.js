@@ -6,6 +6,7 @@ export const ROLES = {
   ACCOUNT_SECTION: 'account_section',
   BUS_SECTION: 'bus_section',
   LIBRARY_SECTION: 'library_section',
+  DISCIPLINARY_SECTION: 'disciplinary_section',
   CLASS_INCHARGE: 'class_incharge',
   HOD: 'hod',
   ADMIN: 'admin',
@@ -19,6 +20,7 @@ export const ROLE_LABELS = {
   [ROLES.ACCOUNT_SECTION]: 'Account Section',
   [ROLES.BUS_SECTION]: 'Bus Section',
   [ROLES.LIBRARY_SECTION]: 'Library Section',
+  [ROLES.DISCIPLINARY_SECTION]: 'Disciplinary Section',
   [ROLES.CLASS_INCHARGE]: 'Class Incharge',
   [ROLES.HOD]: 'HOD',
   [ROLES.ADMIN]: 'Department Admin',
@@ -32,6 +34,7 @@ export const ROLE_DASHBOARD_ROUTES = {
   [ROLES.ACCOUNT_SECTION]: '/account-section',
   [ROLES.BUS_SECTION]: '/bus-section',
   [ROLES.LIBRARY_SECTION]: '/library-section',
+  [ROLES.DISCIPLINARY_SECTION]: '/disciplinary-section',
   [ROLES.CLASS_INCHARGE]: '/class-incharge',
   [ROLES.HOD]: '/hod',
   [ROLES.ADMIN]: '/admin',
@@ -96,12 +99,14 @@ export const DEPARTMENTS = {
   LIBRARY: 'library',
   ACCOUNTS: 'accounts',
   BUS: 'bus',
+  DISCIPLINARY: 'disciplinary',
 };
 
 export const DEPARTMENT_LABELS = {
   [DEPARTMENTS.LIBRARY]: 'Library',
   [DEPARTMENTS.ACCOUNTS]: 'Accounts',
   [DEPARTMENTS.BUS]: 'Bus / Transport',
+  [DEPARTMENTS.DISCIPLINARY]: 'Disciplinary Section',
 };
 
 // ─── Clearance Item Types ───

@@ -11,7 +11,7 @@ export const registerSchema = {
     programId: Joi.string().optional().allow(''),
     currentSemester: Joi.number().integer().min(1).max(10).optional(),
     section: Joi.string().optional().allow(''),
-    sectionType: Joi.when('role', { is: 'section_head', then: Joi.string().valid('library', 'accounts', 'bus').required(), otherwise: Joi.string().optional() }),
+    sectionType: Joi.when('role', { is: 'section_head', then: Joi.string().valid('library', 'accounts', 'bus', 'disciplinary').required(), otherwise: Joi.string().optional() }),
   }),
 };
 
@@ -92,12 +92,12 @@ export const createUserSchema = {
     name: Joi.string().max(100).required(),
     email: Joi.string().email().required(),
     password: Joi.string().min(8).required(),
-    role: Joi.string().valid('student', 'teacher', 'section_head', 'account_section', 'class_incharge', 'hod', 'admin').required(),
+    role: Joi.string().valid('student', 'teacher', 'section_head', 'account_section', 'bus_section', 'library_section', 'disciplinary_section', 'class_incharge', 'hod', 'admin').required(),
     enrollmentNo: Joi.string().optional(),
     programId: Joi.string().optional(),
     currentSemester: Joi.number().integer().min(1).max(10).optional(),
     section: Joi.string().optional(),
-    sectionType: Joi.string().valid('library', 'accounts', 'bus').optional(),
+    sectionType: Joi.string().valid('library', 'accounts', 'bus', 'student_section', 'disciplinary').optional(),
   }),
 };
 
@@ -125,12 +125,12 @@ export const updateUserSchema = {
     name: Joi.string().max(100),
     email: Joi.string().email(),
     password: Joi.string().min(8),
-    role: Joi.string().valid('student', 'teacher', 'section_head', 'account_section', 'class_incharge', 'hod', 'admin'),
+    role: Joi.string().valid('student', 'teacher', 'section_head', 'account_section', 'bus_section', 'library_section', 'disciplinary_section', 'class_incharge', 'hod', 'admin'),
     enrollmentNo: Joi.string(),
     programId: Joi.string(),
     currentSemester: Joi.number().integer().min(1).max(10),
     section: Joi.string(),
-    sectionType: Joi.string().valid('library', 'accounts', 'bus'),
+    sectionType: Joi.string().valid('library', 'accounts', 'bus', 'student_section', 'disciplinary'),
   }).min(1),
 };
 

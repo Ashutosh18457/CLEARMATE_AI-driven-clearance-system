@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
-const ROLES = ['student', 'teacher', 'section_head', 'account_section', 'bus_section', 'library_section', 'class_incharge', 'hod', 'admin', 'super_admin'];
-const SECTION_TYPES = ['library', 'accounts', 'bus', 'student_section'];
+const ROLES = ['student', 'teacher', 'section_head', 'account_section', 'bus_section', 'library_section', 'disciplinary_section', 'class_incharge', 'hod', 'admin', 'super_admin'];
+const SECTION_TYPES = ['library', 'accounts', 'bus', 'student_section', 'disciplinary'];
 
 const userSchema = new mongoose.Schema(
   {

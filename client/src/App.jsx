@@ -37,6 +37,9 @@ const BusSectionDashboard = lazy(() => import('./pages/bus-section/BusSectionDas
 // Library Section
 const LibrarySectionDashboard = lazy(() => import('./pages/library-section/LibrarySectionDashboard'));
 
+// Disciplinary Section
+const DisciplinarySectionDashboard = lazy(() => import('./pages/disciplinary-section/DisciplinarySectionDashboard'));
+
 // Class Incharge
 const ClassInchargeDashboard = lazy(() => import('./pages/class-incharge/ClassInchargeDashboard'));
 
@@ -247,6 +250,16 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={[ROLES.LIBRARY_SECTION, ROLES.SECTION_HEAD, ROLES.ADMIN]}>
                 <LibrarySectionDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ─── Disciplinary Section Routes ─── */}
+          <Route
+            path="/disciplinary-section"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.DISCIPLINARY_SECTION, ROLES.SECTION_HEAD, ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
+                <DisciplinarySectionDashboard />
               </ProtectedRoute>
             }
           />

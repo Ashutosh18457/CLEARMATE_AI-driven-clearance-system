@@ -12,7 +12,7 @@ const logger = require('../config/logger');
 const notificationService = require('./notification.service');
 const auditService = require('./audit.service');
 
-const SECTION_DEPARTMENTS = ['library', 'accounts', 'bus'];
+const SECTION_DEPARTMENTS = ['library', 'accounts', 'bus', 'disciplinary'];
 
 const clearanceService = {
   // ══════════════════════════════════════════════
