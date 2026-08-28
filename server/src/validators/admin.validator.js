@@ -58,6 +58,7 @@ const adminValidator = {
     endDate: Joi.date().iso().optional().allow('', null),
     clearanceDeadline: Joi.date().iso().required()
       .messages({ 'any.required': 'Clearance deadline is required' }),
+    studyYear: Joi.any().optional().allow('', null),
     isActive: Joi.boolean().optional(),
   }),
  
@@ -70,6 +71,7 @@ const adminValidator = {
     startDate: Joi.date().iso().optional().allow('', null),
     endDate: Joi.date().iso().optional().allow('', null),
     clearanceDeadline: Joi.date().iso(),
+    studyYear: Joi.any().optional().allow('', null),
     isActive: Joi.boolean(),
   }).min(1),
 
@@ -105,6 +107,10 @@ const adminValidator = {
     enrollmentNo: Joi.string().trim().optional().allow('', null),
     currentSemester: Joi.number().integer().min(1).max(10).optional().allow('', null),
     section: Joi.string().trim().optional().allow('', null),
+    // Class Incharge-specific fields
+    assignedProgramId: objectId.optional().allow('', null),
+    assignedSemester: Joi.alternatives().try(Joi.number(), Joi.string().trim()).optional().allow('', null),
+    assignedSection: Joi.string().trim().optional().allow('', null),
     // Section Head-specific
     sectionType: Joi.string().valid('library', 'accounts', 'bus', 'student_section').optional().allow('', null),
     // Class Incharge-specific
@@ -144,7 +150,7 @@ const adminValidator = {
     section: Joi.string().trim().optional().allow('', null),
     sectionType: Joi.string().valid('library', 'accounts', 'bus', 'student_section').optional().allow('', null),
     assignedProgramId: objectId.optional().allow('', null),
-    assignedSemester: Joi.number().integer().min(1).max(10).optional().allow('', null),
+    assignedSemester: Joi.alternatives().try(Joi.number(), Joi.string().trim()).optional().allow('', null),
     assignedSection: Joi.string().trim().optional().allow('', null),
     assignedStudents: Joi.array().items(objectId).optional(),
     isActive: Joi.boolean(),

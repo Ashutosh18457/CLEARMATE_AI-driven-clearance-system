@@ -22,7 +22,29 @@ export default function StudentSubmissions() {
     setLoading(true);
     try {
       const res = await api.get('/submissions/my');
-      setSubmissions(res.data.data || []);
+      const raw = res.data.data || [];
+      const normalized = Array.isArray(raw)
+        ? raw.map((item) => {
+            if (item.submissionItem) {
+              return {
+                _id: item.submissionItem._id,
+                title: item.submissionItem.title,
+                type: item.submissionItem.type,
+                deadline: item.submissionItem.deadline,
+                description: item.submissionItem.description,
+                isRequired: item.submissionItem.isRequired,
+                clearanceItem: item.submissionItem.clearanceItem,
+                status: item.myStatus?.status || 'pending',
+                remarks: item.myStatus?.remarks || '',
+                submittedAt: item.myStatus?.submittedAt,
+                verifiedAt: item.myStatus?.verifiedAt,
+                submissionId: item.myStatus?._id,
+              };
+            }
+            return item;
+          })
+        : [];
+      setSubmissions(normalized);
     } catch (err) {
       toast.error(err.message || 'Failed to load submissions');
     } finally {
@@ -35,6 +57,10 @@ export default function StudentSubmissions() {
   }, [fetchSubmissions]);
 
   const handleSubmit = async (submissionItemId) => {
+    if (!submissionItemId) {
+      toast.error('Submission Item ID is missing');
+      return;
+    }
     setSubmitting(submissionItemId);
     try {
       await api.post('/submissions/submit', { submissionItemId });
@@ -64,10 +90,7 @@ export default function StudentSubmissions() {
 
   const filtered = filter === 'all'
     ? submissions
-    : submissions.filter((s) => {
-        const status = s.submission?.status || 'pending';
-        return status === filter;
-      });
+    : submissions.filter((s) => s.status === filter);
 
   const columns = [
     {
@@ -77,7 +100,7 @@ export default function StudentSubmissions() {
         <div className="flex items-center gap-2">
           <HiOutlineDocumentText className="w-4 h-4 text-ink-muted shrink-0" />
           <div>
-            <p className="text-sm font-medium text-ink-primary">{row.title}</p>
+            <p className="text-sm font-medium text-ink-primary">{row.title || 'Untitled'}</p>
             {row.clearanceItem?.title && (
               <p className="text-xs text-ink-muted">{row.clearanceItem.title}</p>
             )}
@@ -96,7 +119,7 @@ export default function StudentSubmissions() {
       key: 'deadline',
       label: 'Deadline',
       render: (_, row) => {
-        const overdue = isOverdue(row.deadline, row.submission?.status);
+        const overdue = isOverdue(row.deadline, row.status);
         return (
           <div className="flex items-center gap-1.5">
             <span className={`text-sm font-tabular ${overdue ? 'text-status-rejected font-medium' : 'text-ink-primary'}`}>
@@ -113,7 +136,7 @@ export default function StudentSubmissions() {
       key: 'status',
       label: 'Status',
       render: (_, row) => {
-        const status = row.submission?.status || 'pending';
+        const status = row.status || 'pending';
         return (
           <Badge variant={getStatusVariant(status)}>
             {SUBMISSION_STATUS_LABELS[status] || status}
@@ -125,7 +148,7 @@ export default function StudentSubmissions() {
       key: 'remarks',
       label: 'Remarks',
       render: (_, row) => (
-        <span className="text-sm text-ink-muted">{row.submission?.remarks || '—'}</span>
+        <span className="text-sm text-ink-muted">{row.remarks || '—'}</span>
       ),
     },
     {
@@ -133,7 +156,7 @@ export default function StudentSubmissions() {
       label: 'Action',
       align: 'right',
       render: (_, row) => {
-        const status = row.submission?.status || 'pending';
+        const status = row.status || 'pending';
         if (status === 'pending' || status === 'rejected') {
           return (
             <Button
@@ -180,7 +203,7 @@ export default function StudentSubmissions() {
       </div>
 
       {/* Overdue warning */}
-      {submissions.some((s) => isOverdue(s.deadline, s.submission?.status)) && (
+      {submissions.some((s) => isOverdue(s.deadline, s.status)) && (
         <div className="mb-4 p-3 rounded-md bg-red-50 border border-red-200 flex items-center gap-2">
           <HiOutlineExclamationTriangle className="w-5 h-5 text-status-rejected shrink-0" />
           <p className="text-sm text-red-800">

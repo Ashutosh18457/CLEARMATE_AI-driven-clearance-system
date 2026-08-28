@@ -409,23 +409,21 @@ const clearanceService = {
   // ══════════════════════════════════════════════
 
   /**
-   * Gets all pending SectionClearances for a given department type.
+   * Gets all SectionClearances for a given department type.
    */
   async getMyPendingSections(sectionType) {
     return await SectionClearance.find({
       department: sectionType,
-      status: 'pending',
     })
       .populate('studentId', 'name email enrollmentNo section')
       .populate({
         path: 'clearanceRequestId',
-        match: { status: 'sections_review' },
+        match: { status: { $ne: null } },
         select: 'status semesterId',
         populate: { path: 'semesterId', select: 'name semNumber' },
       })
-      .sort({ createdAt: 1 })
+      .sort({ createdAt: -1 })
       .then((results) =>
-        // Filter out items where clearanceRequest didn't match (not at sections_review)
         results.filter((r) => r.clearanceRequestId !== null)
       );
   },
@@ -447,10 +445,10 @@ const clearanceService = {
       throw AppError.badRequest(`This section has already been ${sectionClearance.status}`);
     }
 
-    // Verify the clearance is at sections_review stage
+    // Verify the clearance exists
     const clearanceRequest = await ClearanceRequest.findById(sectionClearance.clearanceRequestId);
-    if (!clearanceRequest || clearanceRequest.status !== 'sections_review') {
-      throw AppError.badRequest('This clearance is not at the sections review stage');
+    if (!clearanceRequest) {
+      throw AppError.notFound('Associated clearance request not found');
     }
 
     sectionClearance.status = status;
@@ -906,42 +904,60 @@ const clearanceService = {
 
   /**
    * Checks if all ItemClearances are approved.
-   * If yes, advances ClearanceRequest to sections_review.
+   * Advances stage accordingly.
    */
   async _checkAndAdvanceFromItems(clearanceRequestId) {
-    const allItems = await ItemClearance.find({ clearanceRequestId });
-    const allApproved = allItems.every((item) => item.status === 'approved');
+    const request = await ClearanceRequest.findById(clearanceRequestId);
+    if (!request || request.status === 'rejected' || request.status === 'completed') return;
 
-    if (allApproved && allItems.length > 0) {
-      const request = await ClearanceRequest.findByIdAndUpdate(clearanceRequestId, {
-        status: 'sections_review',
-        currentStage: 'sections',
+    const allItems = await ItemClearance.find({ clearanceRequestId });
+    const allItemsApproved = allItems.length === 0 || allItems.every((item) => item.status === 'approved');
+
+    if (allItemsApproved && allItems.length > 0) {
+      const allSections = await SectionClearance.find({ clearanceRequestId });
+      const allSectionsApproved = allSections.length > 0 && allSections.every((sec) => sec.status === 'approved');
+
+      const nextStatus = allSectionsApproved ? 'ci_review' : 'sections_review';
+      const nextStage = allSectionsApproved ? 'class_incharge' : 'sections';
+
+      const updatedRequest = await ClearanceRequest.findByIdAndUpdate(clearanceRequestId, {
+        status: nextStatus,
+        currentStage: nextStage,
       }, { returnDocument: 'after' });
-      logger.info('Auto-advanced to sections_review', { requestId: clearanceRequestId });
-      if (request) {
-        await notificationService.notifyStageAdvanced(request.studentId, 'sections_review');
+      logger.info(`Auto-advanced to ${nextStatus}`, { requestId: clearanceRequestId });
+      if (updatedRequest) {
+        await notificationService.notifyStageAdvanced(updatedRequest.studentId, nextStatus);
       }
-      // Check if all sections were also already approved
-      await this._checkAndAdvanceFromSections(clearanceRequestId);
     }
   },
 
   /**
    * Checks if all SectionClearances are approved.
-   * If yes, advances ClearanceRequest to ci_review.
+   * If yes, advances ClearanceRequest to ci_review (if items approved) or sections_review.
    */
   async _checkAndAdvanceFromSections(clearanceRequestId) {
-    const allSections = await SectionClearance.find({ clearanceRequestId });
-    const allApproved = allSections.every((sec) => sec.status === 'approved');
+    const request = await ClearanceRequest.findById(clearanceRequestId);
+    if (!request || request.status === 'rejected' || request.status === 'completed') return;
 
-    if (allApproved && allSections.length > 0) {
-      const request = await ClearanceRequest.findByIdAndUpdate(clearanceRequestId, {
-        status: 'ci_review',
-        currentStage: 'class_incharge',
-      }, { returnDocument: 'after' });
-      logger.info('Auto-advanced to ci_review', { requestId: clearanceRequestId });
-      if (request) {
-        await notificationService.notifyStageAdvanced(request.studentId, 'ci_review');
+    const allSections = await SectionClearance.find({ clearanceRequestId });
+    const allSectionsApproved = allSections.length > 0 && allSections.every((sec) => sec.status === 'approved');
+
+    if (allSectionsApproved) {
+      const allItems = await ItemClearance.find({ clearanceRequestId });
+      const allItemsApproved = allItems.length === 0 || allItems.every((item) => item.status === 'approved');
+
+      const nextStatus = allItemsApproved ? 'ci_review' : 'sections_review';
+      const nextStage = allItemsApproved ? 'class_incharge' : 'sections';
+
+      if (request.status !== nextStatus && request.status !== 'ci_review' && request.status !== 'hod_review') {
+        const updatedRequest = await ClearanceRequest.findByIdAndUpdate(clearanceRequestId, {
+          status: nextStatus,
+          currentStage: nextStage,
+        }, { returnDocument: 'after' });
+        logger.info(`Auto-advanced to ${nextStatus}`, { requestId: clearanceRequestId });
+        if (updatedRequest) {
+          await notificationService.notifyStageAdvanced(updatedRequest.studentId, nextStatus);
+        }
       }
     }
   },

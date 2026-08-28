@@ -117,14 +117,6 @@ export default function TeacherDashboard() {
           variant="primary"
           size="sm"
           icon={<HiOutlinePlusCircle className="w-4 h-4" />}
-          onClick={() => navigate('/teacher/tasks')}
-        >
-          Assign Task & Real-Time Alert
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          icon={<HiOutlinePlusCircle className="w-4 h-4" />}
           onClick={() => navigate('/teacher/submission-items')}
         >
           Create Submission Item

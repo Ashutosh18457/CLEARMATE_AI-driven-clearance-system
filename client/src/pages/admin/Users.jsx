@@ -1035,12 +1035,17 @@ export default function Users() {
           {/* Admin / HOD / Student Branch & Program selector */}
           {(form.role === 'admin' || form.role === 'hod' || form.role === 'student') && (
             <div>
-              <label htmlFor="user-form-program" className="label-base font-semibold">
-                {form.role === 'admin'
-                  ? '🛡️ Assigned Branch / Department (Admin Scope)'
-                  : form.role === 'hod'
-                  ? '👨‍💼 Assigned Department (HOD Scope)'
-                  : '🎓 Academic Program'}
+              <label htmlFor="user-form-program" className="label-base font-semibold flex items-center justify-between">
+                <span>
+                  {form.role === 'admin'
+                    ? '🛡️ Assigned Branch / Department (Admin Scope)'
+                    : form.role === 'hod'
+                    ? '👨‍💼 Assigned Department (HOD Scope)'
+                    : '🎓 Academic Program'}
+                </span>
+                {form.role !== 'student' && (
+                  <span className="text-[10px] text-ink-muted font-normal">(Optional)</span>
+                )}
               </label>
               <select
                 id="user-form-program"
@@ -1049,13 +1054,22 @@ export default function Users() {
                 value={form.programId}
                 onChange={(e) => setForm({ ...form, programId: e.target.value })}
               >
-                <option value="">-- Select Branch / Program --</option>
+                <option value="">
+                  {form.role === 'student'
+                    ? '-- Select Branch / Program --'
+                    : '-- Leave Unassigned (Link Department Later) --'}
+                </option>
                 {programs.map((p) => (
                   <option key={p._id} value={p._id}>
                     {p.name} ({p.code})
                   </option>
                 ))}
               </select>
+              {form.role !== 'student' && (
+                <p className="text-[11px] text-ink-muted mt-1">
+                  💡 You can create the staff account now without selecting a department, and link them to a department anytime later.
+                </p>
+              )}
             </div>
           )}
 

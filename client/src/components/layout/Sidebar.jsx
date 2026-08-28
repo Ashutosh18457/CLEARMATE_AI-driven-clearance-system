@@ -29,7 +29,6 @@ const NAV_ITEMS = {
   ],
   [ROLES.TEACHER]: [
     { to: '/teacher', icon: HiOutlineHome, label: 'Dashboard', end: true },
-    { to: '/teacher/tasks', icon: HiOutlineClipboardDocumentList, label: 'Tasks & Alerts' },
     { to: '/teacher/submission-items', icon: HiOutlineDocumentText, label: 'Submission Items' },
     { to: '/teacher/student-submissions', icon: HiOutlineClipboardDocumentList, label: 'Student Submissions' },
     { to: '/teacher/clearance-reviews', icon: HiOutlineClipboardDocumentCheck, label: 'Clearance Reviews' },

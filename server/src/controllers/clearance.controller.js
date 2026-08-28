@@ -67,12 +67,15 @@ const clearanceController = {
   /** @route GET /api/clearances/sections/pending */
   async getMyPendingSections(req, res, next) {
     try {
-      // The section head's sectionType is stored in the user profile
       const user = await require('../models/User').findById(req.user.id);
-      if (!user || !user.sectionType) {
+      let sectionType = user?.sectionType;
+      if (!sectionType && (req.user.role === 'admin' || req.user.role === 'super_admin' || req.user.role === 'section_head')) {
+        sectionType = req.query.sectionType || 'library';
+      }
+      if (!sectionType) {
         return sendSuccess(res, { data: [], message: 'No section type assigned' });
       }
-      const sections = await clearanceService.getMyPendingSections(user.sectionType);
+      const sections = await clearanceService.getMyPendingSections(sectionType);
       sendSuccess(res, { data: sections, message: 'Pending sections retrieved' });
     } catch (error) { next(error); }
   },

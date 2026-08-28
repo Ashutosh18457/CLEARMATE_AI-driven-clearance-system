@@ -314,6 +314,10 @@ const submissionService = {
     const itemTitle = submission.submissionItemId?.title || 'Unknown';
     if (status === 'verified') {
       await notificationService.notifySubmissionVerified(submission.studentId, itemTitle);
+      await this._autoApproveItemClearanceIfAllSubmissionsVerified(
+        submission.studentId,
+        clearanceItem._id || clearanceItem
+      );
     } else if (status === 'rejected') {
       await notificationService.notifySubmissionRejected(submission.studentId, itemTitle, remarks);
     }
@@ -415,6 +419,15 @@ const submissionService = {
 
     if (notificationDocs.length > 0) {
       await Notification.insertMany(notificationDocs);
+    }
+
+    if (status === 'verified') {
+      for (const sub of validSubmissions) {
+        const cid = sub.submissionItemId?.clearanceItemId?._id || sub.submissionItemId?.clearanceItemId;
+        if (cid && sub.studentId) {
+          await this._autoApproveItemClearanceIfAllSubmissionsVerified(sub.studentId, cid);
+        }
+      }
     }
 
     logger.info('Bulk submissions verified', {
@@ -646,6 +659,55 @@ const submissionService = {
     }
 
     return [];
+  },
+
+  /**
+   * Auto-approves a student's ItemClearance when all required submission items under that ClearanceItem are verified.
+   */
+  async _autoApproveItemClearanceIfAllSubmissionsVerified(studentId, clearanceItemId) {
+    if (!clearanceItemId || !studentId) return;
+
+    const cid = clearanceItemId._id ? clearanceItemId._id : clearanceItemId;
+
+    // Find all required submission items for this clearance item
+    const requiredSubmissionItems = await SubmissionItem.find({
+      clearanceItemId: cid,
+      isRequired: true,
+    });
+
+    const itemIds = requiredSubmissionItems.map((si) => si._id);
+
+    const verifiedSubmissions = await Submission.find({
+      studentId,
+      submissionItemId: { $in: itemIds },
+      status: 'verified',
+    });
+
+    if (requiredSubmissionItems.length === 0 || verifiedSubmissions.length >= requiredSubmissionItems.length) {
+      const ItemClearance = require('../models/ItemClearance');
+      const itemClearance = await ItemClearance.findOne({
+        studentId,
+        clearanceItemId: cid,
+        status: 'pending',
+      });
+
+      if (itemClearance) {
+        itemClearance.status = 'approved';
+        itemClearance.reviewedAt = new Date();
+        itemClearance.remarks = 'Auto-approved upon verifying required submissions';
+        await itemClearance.save();
+
+        logger.info('Auto-approved ItemClearance upon submission verification', {
+          studentId,
+          clearanceItemId: cid,
+          itemClearanceId: itemClearance._id,
+        });
+
+        // Trigger stage advancement check
+        const clearanceService = require('./clearance.service');
+        await clearanceService._checkAndAdvanceFromItems(itemClearance.clearanceRequestId);
+      }
+    }
   },
 };
 

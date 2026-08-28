@@ -251,6 +251,10 @@ export default function Programs() {
         totalSemesters: Number(form.totalSemesters) || 8,
       };
 
+      // Remove empty staff IDs so Mongoose doesn't reject "" as an invalid ObjectId
+      if (!payload.departmentAdminId) delete payload.departmentAdminId;
+      if (!payload.hodId) delete payload.hodId;
+
       if (editing) {
         await api.put(`/admin/programs/${editing}`, payload);
         toast.success('Program updated successfully');
@@ -354,7 +358,7 @@ export default function Programs() {
             onClick={() => openEdit(row)}
             className="text-2xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded border border-amber-200 transition-colors"
           >
-            + Assign Admin
+            + Assign Admin (Optional)
           </button>
         );
       },
@@ -374,7 +378,15 @@ export default function Programs() {
             </div>
           );
         }
-        return <span className="text-2xs text-ink-muted">Unassigned</span>;
+        return (
+          <button
+            type="button"
+            onClick={() => openEdit(row)}
+            className="text-2xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded border border-blue-200 transition-colors"
+          >
+            + Assign HOD (Optional)
+          </button>
+        );
       },
     },
     {
@@ -625,46 +637,63 @@ export default function Programs() {
           </div>
 
           {/* Department Admin & HOD Assignment */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 bg-canvas border border-border-subtle rounded-lg">
-            <div>
-              <label htmlFor="modal-deptAdmin" className="label-base text-purple-900 font-semibold">
-                🛡️ Assigned Department Admin
-              </label>
-              <select
-                id="modal-deptAdmin"
-                name="departmentAdminId"
-                className="select-base text-xs"
-                value={form.departmentAdminId || ''}
-                onChange={(e) => setForm({ ...form, departmentAdminId: e.target.value })}
-              >
-                <option value="">-- Unassigned --</option>
-                {admins.map((adm) => (
-                  <option key={adm._id} value={adm._id}>
-                    {adm.name} ({adm.email})
-                  </option>
-                ))}
-              </select>
+          <div className="p-3.5 bg-canvas border border-border-subtle rounded-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-ink-primary flex items-center gap-1.5">
+                👥 Department Staff Assignment
+              </span>
+              <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                Optional — Leave unassigned to set up later
+              </span>
             </div>
 
-            <div>
-              <label htmlFor="modal-hod" className="label-base text-blue-900 font-semibold">
-                👨‍💼 Head of Department (HOD)
-              </label>
-              <select
-                id="modal-hod"
-                name="hodId"
-                className="select-base text-xs"
-                value={form.hodId || ''}
-                onChange={(e) => setForm({ ...form, hodId: e.target.value })}
-              >
-                <option value="">-- Unassigned --</option>
-                {hods.map((h) => (
-                  <option key={h._id} value={h._id}>
-                    {h.name} ({h.email})
-                  </option>
-                ))}
-              </select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="modal-deptAdmin" className="label-base text-purple-900 font-semibold flex items-center justify-between">
+                  <span>🛡️ Assigned Dept Admin</span>
+                  <span className="text-[10px] text-ink-muted font-normal">(Optional)</span>
+                </label>
+                <select
+                  id="modal-deptAdmin"
+                  name="departmentAdminId"
+                  className="select-base text-xs"
+                  value={form.departmentAdminId || ''}
+                  onChange={(e) => setForm({ ...form, departmentAdminId: e.target.value })}
+                >
+                  <option value="">-- Leave Unassigned (Assign Later) --</option>
+                  {admins.map((adm) => (
+                    <option key={adm._id} value={adm._id}>
+                      {adm.name} ({adm.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="modal-hod" className="label-base text-blue-900 font-semibold flex items-center justify-between">
+                  <span>👨‍💼 Head of Department (HOD)</span>
+                  <span className="text-[10px] text-ink-muted font-normal">(Optional)</span>
+                </label>
+                <select
+                  id="modal-hod"
+                  name="hodId"
+                  className="select-base text-xs"
+                  value={form.hodId || ''}
+                  onChange={(e) => setForm({ ...form, hodId: e.target.value })}
+                >
+                  <option value="">-- Leave Unassigned (Assign Later) --</option>
+                  {hods.map((h) => (
+                    <option key={h._id} value={h._id}>
+                      {h.name} ({h.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
+
+            <p className="text-[11px] text-ink-muted leading-relaxed bg-surface p-2 rounded border border-border-subtle/75">
+              💡 <strong>No chicken-and-egg loop:</strong> You can create the department now without choosing staff. Create Department Admin or HOD accounts in <strong>User Management</strong> later, and return here or there to link them anytime!
+            </p>
           </div>
 
           {/* Active Status checkbox for editing */}

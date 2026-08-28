@@ -386,7 +386,7 @@ export default function StudentSubmissions() {
         <div>
           <h1 className="text-xl font-semibold text-ink-primary">Student Submissions</h1>
           <p className="text-sm text-ink-muted mt-0.5">
-            View, verify individually, or bulk-process student submissions for a clearance task
+            View, verify individually, or bulk-process student submissions
           </p>
         </div>
       </div>

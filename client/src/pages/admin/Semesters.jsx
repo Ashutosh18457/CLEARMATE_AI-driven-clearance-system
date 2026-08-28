@@ -317,6 +317,7 @@ export default function Semesters() {
         semNumber: Number(form.semNumber),
         academicYear: form.academicYear.trim(),
       };
+      delete payload.studyYear;
 
       if (editing) {
         await api.put(`/admin/semesters/${editing}`, payload);
