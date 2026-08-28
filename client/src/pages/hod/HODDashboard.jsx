@@ -11,6 +11,7 @@ import {
   HiOutlineDocumentCheck,
 } from 'react-icons/hi2';
 import api from '../../api/axios';
+import { useSocket } from '../../context/SocketContext';
 import { CLEARANCE_STATUS_LABELS } from '../../utils/constants';
 import toast from 'react-hot-toast';
 import Table from '../../components/common/Table';
@@ -20,6 +21,7 @@ import Badge, { getStatusVariant } from '../../components/common/Badge';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 
 export default function HODDashboard() {
+  const { socket } = useSocket();
   const [activeTab, setActiveTab] = useState('clearances'); // 'clearances' | 'teachers'
   const [clearances, setClearances] = useState([]);
   const [teachers, setTeachers] = useState([]);
@@ -57,6 +59,24 @@ export default function HODDashboard() {
   useEffect(() => {
     fetchClearances();
   }, [fetchClearances]);
+
+  // Real-time socket listener
+  useEffect(() => {
+    if (!socket) return;
+    const handleUpdate = () => {
+      fetchClearances();
+    };
+
+    socket.on('new_notification', handleUpdate);
+    socket.on('clearance_updated', handleUpdate);
+    socket.on('section_cleared', handleUpdate);
+
+    return () => {
+      socket.off('new_notification', handleUpdate);
+      socket.off('clearance_updated', handleUpdate);
+      socket.off('section_cleared', handleUpdate);
+    };
+  }, [socket, fetchClearances]);
 
   const stats = useMemo(() => {
     const pending = clearances.filter((c) => c.status === 'hod_review' || c.status === 'pending').length;
@@ -542,6 +562,7 @@ export default function HODDashboard() {
             </label>
             <textarea
               id="hod-review-remarks"
+              name="remarks"
               className="input-base min-h-[80px] resize-y text-xs"
               placeholder={
                 modalAction === 'approved'

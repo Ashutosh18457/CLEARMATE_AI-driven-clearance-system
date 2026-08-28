@@ -313,9 +313,15 @@ export default function Semesters() {
     setSaving(true);
     try {
       const payload = {
-        ...form,
+        programId: typeof form.programId === 'object' ? form.programId?._id : form.programId,
+        name: form.name.trim(),
         semNumber: Number(form.semNumber),
         academicYear: form.academicYear.trim(),
+        type: form.type,
+        startDate: form.startDate ? new Date(form.startDate).toISOString() : null,
+        endDate: form.endDate ? new Date(form.endDate).toISOString() : null,
+        clearanceDeadline: form.clearanceDeadline ? new Date(form.clearanceDeadline).toISOString() : null,
+        isActive: form.isActive !== false,
       };
       delete payload.studyYear;
 

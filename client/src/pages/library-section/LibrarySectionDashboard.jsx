@@ -7,6 +7,7 @@ import Modal from '../../components/common/Modal';
 import Skeleton from '../../components/common/Skeleton';
 import EmptyState from '../../components/common/EmptyState';
 import api from '../../api/axios';
+import { useSocket } from '../../context/SocketContext';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import {
@@ -440,9 +441,29 @@ export default function LibrarySectionDashboard() {
     }
   }, [search, statusFilter, selectedBranch, selectedSem]);
 
+  const { socket } = useSocket();
+
   useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
+
+  // Real-time socket listener
+  useEffect(() => {
+    if (!socket) return;
+    const handleUpdate = () => {
+      fetchStudents();
+    };
+
+    socket.on('new_notification', handleUpdate);
+    socket.on('section_cleared', handleUpdate);
+    socket.on('clearance_updated', handleUpdate);
+
+    return () => {
+      socket.off('new_notification', handleUpdate);
+      socket.off('section_cleared', handleUpdate);
+      socket.off('clearance_updated', handleUpdate);
+    };
+  }, [socket, fetchStudents]);
 
   // Open modal handler
   const handleOpenModal = async (row) => {
@@ -569,7 +590,10 @@ export default function LibrarySectionDashboard() {
       key: 'select',
       label: (
         <input
+          id="library-select-all-students"
+          name="selectAll"
           type="checkbox"
+          aria-label="Select all students"
           checked={isAllSelected}
           onChange={handleSelectAll}
           className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
@@ -581,6 +605,9 @@ export default function LibrarySectionDashboard() {
         const isChecked = selectedStudentIds.includes(sId);
         return (
           <input
+            id={`library-select-student-${sId}`}
+            name={`student_select_${sId}`}
+            aria-label={`Select student ${row.student.name}`}
             type="checkbox"
             checked={isChecked}
             onChange={() => handleSelectStudent(sId)}
@@ -998,6 +1025,7 @@ export default function LibrarySectionDashboard() {
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <label
+                  htmlFor="library-status-cleared-radio"
                   className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all ${
                     libraryStatus === 'paid'
                       ? 'bg-emerald-50/60 border-emerald-500 ring-1 ring-emerald-500'
@@ -1005,6 +1033,7 @@ export default function LibrarySectionDashboard() {
                   }`}
                 >
                   <input
+                    id="library-status-cleared-radio"
                     type="radio"
                     name="library_status"
                     value="paid"
@@ -1019,6 +1048,7 @@ export default function LibrarySectionDashboard() {
                 </label>
 
                 <label
+                  htmlFor="library-status-pending-radio"
                   className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all ${
                     libraryStatus === 'not_paid'
                       ? 'bg-amber-50/60 border-amber-500 ring-1 ring-amber-500'
@@ -1026,6 +1056,7 @@ export default function LibrarySectionDashboard() {
                   }`}
                 >
                   <input
+                    id="library-status-pending-radio"
                     type="radio"
                     name="library_status"
                     value="not_paid"
@@ -1044,10 +1075,12 @@ export default function LibrarySectionDashboard() {
             {/* Sub-reason selection when not cleared */}
             {libraryStatus === 'not_paid' && (
               <div>
-                <label className="block text-xs font-medium text-ink-secondary mb-1.5">
+                <label htmlFor="library-pending-reason-select" className="block text-xs font-medium text-ink-secondary mb-1.5">
                   Reason for Hold / Pending Status
                 </label>
                 <select
+                  id="library-pending-reason-select"
+                  name="reason"
                   className="input-base text-xs py-2 w-full"
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
@@ -1061,10 +1094,12 @@ export default function LibrarySectionDashboard() {
 
             {/* Remark text textarea */}
             <div>
-              <label className="block text-xs font-medium text-ink-secondary mb-1.5">
+              <label htmlFor="library-remark-textarea" className="block text-xs font-medium text-ink-secondary mb-1.5">
                 Remarks / Book Details
               </label>
               <textarea
+                id="library-remark-textarea"
+                name="remarkText"
                 rows={3}
                 className="input-base text-xs py-2 w-full resize-none"
                 placeholder={

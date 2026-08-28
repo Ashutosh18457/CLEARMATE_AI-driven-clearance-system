@@ -268,6 +268,7 @@ export default function SectionHeadDashboard() {
             </label>
             <textarea
               id="review-remarks"
+              name="remarks"
               className="input-base min-h-[80px] resize-y"
               placeholder={
                 modalAction === 'approved'

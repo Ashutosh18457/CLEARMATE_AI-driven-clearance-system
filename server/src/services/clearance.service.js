@@ -110,12 +110,21 @@ const clearanceService = {
 
     let targetSemesterId = semesterId;
     if (!targetSemesterId) {
-      const activeSemester = await Semester.findOne({
+      let activeSemester = await Semester.findOne({
         programId: student.programId,
         semNumber: student.currentSemester,
         isActive: true,
       });
-      if (!activeSemester) throw AppError.notFound('No active semester found for your program');
+      if (!activeSemester) {
+        activeSemester =
+          (await Semester.findOne({ programId: student.programId, isActive: true })) ||
+          (await Semester.findOne({ isActive: true }));
+      }
+      if (!activeSemester) {
+        throw AppError.badRequest(
+          'No active semester is configured yet. Please ask your department administrator to set up the academic semester in Phase 1.'
+        );
+      }
       targetSemesterId = activeSemester._id;
     }
 
@@ -219,6 +228,23 @@ const clearanceService = {
       const resolvedTeacherId = this._resolveTeacher(item, student);
       if (!resolvedTeacherId) continue; // Item doesn't apply (e.g., wrong batch, no elective selected)
 
+      // Check if all required submissions under this clearance item are verified
+      const requiredSubItems = await SubmissionItem.find({
+        clearanceItemId: item._id,
+        isRequired: true,
+      });
+
+      let isItemVerified = false;
+      if (requiredSubItems.length > 0) {
+        const itemIds = requiredSubItems.map((si) => si._id);
+        const verifiedCount = await Submission.countDocuments({
+          studentId,
+          submissionItemId: { $in: itemIds },
+          status: 'verified',
+        });
+        isItemVerified = verifiedCount >= requiredSubItems.length;
+      }
+
       itemClearances.push({
         clearanceRequestId: clearanceRequest._id,
         clearanceItemId: item._id,
@@ -226,29 +252,60 @@ const clearanceService = {
         teacherId: resolvedTeacherId,
         itemTitle: item.title,
         itemType: item.type,
-        status: 'pending',
+        status: isItemVerified ? 'approved' : 'pending',
+        remarks: isItemVerified ? 'Verified via coursework submissions' : '',
+        reviewedAt: isItemVerified ? new Date() : null,
       });
     }
 
     if (itemClearances.length > 0) {
+      await ItemClearance.deleteMany({ studentId, clearanceRequestId: clearanceRequest._id });
       await ItemClearance.insertMany(itemClearances);
     }
 
-    // 6. Auto-generate SectionClearance records for all 4 departments
-    const sectionClearances = SECTION_DEPARTMENTS.map((dept) => ({
-      clearanceRequestId: clearanceRequest._id,
-      studentId,
-      department: dept,
-      status: 'pending',
-    }));
+    // 6. Non-destructive SectionClearance records linking/generation
+    const sectionClearances = [];
+    for (const dept of SECTION_DEPARTMENTS) {
+      let sc = await SectionClearance.findOne({ studentId, department: dept });
+      if (sc) {
+        sc.clearanceRequestId = clearanceRequest._id;
+        if (sc.fees_status === 'paid' || sc.status === 'approved') {
+          sc.status = 'approved';
+        }
+        await sc.save();
+        sectionClearances.push(sc);
+      } else {
+        sc = await SectionClearance.create({
+          clearanceRequestId: clearanceRequest._id,
+          studentId,
+          department: dept,
+          status: 'pending',
+        });
+        sectionClearances.push(sc);
+      }
+    }
 
-    await SectionClearance.insertMany(sectionClearances);
+    // Auto-advance stages if items or sections are already cleared
+    const allItemsApproved = itemClearances.length > 0 && itemClearances.every((i) => i.status === 'approved');
+    const allSectionsApproved = sectionClearances.length > 0 && sectionClearances.every((s) => s.status === 'approved');
+
+    if (allItemsApproved && allSectionsApproved) {
+      clearanceRequest.status = 'ci_review';
+      clearanceRequest.currentStage = 'class_incharge';
+      await clearanceRequest.save();
+    } else if (allItemsApproved) {
+      clearanceRequest.status = 'sections_review';
+      clearanceRequest.currentStage = 'sections';
+      await clearanceRequest.save();
+    }
 
     logger.info('Clearance initiated', {
       requestId: clearanceRequest._id,
       studentId,
       semesterId: semester._id,
       itemClearancesCreated: itemClearances.length,
+      sectionClearancesCreated: sectionClearances.length,
+      currentStatus: clearanceRequest.status,
     });
 
     // Audit log
@@ -274,30 +331,108 @@ const clearanceService = {
     if (!targetSemesterId) {
       const student = await User.findById(studentId);
       if (student && student.role === 'student') {
-        const activeSemester = await Semester.findOne({
+        let activeSemester = await Semester.findOne({
           programId: student.programId,
           semNumber: student.currentSemester,
           isActive: true,
         });
+        if (!activeSemester) {
+          activeSemester =
+            (await Semester.findOne({ programId: student.programId, isActive: true })) ||
+            (await Semester.findOne({ isActive: true }));
+        }
         if (activeSemester) targetSemesterId = activeSemester._id;
       }
+    }
+
+    if (!targetSemesterId) {
+      return null;
     }
 
     const clearanceRequest = await ClearanceRequest.findOne({ studentId, semesterId: targetSemesterId })
       .populate('semesterId', 'name semNumber academicYear');
 
-    if (!clearanceRequest) {
-      return null; // No clearance initiated yet
+    // Fetch all section clearances for this student (Accounts, Library, Bus, etc.)
+    const sectionClearances = await SectionClearance.find({ studentId })
+      .populate('reviewerId', 'name email')
+      .sort({ department: 1 });
+
+    const student = await User.findById(studentId)
+      .select('name email enrollmentNo section currentSemester programId')
+      .populate('programId', 'name code department');
+
+    const cleanSection = student?.section ? student.section.replace(/^Sec(tion)?\s*/i, '').trim() : 'A';
+
+    // Dynamically resolve Class Incharge assigned to student's section/cohort
+    let ciUser = await User.findOne({
+      role: 'class_incharge',
+      $or: [
+        { assignedStudents: studentId },
+        {
+          assignedProgramId: student?.programId?._id || student?.programId,
+          assignedSection: new RegExp(`^(Sec(tion)?\\s*)?${cleanSection}$`, 'i'),
+        },
+        {
+          assignedSection: new RegExp(`^(Sec(tion)?\\s*)?${cleanSection}$`, 'i'),
+        },
+      ],
+    }).select('name email');
+
+    if (!ciUser) {
+      ciUser = await User.findOne({ role: 'class_incharge' }).select('name email');
     }
 
-    const [itemClearances, sectionClearances] = await Promise.all([
-      ItemClearance.find({ clearanceRequestId: clearanceRequest._id })
-        .populate('teacherId', 'name email')
-        .sort({ itemTitle: 1 }),
-      SectionClearance.find({ clearanceRequestId: clearanceRequest._id })
-        .populate('reviewerId', 'name email')
-        .sort({ department: 1 }),
-    ]);
+    // Dynamically resolve HOD of this department
+    let hodUser = await User.findOne({
+      role: 'hod',
+      $or: [
+        { programId: student?.programId?._id || student?.programId },
+        { department: student?.programId?.department },
+      ],
+    }).select('name email');
+
+    if (!hodUser) {
+      hodUser = await User.findOne({ role: 'hod' }).select('name email');
+    }
+
+    const dynamicClearanceItems = await ClearanceItem.find({ semesterId: targetSemesterId })
+      .populate('theoryTeacherId', 'name email')
+      .populate('labBatchTeachers.teacherId', 'name email')
+      .populate('electiveOptions.teacherId', 'name email')
+      .sort({ srNo: 1, title: 1 });
+
+    if (!clearanceRequest) {
+      return {
+        clearanceRequest: null,
+        itemClearances: [],
+        clearanceItems: dynamicClearanceItems,
+        sectionClearances,
+        classIncharge: ciUser ? { name: ciUser.name, email: ciUser.email } : null,
+        hod: hodUser ? { name: hodUser.name, email: hodUser.email } : null,
+        program: student?.programId || null,
+      };
+    }
+
+    // Link any existing section clearances to this clearanceRequest if not already linked
+    for (const sc of sectionClearances) {
+      if (!sc.clearanceRequestId) {
+        sc.clearanceRequestId = clearanceRequest._id;
+        await sc.save();
+      }
+    }
+
+    const itemClearances = await ItemClearance.find({ clearanceRequestId: clearanceRequest._id })
+      .populate('teacherId', 'name email')
+      .populate({
+        path: 'clearanceItemId',
+        select: 'title subjectCode type theoryTeacherId labBatchTeachers electiveOptions',
+        populate: [
+          { path: 'theoryTeacherId', select: 'name email' },
+          { path: 'labBatchTeachers.teacherId', select: 'name email' },
+          { path: 'electiveOptions.teacherId', select: 'name email' },
+        ],
+      })
+      .sort({ itemTitle: 1 });
 
     // Auto-advance if all sections/items are approved but stage was not transitioned
     if (clearanceRequest.status === 'sections_review' || clearanceRequest.status === 'items_review') {
@@ -317,7 +452,11 @@ const clearanceService = {
     return {
       clearanceRequest,
       itemClearances,
+      clearanceItems: dynamicClearanceItems,
       sectionClearances,
+      classIncharge: ciUser ? { name: ciUser.name, email: ciUser.email } : null,
+      hod: hodUser ? { name: hodUser.name, email: hodUser.email } : null,
+      program: student?.programId || null,
     };
   },
 
@@ -508,20 +647,20 @@ const clearanceService = {
     if (classInchargeId) {
       const ci = await User.findById(classInchargeId);
       if (ci) {
+        let studentQuery = { role: 'student', isActive: true };
         if (ci.assignedStudents && ci.assignedStudents.length > 0) {
-          query.studentId = { $in: ci.assignedStudents };
+          studentQuery._id = { $in: ci.assignedStudents };
         } else if (ci.assignedProgramId || ci.assignedSemester || ci.assignedSection || ci.section) {
-          const studentQuery = { role: 'student' };
           if (ci.assignedProgramId) studentQuery.programId = ci.assignedProgramId;
-          if (ci.assignedSemester) studentQuery.currentSemester = ci.assignedSemester;
+          if (ci.assignedSemester) studentQuery.currentSemester = Number(ci.assignedSemester);
           const sec = ci.assignedSection || ci.section;
           if (sec && sec !== 'all') {
-            const cleanSec = sec.replace(/^Sec\s*/i, '').trim();
-            studentQuery.section = new RegExp(`^${cleanSec}$`, 'i');
+            const cleanSec = sec.replace(/^Sec(tion)?\s*/i, '').trim();
+            studentQuery.section = new RegExp(`^(Sec(tion)?\\s*)?${cleanSec}$`, 'i');
           }
-          const studentIds = await User.find(studentQuery).select('_id');
-          query.studentId = { $in: studentIds.map((s) => s._id) };
         }
+        const studentIds = await User.find(studentQuery).select('_id');
+        query.studentId = { $in: studentIds.map((s) => s._id) };
       }
     }
 
@@ -548,8 +687,8 @@ const clearanceService = {
       if (ci.assignedSemester) studentQuery.currentSemester = Number(ci.assignedSemester);
       const sec = ci.assignedSection || ci.section;
       if (sec && sec !== 'all') {
-        const cleanSec = sec.replace(/^Sec\s*/i, '').trim();
-        studentQuery.section = new RegExp(`^${cleanSec}$`, 'i');
+        const cleanSec = sec.replace(/^Sec(tion)?\s*/i, '').trim();
+        studentQuery.section = new RegExp(`^(Sec(tion)?\\s*)?${cleanSec}$`, 'i');
       }
     }
 
@@ -978,22 +1117,32 @@ const clearanceService = {
     }
 
     if (clearanceItem.type === 'lab') {
-      if (!student.batchId) return null; // Student not assigned to a batch
-      const mapping = clearanceItem.labBatchTeachers.find(
-        (lbt) => lbt.batchId.toString() === student.batchId.toString()
-      );
-      return mapping ? mapping.teacherId : null;
+      if (student.batchId && clearanceItem.labBatchTeachers?.length > 0) {
+        const mapping = clearanceItem.labBatchTeachers.find(
+          (lbt) => lbt.batchId?.toString() === student.batchId.toString()
+        );
+        if (mapping && mapping.teacherId) return mapping.teacherId;
+      }
+      if (clearanceItem.labBatchTeachers?.length > 0) {
+        return clearanceItem.labBatchTeachers[0].teacherId;
+      }
+      return clearanceItem.theoryTeacherId || null;
     }
 
     if (clearanceItem.type === 'elective') {
-      if (!student.selectedElective) return null; // Student hasn't selected an elective
-      const option = clearanceItem.electiveOptions.find(
-        (opt) => opt._id.toString() === student.selectedElective.toString()
-      );
-      return option ? option.teacherId : null;
+      if (student.selectedElective && clearanceItem.electiveOptions?.length > 0) {
+        const option = clearanceItem.electiveOptions.find(
+          (opt) => opt._id?.toString() === student.selectedElective.toString()
+        );
+        if (option && option.teacherId) return option.teacherId;
+      }
+      if (clearanceItem.electiveOptions?.length > 0) {
+        return clearanceItem.electiveOptions[0].teacherId;
+      }
+      return clearanceItem.theoryTeacherId || null;
     }
 
-    return null;
+    return clearanceItem.theoryTeacherId || null;
   },
 };
 

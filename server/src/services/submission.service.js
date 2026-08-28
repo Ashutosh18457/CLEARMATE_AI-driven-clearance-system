@@ -23,10 +23,13 @@ const submissionService = {
       throw AppError.notFound('Clearance item not found');
     }
 
-    // Verify the teacher owns this clearance item
+    // Verify the teacher owns this clearance item (or is admin/hod)
     const isOwner = this._isTeacherOwner(clearanceItem, teacherId);
     if (!isOwner) {
-      throw AppError.forbidden('You are not assigned to this clearance item');
+      const user = await User.findById(teacherId);
+      if (!user || (user.role !== 'admin' && user.role !== 'super_admin' && user.role !== 'hod')) {
+        throw AppError.forbidden('You are not assigned to this clearance item');
+      }
     }
 
     const submissionItem = await SubmissionItem.create({
@@ -585,6 +588,38 @@ const submissionService = {
       submissionId: submission._id,
     });
 
+    // Notify assigned teacher about the student submission
+    try {
+      const student = await User.findById(studentId);
+      const clearanceItem = submissionItem.clearanceItemId;
+      let teacherId = null;
+
+      if (clearanceItem) {
+        if (clearanceItem.type === 'theory' || clearanceItem.type === 'special') {
+          teacherId = clearanceItem.theoryTeacherId;
+        } else if (clearanceItem.type === 'lab' && student?.batchId) {
+          const lbt = clearanceItem.labBatchTeachers?.find(
+            (b) => b.batchId?.toString() === student.batchId?.toString()
+          );
+          teacherId = lbt?.teacherId;
+        } else if (clearanceItem.type === 'lab' && clearanceItem.labBatchTeachers?.length > 0) {
+          teacherId = clearanceItem.labBatchTeachers[0].teacherId;
+        }
+      }
+
+      if (teacherId) {
+        await notificationService.createNotification(teacherId, {
+          title: 'Coursework Submitted 📥',
+          message: `${student?.name || 'Student'} (${student?.enrollmentNo || 'Roll N/A'}) submitted "${submissionItem.title}" for your verification.`,
+          type: 'info',
+          link: '/teacher/student-submissions',
+          senderId: studentId,
+        });
+      }
+    } catch (notifErr) {
+      logger.error('Failed to dispatch teacher notification on submitWork', { error: notifErr.message });
+    }
+
     return submission;
   },
 
@@ -597,22 +632,38 @@ const submissionService = {
    * Works for theory, lab (batch-specific), elective, and special types.
    */
   _isTeacherOwner(clearanceItem, teacherId) {
-    const tid = teacherId.toString();
+    if (!clearanceItem || !teacherId) return false;
+    const tid = (teacherId._id ? teacherId._id : teacherId).toString();
 
     if (clearanceItem.type === 'theory' || clearanceItem.type === 'special') {
-      return clearanceItem.theoryTeacherId?.toString() === tid;
+      const theoryTid = clearanceItem.theoryTeacherId?._id
+        ? clearanceItem.theoryTeacherId._id.toString()
+        : clearanceItem.theoryTeacherId
+        ? clearanceItem.theoryTeacherId.toString()
+        : null;
+      return theoryTid === tid;
     }
 
     if (clearanceItem.type === 'lab') {
-      return clearanceItem.labBatchTeachers.some(
-        (lbt) => lbt.teacherId.toString() === tid
-      );
+      return (clearanceItem.labBatchTeachers || []).some((lbt) => {
+        const lbtId = lbt.teacherId?._id
+          ? lbt.teacherId._id.toString()
+          : lbt.teacherId
+          ? lbt.teacherId.toString()
+          : null;
+        return lbtId === tid;
+      });
     }
 
     if (clearanceItem.type === 'elective') {
-      return clearanceItem.electiveOptions.some(
-        (opt) => opt.teacherId.toString() === tid
-      );
+      return (clearanceItem.electiveOptions || []).some((opt) => {
+        const optId = opt.teacherId?._id
+          ? opt.teacherId._id.toString()
+          : opt.teacherId
+          ? opt.teacherId.toString()
+          : null;
+        return optId === tid;
+      });
     }
 
     return false;

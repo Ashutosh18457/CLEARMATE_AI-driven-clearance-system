@@ -7,6 +7,7 @@ import Modal from '../../components/common/Modal';
 import Skeleton from '../../components/common/Skeleton';
 import EmptyState from '../../components/common/EmptyState';
 import api from '../../api/axios';
+import { useSocket } from '../../context/SocketContext';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import {
@@ -521,9 +522,29 @@ export default function BusSectionDashboard() {
     }
   }, [search, statusFilter, selectedBranch, selectedSem]);
 
+  const { socket } = useSocket();
+
   useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
+
+  // Real-time socket listener
+  useEffect(() => {
+    if (!socket) return;
+    const handleUpdate = () => {
+      fetchStudents();
+    };
+
+    socket.on('new_notification', handleUpdate);
+    socket.on('section_cleared', handleUpdate);
+    socket.on('clearance_updated', handleUpdate);
+
+    return () => {
+      socket.off('new_notification', handleUpdate);
+      socket.off('section_cleared', handleUpdate);
+      socket.off('clearance_updated', handleUpdate);
+    };
+  }, [socket, fetchStudents]);
 
   // Open modal handler
   const handleOpenModal = async (row) => {
@@ -665,7 +686,10 @@ export default function BusSectionDashboard() {
       key: 'select',
       label: (
         <input
+          id="bus-select-all-students"
+          name="selectAll"
           type="checkbox"
+          aria-label="Select all students"
           checked={isAllSelected}
           onChange={handleSelectAll}
           className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
@@ -677,6 +701,9 @@ export default function BusSectionDashboard() {
         const isChecked = selectedStudentIds.includes(sId);
         return (
           <input
+            id={`bus-select-student-${sId}`}
+            name={`student_select_${sId}`}
+            aria-label={`Select student ${row.student.name}`}
             type="checkbox"
             checked={isChecked}
             onChange={() => handleSelectStudent(sId)}
@@ -1072,8 +1099,9 @@ export default function BusSectionDashboard() {
                   </label>
 
                   <div className="flex gap-4">
-                    <label className="flex items-center gap-2 text-sm font-medium text-emerald-900 cursor-pointer">
+                    <label htmlFor="bus-paid-standard-radio" className="flex items-center gap-2 text-sm font-medium text-emerald-900 cursor-pointer">
                       <input
+                        id="bus-paid-standard-radio"
                         type="radio"
                         name="paidOption"
                         value="standard"
@@ -1084,8 +1112,9 @@ export default function BusSectionDashboard() {
                       <span>Direct Cleared (Standard)</span>
                     </label>
 
-                    <label className="flex items-center gap-2 text-sm font-medium text-emerald-900 cursor-pointer">
+                    <label htmlFor="bus-paid-add-note-radio" className="flex items-center gap-2 text-sm font-medium text-emerald-900 cursor-pointer">
                       <input
+                        id="bus-paid-add-note-radio"
                         type="radio"
                         name="paidOption"
                         value="add_clearance"
@@ -1099,10 +1128,12 @@ export default function BusSectionDashboard() {
 
                   {paidOption === 'add_clearance' && (
                     <div className="pt-2">
-                      <label className="block text-xs font-semibold text-emerald-900 mb-1">
+                      <label htmlFor="bus-clearance-note-text" className="block text-xs font-semibold text-emerald-900 mb-1">
                         Clearance Details / Note <span className="text-red-500">*</span>
                       </label>
                       <textarea
+                        id="bus-clearance-note-text"
+                        name="clearanceNoteText"
                         rows={3}
                         value={clearanceNoteText}
                         onChange={(e) => setClearanceNoteText(e.target.value)}
@@ -1122,8 +1153,9 @@ export default function BusSectionDashboard() {
                   </label>
 
                   <div className="flex gap-4">
-                    <label className="flex items-center gap-2 text-sm font-medium text-amber-900 cursor-pointer">
+                    <label htmlFor="bus-not-paid-fees-pending-radio" className="flex items-center gap-2 text-sm font-medium text-amber-900 cursor-pointer">
                       <input
+                        id="bus-not-paid-fees-pending-radio"
                         type="radio"
                         name="notPaidReason"
                         value="fees_pending"
@@ -1134,8 +1166,9 @@ export default function BusSectionDashboard() {
                       <span>Fees Pending (Default Status Flag)</span>
                     </label>
 
-                    <label className="flex items-center gap-2 text-sm font-medium text-amber-900 cursor-pointer">
+                    <label htmlFor="bus-not-paid-remark-radio" className="flex items-center gap-2 text-sm font-medium text-amber-900 cursor-pointer">
                       <input
+                        id="bus-not-paid-remark-radio"
                         type="radio"
                         name="notPaidReason"
                         value="remark"
@@ -1149,10 +1182,12 @@ export default function BusSectionDashboard() {
 
                   {reason === 'remark' && (
                     <div className="pt-2">
-                      <label className="block text-xs font-semibold text-amber-900 mb-1">
+                      <label htmlFor="bus-not-paid-remark-text" className="block text-xs font-semibold text-amber-900 mb-1">
                         Remark Note <span className="text-red-500">*</span>
                       </label>
                       <textarea
+                        id="bus-not-paid-remark-text"
+                        name="remarkText"
                         rows={3}
                         value={remarkText}
                         onChange={(e) => setRemarkText(e.target.value)}

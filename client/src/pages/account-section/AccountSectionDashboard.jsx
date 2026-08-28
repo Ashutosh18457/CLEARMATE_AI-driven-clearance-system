@@ -7,6 +7,7 @@ import Modal from '../../components/common/Modal';
 import Skeleton from '../../components/common/Skeleton';
 import EmptyState from '../../components/common/EmptyState';
 import api from '../../api/axios';
+import { useSocket } from '../../context/SocketContext';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import {
@@ -468,9 +469,29 @@ export default function AccountSectionDashboard() {
     }
   }, [search, statusFilter, selectedBranch, selectedSem]);
 
+  const { socket } = useSocket();
+
   useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
+
+  // Real-time socket listener
+  useEffect(() => {
+    if (!socket) return;
+    const handleUpdate = () => {
+      fetchStudents();
+    };
+
+    socket.on('new_notification', handleUpdate);
+    socket.on('section_cleared', handleUpdate);
+    socket.on('clearance_updated', handleUpdate);
+
+    return () => {
+      socket.off('new_notification', handleUpdate);
+      socket.off('section_cleared', handleUpdate);
+      socket.off('clearance_updated', handleUpdate);
+    };
+  }, [socket, fetchStudents]);
 
   // Open Manage Fees Modal
   const handleOpenModal = async (item) => {
@@ -569,7 +590,10 @@ export default function AccountSectionDashboard() {
       key: 'select',
       label: (
         <input
+          id="account-select-all-students"
+          name="selectAll"
           type="checkbox"
+          aria-label="Select all students"
           checked={isAllSelected}
           onChange={handleSelectAll}
           className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
@@ -581,6 +605,9 @@ export default function AccountSectionDashboard() {
         const isChecked = selectedStudentIds.includes(sId);
         return (
           <input
+            id={`account-select-student-${sId}`}
+            name={`student_select_${sId}`}
+            aria-label={`Select student ${row.student.name}`}
             type="checkbox"
             checked={isChecked}
             onChange={() => handleSelectStudent(sId)}
@@ -964,8 +991,9 @@ export default function AccountSectionDashboard() {
                   </label>
 
                   <div className="flex gap-4">
-                    <label className="flex items-center gap-2 text-sm font-medium text-amber-900 cursor-pointer">
+                    <label htmlFor="reason-fees-pending-radio" className="flex items-center gap-2 text-sm font-medium text-amber-900 cursor-pointer">
                       <input
+                        id="reason-fees-pending-radio"
                         type="radio"
                         name="notPaidReason"
                         value="fees_pending"
@@ -976,8 +1004,9 @@ export default function AccountSectionDashboard() {
                       <span>Fees Pending (Default Status Flag)</span>
                     </label>
 
-                    <label className="flex items-center gap-2 text-sm font-medium text-amber-900 cursor-pointer">
+                    <label htmlFor="reason-remark-radio" className="flex items-center gap-2 text-sm font-medium text-amber-900 cursor-pointer">
                       <input
+                        id="reason-remark-radio"
                         type="radio"
                         name="notPaidReason"
                         value="remark"
@@ -991,10 +1020,12 @@ export default function AccountSectionDashboard() {
 
                   {reason === 'remark' && (
                     <div>
-                      <label className="block text-xs font-semibold text-amber-900 mb-1">
+                      <label htmlFor="account-modal-remark-text" className="block text-xs font-semibold text-amber-900 mb-1">
                         Remark Text <span className="text-rose-500">*</span>
                       </label>
                       <textarea
+                        id="account-modal-remark-text"
+                        name="remarkText"
                         rows={3}
                         value={remarkText}
                         onChange={(e) => setRemarkText(e.target.value)}

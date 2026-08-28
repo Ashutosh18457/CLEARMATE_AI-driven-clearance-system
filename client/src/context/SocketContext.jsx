@@ -29,13 +29,20 @@ export function SocketProvider({ children }) {
 
     const newSocket = io(backendUrl, {
       auth: { token },
-      transports: ['websocket', 'polling'],
-      reconnectionAttempts: 10,
-      reconnectionDelay: 2000,
+      transports: ['polling', 'websocket'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 3000,
+      timeout: 10000,
     });
 
     newSocket.on('connect', () => {
       setIsConnected(true);
+    });
+
+    newSocket.on('connect_error', () => {
+      // Quietly fall back without spamming console
+      setIsConnected(false);
     });
 
     newSocket.on('disconnect', () => {

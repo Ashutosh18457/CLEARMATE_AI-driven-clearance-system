@@ -573,6 +573,7 @@ export default function SubmissionItems() {
             </label>
             <input
               id="create-title"
+              name="title"
               type="text"
               value={createForm.title}
               onChange={(e) => setCreateForm((prev) => ({ ...prev, title: e.target.value }))}
@@ -589,6 +590,7 @@ export default function SubmissionItems() {
               </label>
               <select
                 id="create-type"
+                name="type"
                 value={createForm.type}
                 onChange={(e) => setCreateForm((prev) => ({ ...prev, type: e.target.value }))}
                 className="w-full px-3 py-2 text-sm border border-border-subtle rounded-md bg-surface text-ink-primary focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand transition-colors duration-150"
@@ -607,6 +609,7 @@ export default function SubmissionItems() {
               </label>
               <input
                 id="create-deadline"
+                name="deadline"
                 type="date"
                 value={createForm.deadline}
                 onChange={(e) => setCreateForm((prev) => ({ ...prev, deadline: e.target.value }))}
@@ -622,6 +625,7 @@ export default function SubmissionItems() {
             </label>
             <textarea
               id="create-desc"
+              name="description"
               value={createForm.description}
               onChange={(e) => setCreateForm((prev) => ({ ...prev, description: e.target.value }))}
               rows={3}
@@ -631,8 +635,10 @@ export default function SubmissionItems() {
           </div>
 
           {/* Is Required Checkbox */}
-          <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
+          <label htmlFor="create-is-required" className="flex items-center gap-2 cursor-pointer select-none pt-1">
             <input
+              id="create-is-required"
+              name="isRequired"
               type="checkbox"
               checked={createForm.isRequired}
               onChange={(e) => setCreateForm((prev) => ({ ...prev, isRequired: e.target.checked }))}
@@ -694,6 +700,7 @@ export default function SubmissionItems() {
             </label>
             <input
               id="edit-title"
+              name="title"
               type="text"
               value={editForm.title}
               onChange={(e) => setEditForm((prev) => ({ ...prev, title: e.target.value }))}
@@ -710,6 +717,7 @@ export default function SubmissionItems() {
               </label>
               <select
                 id="edit-type"
+                name="type"
                 value={editForm.type}
                 onChange={(e) => setEditForm((prev) => ({ ...prev, type: e.target.value }))}
                 className="w-full px-3 py-2 text-sm border border-border-subtle rounded-md bg-surface text-ink-primary focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand transition-colors duration-150"
@@ -728,6 +736,7 @@ export default function SubmissionItems() {
               </label>
               <input
                 id="edit-deadline"
+                name="deadline"
                 type="date"
                 value={editForm.deadline}
                 onChange={(e) => setEditForm((prev) => ({ ...prev, deadline: e.target.value }))}
@@ -743,6 +752,7 @@ export default function SubmissionItems() {
             </label>
             <textarea
               id="edit-desc"
+              name="description"
               value={editForm.description}
               onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
               rows={3}
@@ -752,8 +762,10 @@ export default function SubmissionItems() {
           </div>
 
           {/* Is Required Checkbox */}
-          <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
+          <label htmlFor="edit-is-required" className="flex items-center gap-2 cursor-pointer select-none pt-1">
             <input
+              id="edit-is-required"
+              name="isRequired"
               type="checkbox"
               checked={editForm.isRequired}
               onChange={(e) => setEditForm((prev) => ({ ...prev, isRequired: e.target.checked }))}

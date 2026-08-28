@@ -20,22 +20,22 @@ const submissionValidator = {
       .messages({ 'any.required': 'Submission title is required' }),
     type: Joi.string().valid('assignment', 'lab_record', 'project', 'presentation', 'other').required()
       .messages({ 'any.required': 'Submission type is required' }),
-    description: Joi.string().trim().max(1000).optional(),
-    deadline: Joi.date().iso().required()
+    description: Joi.string().trim().max(1000).allow('', null).optional(),
+    deadline: Joi.date().optional().allow('', null)
       .messages({ 'any.required': 'Deadline is required' }),
     isRequired: Joi.boolean().default(true),
-  }),
+  }).unknown(true),
 
   // Teacher updates a submission item
   updateSubmissionItemSchema: Joi.object({
-    clearanceItemId: objectId.optional()
+    clearanceItemId: objectId.optional().allow('', null)
       .messages({ 'any.invalid': 'Invalid Clearance Item ID' }),
     title: Joi.string().trim().max(200).optional(),
     type: Joi.string().valid('assignment', 'lab_record', 'project', 'presentation', 'other').optional(),
-    description: Joi.string().trim().max(1000).allow('').optional(),
-    deadline: Joi.date().iso().optional(),
+    description: Joi.string().trim().max(1000).allow('', null).optional(),
+    deadline: Joi.date().optional().allow('', null),
     isRequired: Joi.boolean().optional(),
-  }).min(1).messages({
+  }).min(1).unknown(true).messages({
     'object.min': 'At least one field must be provided to update',
   }),
 

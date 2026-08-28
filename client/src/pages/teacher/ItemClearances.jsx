@@ -259,10 +259,12 @@ export default function ItemClearances() {
 
           {/* Remarks */}
           <div>
-            <label className="block text-sm font-medium text-ink-primary mb-1">
+            <label htmlFor="item-clearance-remarks" className="block text-sm font-medium text-ink-primary mb-1">
               Remarks <span className="text-ink-muted font-normal">(optional)</span>
             </label>
             <textarea
+              id="item-clearance-remarks"
+              name="remarks"
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
               rows={3}

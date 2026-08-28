@@ -525,10 +525,12 @@ export default function StudentSubmissions() {
               : 'Are you sure you want to reject this submission? The student will need to resubmit.'}
           </p>
           <div>
-            <label className="block text-sm font-medium text-ink-primary mb-1">
+            <label htmlFor="single-submission-remarks" className="block text-sm font-medium text-ink-primary mb-1">
               Remarks <span className="text-ink-muted font-normal">(optional)</span>
             </label>
             <textarea
+              id="single-submission-remarks"
+              name="remarks"
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
               rows={3}
@@ -620,7 +622,7 @@ export default function StudentSubmissions() {
 
           {/* Remarks text area */}
           <div>
-            <label className="block text-sm font-medium text-ink-primary mb-1">
+            <label htmlFor="bulk-submission-remarks" className="block text-sm font-medium text-ink-primary mb-1">
               Remarks {bulkModal.type === 'reject' ? (
                 <span className="text-status-rejected font-semibold">* (required)</span>
               ) : (
@@ -628,6 +630,8 @@ export default function StudentSubmissions() {
               )}
             </label>
             <textarea
+              id="bulk-submission-remarks"
+              name="bulkRemarks"
               value={bulkRemarks}
               onChange={(e) => setBulkRemarks(e.target.value)}
               rows={3}
@@ -644,8 +648,10 @@ export default function StudentSubmissions() {
           {/* Confirmation Checkbox for Bulk Reject */}
           {bulkModal.type === 'reject' && (
             <div className="pt-2 border-t border-border-subtle">
-              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+              <label htmlFor="bulk-reject-confirm-checkbox" className="flex items-start gap-2.5 cursor-pointer select-none">
                 <input
+                  id="bulk-reject-confirm-checkbox"
+                  name="bulkConfirmed"
                   type="checkbox"
                   checked={bulkConfirmed}
                   onChange={(e) => setBulkConfirmed(e.target.checked)}

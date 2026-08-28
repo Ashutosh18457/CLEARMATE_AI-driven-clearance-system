@@ -13,6 +13,7 @@ import {
   HiOutlineArrowDownTray,
 } from 'react-icons/hi2';
 import api from '../../api/axios';
+import { useSocket } from '../../context/SocketContext';
 import { CLEARANCE_STATUS_LABELS, DEPARTMENT_LABELS } from '../../utils/constants';
 import toast from 'react-hot-toast';
 import Table from '../../components/common/Table';
@@ -22,6 +23,7 @@ import Badge, { getStatusVariant } from '../../components/common/Badge';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 
 export default function ClassInchargeDashboard() {
+  const { socket } = useSocket();
   const [activeTab, setActiveTab] = useState('cohort'); // 'cohort' | 'pending' | 'completed'
   const [cohortData, setCohortData] = useState({ scope: {}, stats: {}, students: [] });
   const [loading, setLoading] = useState(true);
@@ -56,6 +58,26 @@ export default function ClassInchargeDashboard() {
   useEffect(() => {
     fetchCohortOverview();
   }, [fetchCohortOverview]);
+
+  // Real-time socket listener
+  useEffect(() => {
+    if (!socket) return;
+    const handleUpdate = () => {
+      fetchCohortOverview();
+    };
+
+    socket.on('new_notification', handleUpdate);
+    socket.on('clearance_updated', handleUpdate);
+    socket.on('section_cleared', handleUpdate);
+    socket.on('submission_verified', handleUpdate);
+
+    return () => {
+      socket.off('new_notification', handleUpdate);
+      socket.off('clearance_updated', handleUpdate);
+      socket.off('section_cleared', handleUpdate);
+      socket.off('submission_verified', handleUpdate);
+    };
+  }, [socket, fetchCohortOverview]);
 
   const stats = cohortData.stats || {
     totalAssigned: 0,
@@ -433,6 +455,9 @@ export default function ClassInchargeDashboard() {
           <div className="relative flex-1 min-w-[220px]">
             <HiOutlineMagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted" />
             <input
+              id="ci-search-students-input"
+              name="search"
+              aria-label="Search student by name, enrollment number, or section"
               type="search"
               placeholder="Search student by name, enrollment no, or section..."
               className="input-base pl-9 text-xs"
@@ -442,6 +467,9 @@ export default function ClassInchargeDashboard() {
           </div>
           {activeTab === 'cohort' && (
             <select
+              id="ci-filter-status-select"
+              name="filterStatus"
+              aria-label="Filter students by status"
               className="select-base w-40 text-xs"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -520,6 +548,7 @@ export default function ClassInchargeDashboard() {
             </label>
             <textarea
               id="ci-review-remarks"
+              name="remarks"
               className="input-base min-h-[80px] text-xs resize-y"
               placeholder={
                 modalAction === 'approved'

@@ -78,6 +78,15 @@ export default function TeacherTasks() {
     fetchStudents();
   }, [fetchTasks, fetchStudents]);
 
+  // Dynamically compute distinct sections from loaded students
+  const distinctSections = useMemo(() => {
+    const secs = new Set();
+    students.forEach((s) => {
+      if (s.section) secs.add(s.section);
+    });
+    return Array.from(secs).sort();
+  }, [students]);
+
   // Filtered student list for selection in modal
   const filteredStudents = useMemo(() => {
     return students.filter((s) => {
@@ -345,8 +354,10 @@ export default function TeacherTasks() {
       >
         <form onSubmit={handleCreateTask} className="space-y-4">
           <div>
-            <label className="label-base">Task Title *</label>
+            <label htmlFor="task-title-input" className="label-base">Task Title *</label>
             <input
+              id="task-title-input"
+              name="title"
               type="text"
               className="input-base"
               placeholder="e.g. Lab Record 4 Submission, Project Milestone 1"
@@ -357,8 +368,10 @@ export default function TeacherTasks() {
           </div>
 
           <div>
-            <label className="label-base">Description & Instructions</label>
+            <label htmlFor="task-desc-input" className="label-base">Description & Instructions</label>
             <textarea
+              id="task-desc-input"
+              name="description"
               className="input-base min-h-[70px] resize-y text-xs"
               placeholder="Provide instructions, required files, or guidelines for the assigned students..."
               value={description}
@@ -367,8 +380,10 @@ export default function TeacherTasks() {
           </div>
 
           <div>
-            <label className="label-base">Deadline *</label>
+            <label htmlFor="task-deadline-input" className="label-base">Deadline *</label>
             <input
+              id="task-deadline-input"
+              name="deadline"
               type="datetime-local"
               className="input-base"
               value={deadline}
@@ -380,7 +395,7 @@ export default function TeacherTasks() {
           {/* Student Multi-Selection Box */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="label-base !mb-0">
+              <label htmlFor="task-student-search-input" className="label-base !mb-0">
                 Assign to Students * ({selectedStudents.length} selected)
               </label>
               <button
@@ -397,6 +412,9 @@ export default function TeacherTasks() {
               <div className="relative">
                 <HiOutlineMagnifyingGlass className="w-4 h-4 absolute left-3 top-2.5 text-ink-muted" />
                 <input
+                  id="task-student-search-input"
+                  name="studentSearch"
+                  aria-label="Search by student name or enrollment number"
                   type="text"
                   className="input-base pl-9 text-xs"
                   placeholder="Search by student name, enrollment no..."
@@ -406,14 +424,19 @@ export default function TeacherTasks() {
               </div>
 
               <select
+                id="task-section-filter-select"
+                name="sectionFilter"
+                aria-label="Filter students by section"
                 className="input-base text-xs"
                 value={sectionFilter}
                 onChange={(e) => setSectionFilter(e.target.value)}
               >
-                <option value="all">All Sections</option>
-                <option value="A">Section A</option>
-                <option value="B">Section B</option>
-                <option value="C">Section C</option>
+                <option value="all">All Sections ({students.length} students)</option>
+                {distinctSections.map((sec) => (
+                  <option key={sec} value={sec}>
+                    Section {sec} ({students.filter((s) => s.section === sec).length} students)
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -429,11 +452,14 @@ export default function TeacherTasks() {
                   return (
                     <label
                       key={s._id}
+                      htmlFor={`student-select-${s._id}`}
                       className={`flex items-center gap-3 p-2.5 text-xs hover:bg-surface cursor-pointer transition-colors ${
                         isChecked ? 'bg-brand-50/40' : ''
                       }`}
                     >
                       <input
+                        id={`student-select-${s._id}`}
+                        name={`student_${s._id}`}
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => toggleStudent(s._id)}
