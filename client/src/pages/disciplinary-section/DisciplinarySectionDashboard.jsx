@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Table from '../../components/common/Table';
 import Button from '../../components/common/Button';
@@ -714,7 +714,7 @@ export default function DisciplinarySectionDashboard() {
       key: 'lastUpdated',
       label: 'LAST UPDATED',
       render: (_, row) => {
-        if (!row.updated_at) return <span className="text-sm text-ink-muted">—</span>;
+        if (!row.updated_at) return <span className="text-sm text-ink-muted">â€”</span>;
         const dateObj = new Date(row.updated_at);
         return (
           <span className="text-xs text-ink-secondary font-tabular">
@@ -744,12 +744,12 @@ export default function DisciplinarySectionDashboard() {
   ];
 
   return (
-    <DashboardLayout title="Disciplinary Section — Conduct Clearance">
-      {/* ─── Header bar / User Info ─── */}
+    <DashboardLayout title="Disciplinary Section â€” Conduct Clearance">
+      {/* â”€â”€â”€ Header bar / User Info â”€â”€â”€ */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border-subtle pb-4">
         <div>
           <h1 className="text-xl font-bold text-ink-primary font-display tracking-tight">
-            Disciplinary Section — Conduct Clearance
+            Disciplinary Section â€” Conduct Clearance
           </h1>
           <p className="text-xs text-ink-secondary mt-0.5">
             Manage student conduct records, disciplinary fines, and clearance approvals.
@@ -766,7 +766,7 @@ export default function DisciplinarySectionDashboard() {
         </div>
       </div>
 
-      {/* ─── Top 3 Stat Cards ─── */}
+      {/* â”€â”€â”€ Top 3 Stat Cards â”€â”€â”€ */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Card 1: Total Students */}
         <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-xs flex items-center justify-between">
@@ -775,7 +775,7 @@ export default function DisciplinarySectionDashboard() {
               TOTAL STUDENTS
             </p>
             <p className="text-3xl font-extrabold text-ink-primary font-tabular">
-              {loading ? '—' : totalStudents}
+              {loading ? 'â€”' : totalStudents}
             </p>
           </div>
           <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600">
@@ -790,7 +790,7 @@ export default function DisciplinarySectionDashboard() {
               CONDUCT CLEARED
             </p>
             <p className="text-3xl font-extrabold text-emerald-600 font-tabular">
-              {loading ? '—' : clearedCount}
+              {loading ? 'â€”' : clearedCount}
             </p>
           </div>
           <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
@@ -805,7 +805,7 @@ export default function DisciplinarySectionDashboard() {
               ACTION PENDING
             </p>
             <p className="text-3xl font-extrabold text-amber-600 font-tabular">
-              {loading ? '—' : pendingCount}
+              {loading ? 'â€”' : pendingCount}
             </p>
           </div>
           <div className="w-10 h-10 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
@@ -814,7 +814,7 @@ export default function DisciplinarySectionDashboard() {
         </div>
       </div>
 
-      {/* ─── Branch & Semester Filter Card ─── */}
+      {/* â”€â”€â”€ Branch & Semester Filter Card â”€â”€â”€ */}
       <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-xs mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-border-subtle">
           <div>
@@ -879,7 +879,7 @@ export default function DisciplinarySectionDashboard() {
         </div>
       </div>
 
-      {/* ─── Search & Status Filter Bar ─── */}
+      {/* â”€â”€â”€ Search & Status Filter Bar â”€â”€â”€ */}
       <div className="bg-surface border border-border-subtle rounded-xl p-4 shadow-xs mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Left: Search input */}
         <div className="relative w-full md:w-80">
@@ -928,15 +928,6 @@ export default function DisciplinarySectionDashboard() {
             </button>
           </div>
 
-          <Button
-            variant="primary"
-            size="sm"
-            icon={<HiOutlineArrowUpTray className="w-4 h-4" />}
-            onClick={() => setIsBulkModalOpen(true)}
-            className="!bg-primary-600 hover:!bg-primary-700 text-white font-semibold shadow-xs"
-          >
-            Bulk Upload
-          </Button>
 
           <Button
             variant="secondary"
@@ -979,7 +970,7 @@ export default function DisciplinarySectionDashboard() {
         </div>
       )}
 
-      {/* ─── Main Table Container ─── */}
+      {/* â”€â”€â”€ Main Table Container â”€â”€â”€ */}
       <div className="bg-surface border border-border-subtle rounded-xl shadow-xs overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-4">
@@ -1013,12 +1004,12 @@ export default function DisciplinarySectionDashboard() {
         )}
       </div>
 
-      {/* ─── Single Student Update Modal ─── */}
+      {/* â”€â”€â”€ Single Student Update Modal â”€â”€â”€ */}
       {isModalOpen && selectedStudent && (
         <Modal
           isOpen={isModalOpen}
           onClose={handleCloseModal}
-          title={`Manage Disciplinary Status — ${selectedStudent.student.name}`}
+          title={`Manage Disciplinary Status â€” ${selectedStudent.student.name}`}
           size="md"
         >
           {modalLoading ? (
@@ -1140,127 +1131,6 @@ export default function DisciplinarySectionDashboard() {
         </Modal>
       )}
 
-      {/* ─── Bulk Upload Modal ─── */}
-      {isBulkModalOpen && (
-        <Modal
-          isOpen={isBulkModalOpen}
-          onClose={() => {
-            setIsBulkModalOpen(false);
-            setUploadedFileName('');
-            setParsedRows([]);
-          }}
-          title="Bulk Upload Disciplinary Clearance Records"
-          size="lg"
-        >
-          <div className="space-y-4">
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1">
-              <p className="font-semibold text-ink-primary">Upload Instructions:</p>
-              <p className="text-ink-muted">
-                Upload a CSV or Excel file containing student records. Format: <code className="font-mono text-slate-800 font-bold">student_id, full_name, email, department, semester, section</code>
-              </p>
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={handleDownloadSample}
-                  className="text-xs font-semibold text-brand hover:underline inline-flex items-center gap-1"
-                >
-                  Download Sample CSV Template
-                </button>
-              </div>
-            </div>
-
-            {/* Drag & Drop File Input */}
-            <div className="border-2 border-dashed border-border-subtle hover:border-brand/50 rounded-xl p-6 text-center transition-colors bg-canvas cursor-pointer">
-              <input
-                type="file"
-                accept=".csv,text/csv,.xlsx,.xls"
-                onChange={handleFileUpload}
-                className="hidden"
-                id="disciplinary-bulk-upload-input"
-              />
-              <label htmlFor="disciplinary-bulk-upload-input" className="cursor-pointer flex flex-col items-center gap-2">
-                <div className="w-10 h-10 rounded-full bg-brand-50 border border-brand/20 flex items-center justify-center text-brand">
-                  <HiOutlineArrowUpTray className="w-5 h-5" />
-                </div>
-                <span className="text-sm font-semibold text-ink-primary">
-                  {uploadedFileName || 'Click to choose or drag & drop CSV/Excel file'}
-                </span>
-                <span className="text-xs text-ink-muted">Supports .csv, .xlsx, .xls files up to 5MB</span>
-              </label>
-            </div>
-
-            {/* Parsed Rows Preview Table */}
-            {parsedRows.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold text-ink-primary">
-                    Preview ({parsedRows.length} student records found):
-                  </span>
-                  <span className="font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    Ready to process
-                  </span>
-                </div>
-                <div className="overflow-x-auto border border-border-subtle rounded-lg max-h-48 custom-scrollbar">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-100 text-ink-muted border-b border-border-subtle sticky top-0 font-semibold">
-                      <tr>
-                        <th className="p-2">#</th>
-                        <th className="p-2">Student ID</th>
-                        <th className="p-2">Full Name</th>
-                        <th className="p-2">Email</th>
-                        <th className="p-2">Branch</th>
-                        <th className="p-2">Semester</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border-subtle">
-                      {parsedRows.slice(0, 10).map((row, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50">
-                          <td className="p-2 text-ink-muted font-mono">{idx + 1}</td>
-                          <td className="p-2 font-mono font-medium text-ink-primary">{row.student_id || '—'}</td>
-                          <td className="p-2 font-medium text-ink-primary">{row.full_name || '—'}</td>
-                          <td className="p-2 text-ink-muted">{row.email || '—'}</td>
-                          <td className="p-2">{row.department || '—'}</td>
-                          <td className="p-2">{row.semester || '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {parsedRows.length > 10 && (
-                    <p className="text-[11px] text-ink-muted text-center py-1 bg-slate-50 border-t border-border-subtle font-medium">
-                      + {parsedRows.length - 10} more rows
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Modal Actions */}
-            <div className="flex justify-end items-center gap-3 pt-3 border-t border-border-subtle">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setIsBulkModalOpen(false);
-                  setUploadedFileName('');
-                  setParsedRows([]);
-                }}
-                disabled={bulkLoading}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                loading={bulkLoading}
-                disabled={parsedRows.length === 0}
-                onClick={handleConfirmUpload}
-              >
-                Confirm & Upload Students
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </DashboardLayout>
   );
 }

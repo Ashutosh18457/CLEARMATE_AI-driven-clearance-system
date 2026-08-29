@@ -18,6 +18,8 @@ import {
   HiOutlineSquares2X2,
   HiOutlineArrowPath,
   HiOutlineIdentification,
+  HiOutlineCloudArrowUp,
+  HiOutlineSparkles,
 } from 'react-icons/hi2';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -56,46 +58,39 @@ function StatCard({ icon, label, value, loading, color, subtext }) {
 
 const quickActions = [
   {
-    label: 'Manage Programs',
-    description: 'Configure academic branches and program codes',
-    to: '/admin/programs',
-    icon: <HiOutlineAcademicCap className="w-5 h-5" />,
-    badge: 'Phase 1',
+    label: 'Bulk Semester Setup',
+    description: 'Upload Excel to setup subjects, batches & student roster in 30s',
+    to: '/admin/bulk-setup',
+    icon: <HiOutlineCloudArrowUp className="w-5 h-5 text-amber-500" />,
+    badge: 'Fast Setup ⚡',
   },
   {
-    label: 'Manage Semesters',
-    description: 'Create & monitor active academic sessions',
+    label: 'Semesters & Deadlines',
+    description: 'Configure active semesters, term dates & clearance deadlines',
     to: '/admin/semesters',
     icon: <HiOutlineCalendarDays className="w-5 h-5" />,
-    badge: 'Phase 1',
+    badge: 'Terms',
   },
   {
-    label: 'Clearance Items',
-    description: 'Set up subjects, labs, and elective requirements',
+    label: 'Clearance Subjects',
+    description: 'Manage theory subjects, lab practicals & elective faculty',
     to: '/admin/clearance-items',
     icon: <HiOutlineCog6Tooth className="w-5 h-5" />,
-    badge: 'Phase 1',
+    badge: 'Subjects & Labs',
   },
   {
-    label: 'Manage Batches',
-    description: 'Create student batches and assign lab faculty',
+    label: 'Student Batches',
+    description: 'Manage practical batches (Batch A, B, C) and student assignments',
     to: '/admin/batches',
     icon: <HiOutlineClipboardDocumentList className="w-5 h-5" />,
-    badge: 'Phase 1',
+    badge: 'Batches',
   },
   {
-    label: 'Student & Staff Roster',
-    description: 'Bulk CSV uploads and class incharge mapping',
+    label: 'Students & Faculty',
+    description: 'View student roster, manage users & assign Class Incharges',
     to: '/admin/users',
     icon: <HiOutlineUsers className="w-5 h-5" />,
-    badge: 'Phase 1 & 2',
-  },
-  {
-    label: 'Clearance Approvals',
-    description: 'Supervise multi-stage department approvals',
-    to: '/admin/users',
-    icon: <HiOutlineShieldCheck className="w-5 h-5" />,
-    badge: 'Phase 3',
+    badge: 'Directory',
   },
 ];
 
@@ -237,6 +232,13 @@ export default function AdminDashboard() {
 
           {/* Quick Automation Actions */}
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <Link
+              to="/admin/bulk-setup"
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-bold text-xs rounded-lg shadow-sm transition-all"
+            >
+              <HiOutlineSparkles className="w-4 h-4" />
+              <span>⚡ Bulk Setup</span>
+            </Link>
             <Button
               variant="secondary"
               size="sm"
@@ -245,17 +247,17 @@ export default function AdminDashboard() {
               loading={refreshingPrereq}
               onClick={handleSyncPrerequisites}
             >
-              Sync Clearance Status
+              Sync Status
             </Button>
             <Button
               variant="primary"
               size="sm"
-              className="!bg-amber-500 hover:!bg-amber-600 text-slate-950 font-bold text-xs shadow-sm"
-              icon={<HiOutlineBellAlert className="w-4 h-4 text-slate-950" />}
+              className="!bg-white/10 hover:!bg-white/20 !text-white !border-white/20 text-xs"
+              icon={<HiOutlineBellAlert className="w-4 h-4 text-amber-300" />}
               loading={sendingReminders}
               onClick={handleSendReminders}
             >
-              Broadcast Reminders
+              Reminders
             </Button>
           </div>
         </div>
@@ -402,71 +404,16 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        {/* Clearance Health & Workload Automation Card */}
-        <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <HiOutlineShieldCheck className="w-5 h-5 text-green-600" />
-              <h2 className="text-sm font-bold text-ink-primary uppercase tracking-wide">
-                System Workflow Health
-              </h2>
-            </div>
-            <p className="text-xs text-ink-muted mb-4">
-              Clearance automation is active across all 4 pipeline stages.
-            </p>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-ink-secondary flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-green-500" />
-                  Prerequisite Submissions
-                </span>
-                <span className="font-semibold text-ink-primary">Verified</span>
-              </div>
-
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-ink-secondary flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-blue-500" />
-                  Stage 1: Faculty Items
-                </span>
-                <span className="font-semibold text-ink-primary">Auto-Assigned</span>
-              </div>
-
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-ink-secondary flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-purple-500" />
-                  Stage 2: Institutional Sections
-                </span>
-                <span className="font-semibold text-ink-primary">Active</span>
-              </div>
-
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-ink-secondary flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-500" />
-                  Stage 3 & 4: Incharge & HOD
-                </span>
-                <span className="font-semibold text-ink-primary">Final Sign-Off</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-border-subtle flex items-center justify-between text-xs">
-            <span className="text-2xs text-ink-muted">PDF Certificate Engine</span>
-            <span className="text-2xs font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
-              Online
-            </span>
-          </div>
-        </div>
       </div>
 
-      {/* Official 4-Phase System Flow & Quick Setup Grid */}
+      {/* Department Setup & Management Modules Grid */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-bold text-ink-primary flex items-center gap-2">
             <HiOutlineSquares2X2 className="w-5 h-5 text-brand" />
-            Administrative Setup & Management Modules
+            Department Setup & Management
           </h2>
-          <span className="text-xs text-ink-muted">4-Phase System Workflow</span>
+          <span className="text-xs text-ink-muted">Quick Access</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

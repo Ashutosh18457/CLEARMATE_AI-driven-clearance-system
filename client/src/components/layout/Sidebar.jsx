@@ -19,6 +19,7 @@ import {
   HiOutlineRectangleStack,
   HiOutlineClipboardDocumentList,
   HiOutlineBookOpen,
+  HiOutlineCloudArrowUp,
 } from 'react-icons/hi2';
 
 const NAV_ITEMS = {
@@ -57,15 +58,17 @@ const NAV_ITEMS = {
   [ROLES.SUPER_ADMIN]: [
     { to: '/super-admin', icon: HiOutlineHome, label: 'Overview', end: true },
     { to: '/admin/programs', icon: HiOutlineAcademicCap, label: 'College Programs' },
+    { to: '/admin/bulk-setup', icon: HiOutlineCloudArrowUp, label: 'Bulk Setup' },
     { to: '/admin/users', icon: HiOutlineUsers, label: 'Admins & Staff' },
     { to: '/super-admin/audit', icon: HiOutlineClipboardDocumentList, label: 'System Audit Logs' },
   ],
   [ROLES.ADMIN]: [
     { to: '/admin', icon: HiOutlineHome, label: 'Dashboard', end: true },
+    { to: '/admin/bulk-setup', icon: HiOutlineCloudArrowUp, label: 'Bulk Setup' },
     { to: '/admin/semesters', icon: HiOutlineCalendarDays, label: 'Semesters' },
-    { to: '/admin/batches', icon: HiOutlineUserGroup, label: 'Batches' },
-    { to: '/admin/clearance-items', icon: HiOutlineRectangleStack, label: 'Clearance Items' },
-    { to: '/admin/users', icon: HiOutlineUsers, label: 'Students & Teachers' },
+    { to: '/admin/clearance-items', icon: HiOutlineBookOpen, label: 'Clearance Subjects' },
+    { to: '/admin/batches', icon: HiOutlineClipboardDocumentList, label: 'Lab Batches' },
+    { to: '/admin/users', icon: HiOutlineUsers, label: 'Students & Faculty' },
   ],
 };
 
