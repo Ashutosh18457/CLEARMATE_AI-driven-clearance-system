@@ -6,8 +6,35 @@ const { protect, restrictTo } = require('../middleware/auth');
 
 const router = express.Router();
 
+const bulkSetupController = require('../controllers/bulkSetup.controller');
+const bulkSetupValidator = require('../validators/bulkSetup.validator');
+
 // Clearance items list (accessible by Admin, Super Admin, HOD, Teacher, and Class Incharge)
 router.get('/clearance-items', protect, restrictTo('admin', 'super_admin', 'hod', 'teacher', 'class_incharge'), adminController.getClearanceItems);
+
+// ──────────────────────────────────────────────
+// BULK SEMESTER SETUP & CLONING (Workload Optimization)
+// ──────────────────────────────────────────────
+router.post(
+  '/bulk-setup',
+  protect,
+  restrictTo('admin', 'super_admin'),
+  validate(bulkSetupValidator.bulkSetupSchema),
+  bulkSetupController.bulkSetupSemester
+);
+router.post(
+  '/clone-semester',
+  protect,
+  restrictTo('admin', 'super_admin'),
+  validate(bulkSetupValidator.cloneSemesterSchema),
+  bulkSetupController.cloneSemester
+);
+router.get(
+  '/bulk-setup/template',
+  protect,
+  restrictTo('admin', 'super_admin', 'hod'),
+  bulkSetupController.getTemplateStructure
+);
 
 // All admin management routes require authentication
 router.use(protect);

@@ -6,7 +6,6 @@ const Semester = require('../models/Semester');
 const Program = require('../models/Program');
 const AppError = require('../utils/AppError');
 const logger = require('../config/logger');
-const emailService = require('./email.service');
 
 const certificateService = {
   /**
@@ -269,43 +268,15 @@ const certificateService = {
   },
 
   /**
-   * Marks a clearance as sent to exam cell and sends manifest email.
+   * Marks a clearance as processed/archived.
    */
   async markSentToExamCell(clearanceRequestId) {
     const cr = await ClearanceRequest.findByIdAndUpdate(
       clearanceRequestId,
       { sentToExamCell: true },
       { new: true }
-    ).populate('studentId', 'name enrollmentNo email')
-     .populate({
-       path: 'semesterId',
-       select: 'name semNumber academicYear programId',
-       populate: { path: 'programId', select: 'name' }
-     });
-
+    );
     if (!cr) throw AppError.notFound('Clearance request not found');
-
-    // Send manifest email to Exam Cell (fire-and-forget)
-    try {
-      const examCellEmail = process.env.EXAM_CELL_EMAIL || 'examcell@sbjit.edu.in';
-      const student = cr.studentId;
-      const semesterName = cr.semesterId?.name || `Semester ${cr.semesterId?.semNumber}`;
-      const programName = cr.semesterId?.programId?.name || 'Department';
-
-      emailService.sendExamCellDispatchEmail({
-        email: examCellEmail,
-        clearedStudents: [{
-          name: student?.name || 'Student',
-          enrollmentNo: student?.enrollmentNo || 'N/A'
-        }],
-        semester: semesterName,
-        program: programName,
-      });
-    } catch (err) {
-      logger.error('Failed to trigger Exam Cell email dispatch', { error: err.message });
-    }
-
-    logger.info('Clearance marked as sent to exam cell', { requestId: clearanceRequestId });
     return cr;
   },
 

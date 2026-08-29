@@ -201,38 +201,9 @@ const sendReviewRequestEmail = async ({ email, name, studentName, itemTitle }) =
   }).catch((err) => logger.error('Failed to send review request email', { email, error: err.message }));
 };
 
-/**
- * Sends a manifest/dispatch email to the Exam Cell.
- */
-const sendExamCellDispatchEmail = async ({ email, clearedStudents, semester, program }) => {
-  const transporter = createTransporter();
-  const studentRows = clearedStudents
-    .map((s) => `<tr><td style="padding:6px 12px;border:1px solid #e2e8f0">${s.enrollmentNo}</td><td style="padding:6px 12px;border:1px solid #e2e8f0">${s.name}</td></tr>`)
-    .join('');
-
-  return transporter.sendMail({
-    from: EMAIL_FROM(),
-    to: email,
-    subject: `ClearMate — Cleared Students Manifest: ${program} - ${semester}`,
-    html: `<!DOCTYPE html><html><head><style>${baseStyle}</style></head><body>
-      <div class="container">
-        <div class="header"><div class="logo">CM</div><div class="title">Cleared Students Manifest</div></div>
-        <div class="content">
-          <p>The following <strong>${clearedStudents.length}</strong> students from <strong>${program}</strong> have completed their <strong>${semester}</strong> clearance:</p>
-          <table style="width:100%;border-collapse:collapse;margin:16px 0">
-            <thead><tr style="background:#f1f5f9"><th style="padding:8px 12px;border:1px solid #e2e8f0;text-align:left">Enrollment No.</th><th style="padding:8px 12px;border:1px solid #e2e8f0;text-align:left">Name</th></tr></thead>
-            <tbody>${studentRows}</tbody>
-          </table>
-        </div>
-        ${footerHtml}
-      </div></body></html>`,
-  }).catch((err) => logger.error('Failed to send exam cell dispatch email', { email, error: err.message }));
-};
-
 module.exports = {
   sendPasswordResetEmail,
   sendClearanceRejectionEmail,
   sendClearanceCompletedEmail,
   sendReviewRequestEmail,
-  sendExamCellDispatchEmail,
 };
