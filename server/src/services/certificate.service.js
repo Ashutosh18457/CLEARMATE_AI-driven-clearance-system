@@ -76,6 +76,20 @@ const certificateService = {
     }
 
     // Dynamically resolve HOD of this department
+    const hodDepartmentMap = {
+      CSE: 'Dr. Kulkarni',
+      'AI&DS': 'Dr. P. Deshmukh',
+      AIDS: 'Dr. P. Deshmukh',
+      MECH: 'Dr. S. R. Patil',
+      MECHANICAL: 'Dr. S. R. Patil',
+      EE: 'Dr. V. Sharma',
+      ELECTRICAL: 'Dr. V. Sharma',
+      CE: 'Dr. A. Verma',
+      CIVIL: 'Dr. A. Verma',
+      ETC: 'Dr. M. K. Joshi',
+      IT: 'Dr. N. R. Agrawal',
+    };
+
     let hodUser = await User.findOne({
       role: 'hod',
       $or: [
@@ -87,6 +101,10 @@ const certificateService = {
     if (!hodUser) {
       hodUser = await User.findOne({ role: 'hod' }).select('name email');
     }
+
+    const resolvedHODName =
+      hodUser?.name ||
+      `${hodDepartmentMap[programCode.toUpperCase()] || 'Dr. Kulkarni'} (HOD - ${programCode.toUpperCase()})`;
 
     // Fetch Section Clearances
     const sectionClearances = clearanceRequest
@@ -131,12 +149,14 @@ const certificateService = {
       student_section: 'Student Section',
       bus: 'Bus In-charge',
       library: 'Library',
+      disciplinary: 'Disciplinary Section',
     };
 
     const defaultSections = [
       { srNo: 1, department: 'accounts', sectionName: 'Account Section', remarks: 'Fees verification & tuition dues', status: 'Approved', reviewerName: 'Account Section Admin' },
       { srNo: 2, department: 'bus', sectionName: 'Bus In-charge', remarks: 'Transport dues verification', status: 'Approved', reviewerName: 'Bus Section Admin' },
       { srNo: 3, department: 'library', sectionName: 'Library', remarks: 'Book returns and fine clearance', status: 'Approved', reviewerName: 'Library Head' },
+      { srNo: 4, department: 'disciplinary', sectionName: 'Disciplinary Section', remarks: 'Student conduct & disciplinary clearance', status: 'Approved', reviewerName: 'Disciplinary Section Head' },
     ];
 
     const formattedSections = (sectionClearances.length > 0 ? sectionClearances : defaultSections).map((sc, idx) => {
@@ -204,15 +224,23 @@ const certificateService = {
       sections: formattedSections,
       items: formattedItems,
       classIncharge: {
-        name: ciUser?.name || `Class Incharge (Sec ${student.section || 'A'})`,
+        name: ciUser?.name || `Prof. Class Incharge (Sec ${student.section || 'A'})`,
         email: ciUser?.email,
-        status: 'Digitally Approved',
+        status: clearanceRequest?.ciApprovalStatus || (clearanceRequest?.status === 'completed' ? 'Approved' : 'Pending'),
+        reviewedAt: clearanceRequest?.ciApprovedAt,
       },
       hod: {
-        name: hodUser?.name || `Head of Department (${programCode})`,
+        name: resolvedHODName,
         email: hodUser?.email,
-        status: 'Digitally Approved',
+        title: `HOD - ${programCode.toUpperCase()}`,
+        department: departmentName,
+        status: clearanceRequest?.hodApprovalStatus || (clearanceRequest?.status === 'completed' ? 'Approved' : 'Pending'),
+        reviewedAt: clearanceRequest?.hodApprovedAt,
       },
+      status: clearanceRequest ? (clearanceRequest.status === 'completed' ? 'CLEARED' : clearanceRequest.status?.toUpperCase() || 'IN PROGRESS') : 'NOT INITIATED',
+      stage: clearanceRequest?.stage || (clearanceRequest?.status === 'completed' ? 4 : 1),
+      allSectionsCleared: formattedSections.length > 0 && formattedSections.every((s) => s.status.toLowerCase() === 'approved'),
+      allItemsCleared: formattedItems.length > 0 && formattedItems.every((i) => i.status.toLowerCase() === 'approved'),
       issuedAt: new Date().toISOString(),
       institution: 'S.B. JAIN INSTITUTE OF TECHNOLOGY, MANAGEMENT & RESEARCH, NAGPUR',
       departmentHeader: `DEPARTMENT OF ${programName.toUpperCase()} (${programCode.toUpperCase()})`,

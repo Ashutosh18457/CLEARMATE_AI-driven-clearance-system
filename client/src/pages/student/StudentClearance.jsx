@@ -758,6 +758,28 @@ export default function StudentClearance() {
 
   return (
     <DashboardLayout title="Clearance Status & Certificate">
+      {/* Official Report Quick Access Link */}
+      <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-xs">
+            <HiOutlineDocumentText className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-sm font-bold text-blue-950">Official Student Clearance Report</div>
+            <div className="text-xs text-blue-800">View college ERP report with Institutional & Faculty clearances, signatures, and dynamic HOD stamp.</div>
+          </div>
+        </div>
+        <Button
+          variant="primary"
+          size="sm"
+          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+          onClick={() => navigate('/student/clearance-report')}
+          icon={<HiOutlineArrowRight className="w-4 h-4" />}
+        >
+          Open Clearance Report
+        </Button>
+      </div>
+
       {/* Completed Banner: FULL CLEARED + Certificate PDF Download */}
       {status === 'completed' && (
         <div className="mb-6 p-5 rounded-lg bg-gradient-to-r from-green-50 via-emerald-50 to-surface border border-green-200 shadow-sm">
@@ -779,16 +801,27 @@ export default function StudentClearance() {
               </div>
             </div>
 
-            <Button
-              variant="primary"
-              size="md"
-              className="shrink-0 !bg-status-success hover:!bg-green-700 text-white font-semibold"
-              icon={<HiOutlineDocumentArrowDown className="w-5 h-5" />}
-              loading={downloadingCert}
-              onClick={handleDownloadCertificate}
-            >
-              Download Clearance Report (PDF)
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="secondary"
+                size="md"
+                className="bg-white border-green-300 text-green-900 hover:bg-green-100 font-semibold"
+                onClick={() => navigate('/student/clearance-report')}
+              >
+                View Official Report
+              </Button>
+
+              <Button
+                variant="primary"
+                size="md"
+                className="!bg-status-success hover:!bg-green-700 text-white font-semibold"
+                icon={<HiOutlineDocumentArrowDown className="w-5 h-5" />}
+                loading={downloadingCert}
+                onClick={handleDownloadCertificate}
+              >
+                Download PDF
+              </Button>
+            </div>
           </div>
         </div>
       )}

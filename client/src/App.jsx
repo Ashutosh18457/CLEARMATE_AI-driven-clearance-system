@@ -18,6 +18,8 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard'));
 const StudentSubmissions = lazy(() => import('./pages/student/StudentSubmissions'));
 const StudentClearance = lazy(() => import('./pages/student/StudentClearance'));
+const StudentClearanceReport = lazy(() => import('./pages/student/StudentClearanceReport'));
+const AdminClearanceReport = lazy(() => import('./pages/admin/AdminClearanceReport'));
 
 // Teacher
 const TeacherDashboard = lazy(() => import('./pages/teacher/TeacherDashboard'));
@@ -177,6 +179,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
                 <StudentClearance />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student/clearance-report"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+                <StudentClearanceReport />
               </ProtectedRoute>
             }
           />
@@ -357,6 +367,23 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
                 <BulkSetup />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/clearance-report"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.HOD, ROLES.CLASS_INCHARGE]}>
+                <AdminClearanceReport />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/clearance-report/:studentId"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.HOD, ROLES.CLASS_INCHARGE]}>
+                <AdminClearanceReport />
               </ProtectedRoute>
             }
           />

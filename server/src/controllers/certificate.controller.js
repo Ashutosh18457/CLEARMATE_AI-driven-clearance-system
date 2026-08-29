@@ -10,6 +10,14 @@ const certificateController = {
     } catch (error) { next(error); }
   },
 
+  /** @route GET /api/certificate/student/:studentId?semesterId= */
+  async getStudentCertificate(req, res, next) {
+    try {
+      const data = await certificateService.getCertificateData(req.params.studentId, req.query.semesterId);
+      sendSuccess(res, { data, message: 'Student certificate data generated' });
+    } catch (error) { next(error); }
+  },
+
   /** @route GET /api/certificate/verify/:certificateNumber */
   async verifyCertificate(req, res, next) {
     try {

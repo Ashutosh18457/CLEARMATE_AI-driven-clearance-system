@@ -33,6 +33,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import Skeleton from '../../components/common/Skeleton';
+import ClearanceReportDashboardView from '../../components/clearance/ClearanceReportDashboardView';
 import logoIcon from '../../assets/logo_icon.png';
 
 function StatCard({ icon, label, value, subtext, color = 'brand' }) {
@@ -372,6 +373,7 @@ export default function StudentDashboard() {
       { srNo: 1, department: 'accounts', sectionName: 'Account Section', remarks: 'Fees verification & tuition dues', status: 'pending' },
       { srNo: 2, department: 'bus', sectionName: 'Bus In-charge', remarks: 'Transport dues verification', status: 'pending' },
       { srNo: 3, department: 'library', sectionName: 'Library', remarks: 'Book returns and fine clearance', status: 'pending' },
+      { srNo: 4, department: 'disciplinary', sectionName: 'Disciplinary Section', remarks: 'Student conduct & disciplinary clearance', status: 'pending' },
     ];
 
     if (!sectionClearances || sectionClearances.length === 0) {
@@ -509,6 +511,58 @@ export default function StudentDashboard() {
   // CI and HOD status flags
   const isCiApproved = isFullyCleared || rawStatus === 'hod_review' || clearance?.classInchargeApproval?.approvedBy || clearance?.clearanceRequest?.classInchargeApproval?.approvedBy;
   const isHodApproved = isFullyCleared || clearance?.hodApproval?.approvedBy || clearance?.clearanceRequest?.hodApproval?.approvedBy;
+
+  const reportData = useMemo(() => {
+    return {
+      student: {
+        name: user?.name || 'Rohan Iyer',
+        enrollmentNo: user?.enrollmentNo || 'EN2024CSE002',
+        currentSemester: user?.currentSemester?.number || user?.currentSemester || 6,
+        year: user?.year || (Math.ceil((user?.currentSemester?.number || user?.currentSemester || 6) / 2) === 1 ? 'I' : Math.ceil((user?.currentSemester?.number || user?.currentSemester || 6) / 2) === 2 ? 'II' : Math.ceil((user?.currentSemester?.number || user?.currentSemester || 6) / 2) === 3 ? 'III' : 'IV'),
+        section: user?.section || 'A',
+      },
+      program: {
+        name: user?.programId?.name || 'Computer Science & Engineering',
+        code: user?.programId?.code || 'CSE',
+        department: user?.programId?.department || 'Department of Emerging Technologies',
+      },
+      semester: {
+        session: user?.currentSemester?.session || 'Session 2024-25 (EVEN)',
+        academicYear: user?.currentSemester?.academicYear || '2024-25',
+        type: user?.currentSemester?.type || 'EVEN',
+      },
+      sections: displaySections.map((s, idx) => ({
+        srNo: idx + 1,
+        sectionName: s.sectionName || DEPARTMENT_LABELS[s.department] || s.department,
+        department: s.department,
+        remarks: s.remark_text || s.remarks || (s.status === 'approved' || s.fees_status === 'paid' ? 'Fees verification & tuition dues' : 'Verification in progress'),
+        status: s.status === 'approved' || s.fees_status === 'paid' ? 'Approved' : s.status === 'rejected' ? 'Rejected' : 'Pending',
+        reviewerName: s.reviewerId?.name || s.reviewerName || `${DEPARTMENT_LABELS[s.department] || s.sectionName || 'Section'} Head`,
+      })),
+      items: displayItems.map((item, idx) => ({
+        srNo: idx + 1,
+        title: item.itemTitle || item.title || 'Course Subject',
+        subjectCode: item.clearanceItemId?.subjectCode || '',
+        teacherName: item.teacherId?.name || item.teacherName || item.clearanceItemId?.theoryTeacherId?.name || 'Prof. Sharma',
+        remarks: item.remarks || (item.status === 'approved' ? 'Assignments & Theory records' : 'Assignments & Theory records'),
+        status: item.status === 'approved' ? 'Approved' : 'Pending',
+      })),
+      classIncharge: {
+        name: clearance?.classIncharge?.name || `Prof. Class Incharge (Sec ${user?.section || 'A'})`,
+        status: isCiApproved ? 'Approved' : 'Pending',
+      },
+      hod: {
+        name: clearance?.hod?.name || 'Dr. Kulkarni (HOD - CSE)',
+        title: 'HOD - CSE',
+        department: user?.programId?.department || 'Emerging Technologies',
+        status: isHodApproved ? 'Approved' : 'Pending',
+      },
+      status: isFullyCleared ? 'CLEARED' : isInitiated ? 'IN PROGRESS' : 'NOT INITIATED',
+      certificateNumber: clearance?.clearanceRequest?.certificateUrl || `CM-2026-${user?.enrollmentNo?.slice(-6) || 'CSE002'}`,
+      issuedAt: clearance?.clearanceRequest?.completedAt || '2025-05-27T11:45:00.000Z',
+    };
+  }, [user, displaySections, displayItems, clearance, isCiApproved, isHodApproved, isFullyCleared, isInitiated]);
+
   if (loading) {
     return (
       <DashboardLayout title="Student Clearance Dashboard">
@@ -519,320 +573,12 @@ export default function StudentDashboard() {
 
   return (
     <DashboardLayout title="Student Clearance Dashboard">
-      {/* Top Action Header Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-6 max-w-4xl mx-auto">
-        <div>
-          <h1 className="text-lg font-bold text-ink-primary">Official Clearance Report</h1>
-          <p className="text-xs text-ink-muted">
-            Authenticated multi-stage clearance report and department sign-off matrix.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5 shrink-0">
-          {!isInitiated && (
-            <Button
-              variant="secondary"
-              size="sm"
-              loading={initiating}
-              onClick={handleInitiateClearance}
-              icon={<HiOutlineRocketLaunch className="w-4 h-4" />}
-              className="text-xs font-semibold"
-            >
-              Initiate Clearance
-            </Button>
-          )}
-
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handlePrintOrDownloadCertificate}
-            loading={downloadingCert}
-            icon={<HiOutlinePrinter className="w-4 h-4" />}
-            className="text-xs font-bold shadow-xs !bg-brand hover:!bg-brand-600 text-white"
-          >
-            Print / Download Clearance Report
-          </Button>
-        </div>
-      </div>
-
-      {/* ───────────────────────────────────────────────────────────── */}
-      {/* AUTHENTIC CLEARANCE REPORT & LIVE APPROVAL MATRIX CONTAINER */}
-      {/* ───────────────────────────────────────────────────────────── */}
-      <div className="bg-surface border border-border-subtle rounded-2xl shadow-sm overflow-hidden p-6 lg:p-8 max-w-4xl mx-auto mb-8">
-        {/* Document Header Title */}
-        <div className="text-center mb-6">
-          <div className="inline-block bg-blue-50/80 border border-blue-200 text-blue-800 font-extrabold text-base md:text-lg uppercase tracking-wider px-6 py-2 rounded-lg shadow-2xs">
-            Clearance Report
-          </div>
-          <p className="text-xs md:text-sm font-bold text-slate-700 mt-2">
-            {user?.programId?.code || 'CSE'} — ({user?.currentSemester?.session || 'Session 2024-25 (EVEN)'})
-          </p>
-        </div>
-
-        {/* Student Profile Info Grid */}
-        <div className="bg-canvas/50 border border-border-subtle rounded-xl p-4 mb-5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-          <div className="flex items-baseline gap-2">
-            <span className="font-semibold text-ink-muted w-24">Name:</span>
-            <span className="font-bold text-ink-primary border-b border-dotted border-border-subtle flex-1 pb-0.5">
-              {user?.name || 'Student'}
-            </span>
-          </div>
-
-          <div className="flex items-baseline gap-2">
-            <span className="font-semibold text-ink-muted w-24">Year / Sem:</span>
-            <span className="font-bold text-ink-primary border-b border-dotted border-border-subtle flex-1 pb-0.5">
-              {user?.year || 'III'} / {user?.currentSemester?.number || user?.currentSemester || '6'} (Sem {user?.currentSemester?.number || user?.currentSemester || '6'} {user?.programId?.code || 'CSE'})
-            </span>
-          </div>
-
-          <div className="flex items-baseline gap-2">
-            <span className="font-semibold text-ink-muted w-24">Roll / Enr. No:</span>
-            <span className="font-bold font-mono text-ink-primary border-b border-dotted border-border-subtle flex-1 pb-0.5">
-              {user?.enrollmentNo || 'EN-N/A'}
-            </span>
-          </div>
-
-          <div className="flex items-baseline gap-2">
-            <span className="font-semibold text-ink-muted w-24">Section:</span>
-            <span className="font-bold text-ink-primary border-b border-dotted border-border-subtle flex-1 pb-0.5">
-              {user?.section || 'A'}
-            </span>
-          </div>
-        </div>
-
-        {/* Clearance Notice Note */}
-        <div className="p-3.5 bg-blue-50/40 border-l-4 border-brand rounded-r-lg mb-6 text-xs text-ink-secondary italic">
-          The following sections and subject faculty have verified and cleared all institutional requirements, practical records, and financial dues for the above student.
-        </div>
-
-        {/* 1. Institutional Sections Clearance Table */}
-        <div className="mb-6">
-          <h2 className="text-xs md:text-sm font-bold text-ink-primary uppercase tracking-wide mb-2 flex items-center justify-between">
-            <span>1. Institutional Sections Clearance</span>
-            <span className="text-2xs text-ink-muted font-normal lowercase">
-              {isInitiated ? 'live tracking' : 'preview'}
-            </span>
-          </h2>
-
-          <div className="border border-border-subtle rounded-xl overflow-hidden shadow-2xs">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-canvas border-b border-border-subtle text-ink-muted uppercase font-bold text-2xs">
-                  <th className="py-2.5 px-3 text-center w-12">SR. NO.</th>
-                  <th className="py-2.5 px-3">SECTION</th>
-                  <th className="py-2.5 px-3">REMARKS / CLEARANCE STATUS</th>
-                  <th className="py-2.5 px-3 text-center w-48">APPROVAL & SIGNATURE</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-subtle bg-surface">
-                {displaySections.map((sec, idx) => {
-                  const isApproved = sec.status === 'approved' || sec.fees_status === 'paid' || sec.bus_fees_status === 'paid';
-                  const isSecRejected = sec.status === 'rejected';
-                  const reviewerName = sec.reviewerId?.name || sec.reviewerName || `${DEPARTMENT_LABELS[sec.department] || 'Section'} Admin`;
-
-                  return (
-                    <tr key={sec._id || idx} className="hover:bg-canvas/30 transition-colors">
-                      <td className="py-3 px-3 text-center font-bold text-ink-muted">{idx + 1}</td>
-                      <td className="py-3 px-3 font-bold text-ink-primary">
-                        {DEPARTMENT_LABELS[sec.department] || sec.sectionName || sec.department}
-                      </td>
-                      <td className="py-3 px-3 text-ink-secondary">
-                        {sec.remark_text || sec.remarks || (isApproved ? 'Fees cleared / No dues' : 'Verification pending')}
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        {isApproved ? (
-                          <div>
-                            <span className="inline-flex items-center px-3 py-0.5 rounded-full text-2xs font-bold bg-green-100 text-green-800 border border-green-300">
-                              ✓ APPROVED
-                            </span>
-                            <span className="block text-2xs text-ink-muted mt-0.5 font-medium">
-                              {reviewerName}
-                            </span>
-                          </div>
-                        ) : isSecRejected ? (
-                          <div>
-                            <span className="inline-flex items-center px-3 py-0.5 rounded-full text-2xs font-bold bg-red-100 text-red-800 border border-red-300">
-                              ✕ REJECTED
-                            </span>
-                            <span className="block text-2xs text-red-600 mt-0.5 font-medium">
-                              {sec.remarks || 'Dues pending'}
-                            </span>
-                          </div>
-                        ) : (
-                          <div>
-                            <span className="inline-flex items-center px-3 py-0.5 rounded-full text-2xs font-bold bg-amber-50 text-amber-800 border border-amber-300">
-                              ⏳ PENDING
-                            </span>
-                            <span className="block text-2xs text-ink-muted mt-0.5">
-                              Awaiting Section Head
-                            </span>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* 2. Faculty & Subject Clearance Table */}
-        <div className="mb-8">
-          <h2 className="text-xs md:text-sm font-bold text-ink-primary uppercase tracking-wide mb-2 flex items-center justify-between">
-            <span>2. Faculty & Subject Clearance</span>
-            <span className="text-2xs text-ink-muted font-normal lowercase">
-              {isInitiated ? 'live tracking' : 'preview'}
-            </span>
-          </h2>
-
-          <div className="border border-border-subtle rounded-xl overflow-hidden shadow-2xs">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-canvas border-b border-border-subtle text-ink-muted uppercase font-bold text-2xs">
-                  <th className="py-2.5 px-3 text-center w-12">SR. NO.</th>
-                  <th className="py-2.5 px-3">SUBJECT / COURSE TITLE</th>
-                  <th className="py-2.5 px-3">SUBJECT IN-CHARGE (FACULTY)</th>
-                  <th className="py-2.5 px-3">REMARKS</th>
-                  <th className="py-2.5 px-3 text-center w-48">APPROVAL & SIGNATURE</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-subtle bg-surface">
-                {displayItems.map((item, idx) => {
-                  const isApproved = item.status === 'approved';
-                  const isItemRejected = item.status === 'rejected';
-                  const teacherName =
-                    item.teacherId?.name ||
-                    item.teacherName ||
-                    item.clearanceItemId?.theoryTeacherId?.name ||
-                    item.clearanceItemId?.labBatchTeachers?.[0]?.teacherId?.name ||
-                    'Assigned Faculty';
-
-                  return (
-                    <tr key={item._id || idx} className="hover:bg-canvas/30 transition-colors">
-                      <td className="py-3 px-3 text-center font-bold text-ink-muted">{idx + 1}</td>
-                      <td className="py-3 px-3 font-bold text-ink-primary">
-                        {item.itemTitle || item.title}
-                        {item.clearanceItemId?.subjectCode && (
-                          <span className="block text-2xs text-ink-muted font-mono">
-                            {item.clearanceItemId.subjectCode}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3 text-ink-primary font-medium">{teacherName}</td>
-                      <td className="py-3 px-3 text-ink-secondary">
-                        {item.remarks || (isApproved ? 'All Submissions Verified' : 'Under evaluation')}
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        {isApproved ? (
-                          <div>
-                            <span className="inline-flex items-center px-3 py-0.5 rounded-full text-2xs font-bold bg-green-100 text-green-800 border border-green-300">
-                              ✓ APPROVED
-                            </span>
-                            <span className="block text-2xs text-ink-muted mt-0.5 font-medium">
-                              Digital Verified
-                            </span>
-                          </div>
-                        ) : isItemRejected ? (
-                          <div>
-                            <span className="inline-flex items-center px-3 py-0.5 rounded-full text-2xs font-bold bg-red-100 text-red-800 border border-red-300">
-                              ✕ REJECTED
-                            </span>
-                            <span className="block text-2xs text-red-600 mt-0.5 font-medium">
-                              {item.remarks || 'Changes requested'}
-                            </span>
-                          </div>
-                        ) : (
-                          <div>
-                            <span className="inline-flex items-center px-3 py-0.5 rounded-full text-2xs font-bold bg-amber-50 text-amber-800 border border-amber-300">
-                              ⏳ PENDING
-                            </span>
-                            <span className="block text-2xs text-ink-muted mt-0.5">
-                              Awaiting Faculty Review
-                            </span>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* 3. Multi-Stage Digital Sign-Off Stamps (Class In-Charge & HOD) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-border-subtle mb-6">
-          {/* Class Incharge Stamp Box */}
-          <div className="text-center p-4 rounded-xl border border-border-subtle bg-canvas/30">
-            {isCiApproved ? (
-              <div className="inline-block border-2 border-dashed border-green-600 bg-green-50 text-green-800 px-4 py-2 rounded-lg font-bold text-xs uppercase mb-2">
-                ✓ DIGITALLY APPROVED<br />
-                <span className="text-2xs font-normal lowercase text-green-700 block mt-0.5">
-                  {clearance?.classIncharge?.name || `Class Incharge (Sec ${user?.section || 'A'})`}<br />
-                  {new Date().toLocaleDateString('en-IN')}
-                </span>
-              </div>
-            ) : (
-              <div className="inline-block border-2 border-dashed border-amber-400 bg-amber-50/60 text-amber-800 px-4 py-2 rounded-lg font-bold text-xs uppercase mb-2">
-                ⏳ PENDING STAGE 3 APPROVAL<br />
-                <span className="text-2xs font-normal lowercase text-amber-700 block mt-0.5">
-                  {clearance?.classIncharge?.name ? `${clearance.classIncharge.name} Review` : 'Class Incharge Review'}
-                </span>
-              </div>
-            )}
-            <div className="border-t border-slate-700 pt-1.5 mt-2 font-bold text-xs text-ink-primary uppercase tracking-wide">
-              Class In-Charge
-            </div>
-            <div className="text-2xs text-ink-muted">
-              {clearance?.classIncharge?.name || 'Class Incharge'} (Sec {user?.section || 'A'})
-            </div>
-          </div>
-
-          {/* Head of Department Stamp Box */}
-          <div className="text-center p-4 rounded-xl border border-border-subtle bg-canvas/30">
-            {isHodApproved ? (
-              <div className="inline-block border-2 border-dashed border-green-600 bg-green-50 text-green-800 px-4 py-2 rounded-lg font-bold text-xs uppercase mb-2">
-                ✓ FINAL HOD APPROVAL<br />
-                <span className="text-2xs font-normal lowercase text-green-700 block mt-0.5">
-                  {clearance?.hod?.name || 'Head of Department'}<br />
-                  {new Date().toLocaleDateString('en-IN')}
-                </span>
-              </div>
-            ) : (
-              <div className="inline-block border-2 border-dashed border-amber-400 bg-amber-50/60 text-amber-800 px-4 py-2 rounded-lg font-bold text-xs uppercase mb-2">
-                ⏳ PENDING FINAL HOD SIGN-OFF<br />
-                <span className="text-2xs font-normal lowercase text-amber-700 block mt-0.5">
-                  {clearance?.hod?.name ? `${clearance.hod.name} Sign-Off` : 'Department Final Approval'}
-                </span>
-              </div>
-            )}
-            <div className="border-t border-slate-700 pt-1.5 mt-2 font-bold text-xs text-ink-primary uppercase tracking-wide">
-              Head of Department
-            </div>
-            <div className="text-2xs text-ink-muted">
-              {clearance?.program?.department || user?.programId?.department || (user?.programId?.name ? `Department of ${user.programId.name}` : (user?.programId?.code === 'CSE' ? 'Department of Computer Science & Engineering' : 'Department of Engineering'))}
-            </div>
-          </div>
-        </div>
-
-        {/* Footer Security Badge */}
-        <div className="pt-3 border-t border-border-subtle flex flex-col sm:flex-row items-center justify-between text-2xs text-ink-muted gap-2">
-          <div className="flex items-center gap-1.5 font-medium">
-            <span>🔒 ClearMate Official Verifiable Report</span>
-            <span>•</span>
-            <span className="font-mono text-ink-primary font-bold">
-              Ref: CM-{new Date().getFullYear()}-{user?.enrollmentNo?.slice(-6) || 'CLEAR01'}
-            </span>
-          </div>
-          <div>
-            Status:{' '}
-            <strong className={isFullyCleared ? 'text-status-success' : 'text-amber-600'}>
-              {isFullyCleared ? 'FULL CLEARED' : isInitiated ? 'IN PROGRESS' : 'NOT INITIATED'}
-            </strong>
-          </div>
-        </div>
-      </div>
+      <ClearanceReportDashboardView
+        reportData={reportData}
+        onRefresh={fetchDashboardData}
+        loading={loading}
+        isStudent={true}
+      />
     </DashboardLayout>
   );
 }
