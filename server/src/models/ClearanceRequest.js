@@ -35,6 +35,26 @@ const clearanceRequestSchema = new mongoose.Schema(
     sentToExamCellAt: {
       type: Date,
     },
+    hallTicketIssued: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    hallTicketIssuedAt: {
+      type: Date,
+    },
+    hallTicketIssuedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    hallTicketNumber: {
+      type: String,
+      trim: true,
+    },
+    hallTicketRemarks: {
+      type: String,
+      trim: true,
+    },
     initiatedAt: {
       type: Date,
       default: Date.now,

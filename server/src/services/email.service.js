@@ -201,9 +201,109 @@ const sendReviewRequestEmail = async ({ email, name, studentName, itemTitle }) =
   }).catch((err) => logger.error('Failed to send review request email', { email, error: err.message }));
 };
 
+/**
+ * Sends congratulations email to student when their hall ticket is verified and issued.
+ */
+const sendHallTicketIssuedEmail = async ({
+  email,
+  name,
+  enrollmentNo,
+  programName,
+  semesterName,
+  certificateNumber,
+  hallTicketNumber,
+  issuedAt,
+  issuedBy,
+  remarks,
+}) => {
+  const transporter = createTransporter();
+  const formattedDate = issuedAt ? new Date(issuedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : new Date().toLocaleString('en-IN');
+
+  return transporter.sendMail({
+    from: EMAIL_FROM(),
+    to: email,
+    subject: '🎉 Congratulations! Your Examination Hall Ticket has been Approved & Issued',
+    html: `<!DOCTYPE html>
+    <html>
+    <head><style>${baseStyle}</style></head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <div class="logo">CM</div>
+          <div class="title">Examination Hall Ticket Approved! 🎓</div>
+        </div>
+        <div class="content">
+          <p>Dear <strong>${name}</strong>,</p>
+          
+          <div class="alert-green">
+            ✅ <strong>Verification Successful:</strong> Your clearance certificate and physical documents have been authenticated by the Department Administration. Your Examination Hall Ticket is now officially <strong>APPROVED & ISSUED</strong>.
+          </div>
+
+          <div style="background-color: #f1f5f9; border-radius: 8px; padding: 16px; margin: 18px 0; font-size: 13px;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="color: #64748b; padding: 4px 0;">Student Name:</td>
+                <td style="font-weight: 600; color: #0f172a; text-align: right;">${name}</td>
+              </tr>
+              <tr>
+                <td style="color: #64748b; padding: 4px 0;">Roll / Enrollment No:</td>
+                <td style="font-weight: 600; color: #0f172a; text-align: right; font-family: monospace;">${enrollmentNo || '—'}</td>
+              </tr>
+              <tr>
+                <td style="color: #64748b; padding: 4px 0;">Program & Semester:</td>
+                <td style="font-weight: 600; color: #0f172a; text-align: right;">${programName || ''} (${semesterName || ''})</td>
+              </tr>
+              <tr>
+                <td style="color: #64748b; padding: 4px 0;">Clearance Certificate ID:</td>
+                <td style="font-weight: 600; color: #4f46e5; text-align: right; font-family: monospace;">${certificateNumber || '—'}</td>
+              </tr>
+              ${hallTicketNumber ? `
+              <tr>
+                <td style="color: #64748b; padding: 4px 0;">Hall Ticket / Seat No:</td>
+                <td style="font-weight: 700; color: #16a34a; text-align: right; font-family: monospace;">${hallTicketNumber}</td>
+              </tr>
+              ` : ''}
+              <tr>
+                <td style="color: #64748b; padding: 4px 0;">Approval Timestamp:</td>
+                <td style="font-weight: 600; color: #0f172a; text-align: right;">${formattedDate}</td>
+              </tr>
+              ${issuedBy ? `
+              <tr>
+                <td style="color: #64748b; padding: 4px 0;">Authorized By:</td>
+                <td style="font-weight: 600; color: #0f172a; text-align: right;">${issuedBy}</td>
+              </tr>
+              ` : ''}
+            </table>
+          </div>
+
+          ${remarks ? `
+          <div style="background-color: #faf5ff; border-left: 4px solid #a855f7; padding: 12px; font-size: 13px; color: #6b21a8; border-radius: 4px; margin: 16px 0;">
+            📌 <strong>Admin Note:</strong> ${remarks}
+          </div>
+          ` : ''}
+
+          <p style="margin-top: 16px;">
+            <strong>Important Instructions for Examination Day:</strong>
+            <ul style="padding-left: 20px; margin: 8px 0; color: #475569; font-size: 13px; line-height: 1.6;">
+              <li>Please carry your College Identity Card along with your issued Hall Ticket copy.</li>
+              <li>Report to your assigned examination hall at least 15 minutes before scheduled start time.</li>
+              <li>Electronic gadgets and unauthorized materials are strictly prohibited.</li>
+            </ul>
+          </p>
+
+          <p style="margin-top: 18px;">We wish you the very best for your upcoming examinations!</p>
+        </div>
+        ${footerHtml}
+      </div>
+    </body>
+    </html>`,
+  }).catch((err) => logger.error('Failed to send hall ticket issued email', { email, error: err.message }));
+};
+
 module.exports = {
   sendPasswordResetEmail,
   sendClearanceRejectionEmail,
   sendClearanceCompletedEmail,
   sendReviewRequestEmail,
+  sendHallTicketIssuedEmail,
 };

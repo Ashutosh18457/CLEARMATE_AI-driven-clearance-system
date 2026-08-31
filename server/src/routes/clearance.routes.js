@@ -107,4 +107,40 @@ router.patch(
   clearanceController.reviewHOD
 );
 
+// ──────────────────────────────────────────────
+// HOD STUDENT CLEARANCE LOOKUP ROUTES
+// ──────────────────────────────────────────────
+router.get(
+  '/hod/search-student',
+  restrictTo('hod', 'admin', 'super_admin'),
+  clearanceController.searchStudentClearance
+);
+
+router.get(
+  '/hod/class-list',
+  restrictTo('hod', 'admin', 'super_admin'),
+  clearanceController.getClassClearanceList
+);
+
+// ──────────────────────────────────────────────
+// ADMIN HALL TICKET VERIFICATION & ISSUANCE ROUTES
+// ──────────────────────────────────────────────
+router.get(
+  '/hall-ticket/search',
+  restrictTo('admin', 'super_admin', 'hod'),
+  clearanceController.searchStudentForHallTicket
+);
+
+router.post(
+  '/hall-ticket/issue',
+  restrictTo('admin', 'super_admin', 'hod'),
+  clearanceController.issueHallTicket
+);
+
+router.get(
+  '/hall-ticket/roster',
+  restrictTo('admin', 'super_admin', 'hod'),
+  clearanceController.getHallTicketRoster
+);
+
 module.exports = router;

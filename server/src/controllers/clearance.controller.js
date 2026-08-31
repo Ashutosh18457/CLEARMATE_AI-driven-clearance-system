@@ -146,6 +146,65 @@ const clearanceController = {
       sendSuccess(res, { data: { request }, message: `Clearance ${status === 'approved' ? 'completed' : 'rejected'}` });
     } catch (error) { next(error); }
   },
+
+  // ──────────────────────────────────────────────
+  // HOD STUDENT LOOKUP ENDPOINTS
+  // ──────────────────────────────────────────────
+
+  /** @route GET /api/clearances/hod/search-student?q= */
+  async searchStudentClearance(req, res, next) {
+    try {
+      const data = await clearanceService.searchStudentClearance(req.query.q);
+      sendSuccess(res, { data, message: 'Student clearance status retrieved' });
+    } catch (error) { next(error); }
+  },
+
+  /** @route GET /api/clearances/hod/class-list?semesterNumber=&programId=&section= */
+  async getClassClearanceList(req, res, next) {
+    try {
+      const { semesterNumber, programId, section } = req.query;
+      const data = await clearanceService.getClassClearanceList({ semesterNumber, programId, section });
+      sendSuccess(res, { data, message: 'Class clearance list retrieved' });
+    } catch (error) { next(error); }
+  },
+
+  // ──────────────────────────────────────────────
+  // ADMIN HALL TICKET VERIFICATION & ISSUANCE
+  // ──────────────────────────────────────────────
+
+  /** @route GET /api/clearances/hall-ticket/search?q= */
+  async searchStudentForHallTicket(req, res, next) {
+    try {
+      const data = await clearanceService.searchStudentForHallTicket(req.query.q, req.user);
+      sendSuccess(res, { data, message: 'Student verification results retrieved' });
+    } catch (error) { next(error); }
+  },
+
+  /** @route POST /api/clearances/hall-ticket/issue */
+  async issueHallTicket(req, res, next) {
+    try {
+      const { clearanceRequestId, hallTicketNumber, remarks } = req.body;
+      const result = await clearanceService.issueHallTicket(clearanceRequestId, req.user.id, {
+        hallTicketNumber,
+        remarks,
+      });
+      sendSuccess(res, { data: result.clearanceRequest, message: result.message });
+    } catch (error) { next(error); }
+  },
+
+  /** @route GET /api/clearances/hall-ticket/roster */
+  async getHallTicketRoster(req, res, next) {
+    try {
+      const { semesterId, programId, status, search } = req.query;
+      const data = await clearanceService.getHallTicketRoster({
+        semesterId,
+        programId,
+        status,
+        search,
+      });
+      sendSuccess(res, { data, message: 'Hall ticket roster retrieved' });
+    } catch (error) { next(error); }
+  },
 };
 
 module.exports = clearanceController;
