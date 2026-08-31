@@ -1038,6 +1038,397 @@ const clearanceService = {
   },
 
   // ══════════════════════════════════════════════
+  // HOD STUDENT CLEARANCE LOOKUP
+  // ══════════════════════════════════════════════
+
+  /**
+   * Search a single student by enrollment/roll number and return their latest clearance status.
+   * Status simplified to: APPROVED | NOT APPROVED
+   */
+  async searchStudentClearance(query) {
+    if (!query || !query.trim()) throw AppError.badRequest('Search query is required');
+
+    const student = await User.findOne({
+      role: 'student',
+      isActive: true,
+      enrollmentNo: { $regex: query.trim(), $options: 'i' },
+    }).populate('programId', 'name code').lean();
+
+    if (!student) throw AppError.notFound('No student found with that enrollment / roll number');
+
+    // Find latest clearance request
+    const clearanceRequest = await ClearanceRequest.findOne({ studentId: student._id })
+      .sort({ createdAt: -1 })
+      .populate('semesterId', 'name semNumber')
+      .lean();
+
+    const isApproved = clearanceRequest?.status === 'completed';
+    const isRejected = clearanceRequest?.status === 'rejected';
+
+    return {
+      student: {
+        name: student.name,
+        email: student.email,
+        enrollmentNo: student.enrollmentNo,
+        program: student.programId?.name || '—',
+        section: student.section,
+        currentSemester: student.currentSemester,
+      },
+      clearance: clearanceRequest
+        ? {
+            semesterName: clearanceRequest.semesterId?.name || `Sem ${clearanceRequest.semesterId?.semNumber}`,
+            status: clearanceRequest.status,
+            isApproved,
+            isRejected,
+            label: isApproved ? 'APPROVED' : isRejected ? 'REJECTED' : 'NOT APPROVED',
+            initiatedAt: clearanceRequest.initiatedAt,
+            completedAt: clearanceRequest.completedAt,
+          }
+        : null,
+    };
+  },
+
+  /**
+   * Get a full student roster for a class (semester + section), sorted by enrollmentNo.
+   * Returns each student's clearance status as APPROVED or NOT APPROVED.
+   */
+  async getClassClearanceList({ semesterNumber, programId, section }) {
+    if (!semesterNumber) throw AppError.badRequest('Semester number is required');
+
+    const studentQuery = {
+      role: 'student',
+      isActive: true,
+      currentSemester: parseInt(semesterNumber, 10),
+    };
+
+    if (programId) studentQuery.programId = programId;
+    if (section && section.trim()) studentQuery.section = { $regex: `^${section.trim()}$`, $options: 'i' };
+
+    const students = await User.find(studentQuery)
+      .populate('programId', 'name code')
+      .sort({ enrollmentNo: 1, name: 1 })
+      .lean();
+
+    if (students.length === 0) {
+      return { students: [], totalCount: 0, approvedCount: 0 };
+    }
+
+    // Fetch all clearance requests for these students in one go
+    const studentIds = students.map((s) => s._id);
+    const clearanceRequests = await ClearanceRequest.find({
+      studentId: { $in: studentIds },
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Build a map: latest clearance per student
+    const clearanceMap = {};
+    for (const cr of clearanceRequests) {
+      const sid = cr.studentId.toString();
+      if (!clearanceMap[sid]) clearanceMap[sid] = cr; // already sorted desc, first = latest
+    }
+
+    const rows = students.map((s) => {
+      const cr = clearanceMap[s._id.toString()];
+      const isApproved = cr?.status === 'completed';
+      const isRejected = cr?.status === 'rejected';
+      return {
+        name: s.name,
+        enrollmentNo: s.enrollmentNo,
+        section: s.section,
+        program: s.programId?.name || '—',
+        clearanceStatus: cr ? cr.status : 'not_initiated',
+        isApproved,
+        isRejected,
+        label: isApproved ? 'APPROVED' : isRejected ? 'REJECTED' : cr ? 'IN PROGRESS' : 'NOT INITIATED',
+      };
+    });
+
+    return {
+      students: rows,
+      totalCount: rows.length,
+      approvedCount: rows.filter((r) => r.isApproved).length,
+      inProgressCount: rows.filter((r) => !r.isApproved && !r.isRejected && r.clearanceStatus !== 'not_initiated').length,
+      notInitiatedCount: rows.filter((r) => r.clearanceStatus === 'not_initiated').length,
+    };
+  },
+
+  // ══════════════════════════════════════════════
+  // ADMIN HALL TICKET VERIFICATION & ISSUANCE
+  // ══════════════════════════════════════════════
+
+  /**
+   * Search student for physical certificate verification and hall ticket issuance.
+   * Matches by name, roll number/enrollmentNo, or student _id.
+   */
+  async searchStudentForHallTicket(queryStr, requesterUser) {
+    if (!queryStr || !queryStr.trim()) {
+      throw AppError.badRequest('Please provide a search term (Name, Roll No., or Student ID)');
+    }
+
+    const trimmed = queryStr.trim();
+    const queryConditions = [
+      { name: { $regex: trimmed, $options: 'i' } },
+      { enrollmentNo: { $regex: trimmed, $options: 'i' } },
+    ];
+
+    if (trimmed.match(/^[0-9a-fA-F]{24}$/)) {
+      queryConditions.push({ _id: trimmed });
+    }
+
+    const students = await User.find({
+      role: 'student',
+      $or: queryConditions,
+    })
+      .populate('programId', 'name code department')
+      .populate('batchId', 'name')
+      .limit(10)
+      .lean();
+
+    if (!students || students.length === 0) {
+      return { matches: [] };
+    }
+
+    const certificateService = require('./certificate.service');
+
+    const results = await Promise.all(
+      students.map(async (student) => {
+        // Find latest clearance request
+        const clearanceRequest = await ClearanceRequest.findOne({ studentId: student._id })
+          .sort({ createdAt: -1 })
+          .populate('semesterId', 'name semNumber academicYear type')
+          .populate('hallTicketIssuedBy', 'name email role')
+          .lean();
+
+        let certificateData = null;
+        let itemClearances = [];
+        let sectionClearances = [];
+
+        if (clearanceRequest) {
+          try {
+            certificateData = await certificateService.getCertificateData(student._id, clearanceRequest.semesterId?._id);
+          } catch {
+            // fallback
+          }
+
+          [itemClearances, sectionClearances] = await Promise.all([
+            ItemClearance.find({ clearanceRequestId: clearanceRequest._id })
+              .populate('teacherId', 'name email')
+              .lean(),
+            SectionClearance.find({ clearanceRequestId: clearanceRequest._id })
+              .populate('reviewerId', 'name email')
+              .lean(),
+          ]);
+        }
+
+        const isFullyCleared = clearanceRequest?.status === 'completed';
+        const certificateNumber =
+          clearanceRequest?.certificateUrl ||
+          (clearanceRequest ? `CM-${new Date().getFullYear()}-${clearanceRequest._id.toString().slice(-8).toUpperCase()}` : null);
+
+        return {
+          student: {
+            _id: student._id,
+            name: student.name,
+            email: student.email,
+            enrollmentNo: student.enrollmentNo,
+            rollNo: student.enrollmentNo,
+            section: student.section,
+            currentSemester: student.currentSemester,
+            program: student.programId?.name || 'Computer Science & Engineering',
+            programCode: student.programId?.code || 'CSE',
+            batch: student.batchId?.name || '—',
+          },
+          clearanceRequest: clearanceRequest
+            ? {
+                _id: clearanceRequest._id,
+                status: clearanceRequest.status,
+                currentStage: clearanceRequest.currentStage,
+                isFullyCleared,
+                initiatedAt: clearanceRequest.initiatedAt,
+                completedAt: clearanceRequest.completedAt,
+                certificateNumber,
+                hallTicketIssued: !!clearanceRequest.hallTicketIssued,
+                hallTicketIssuedAt: clearanceRequest.hallTicketIssuedAt,
+                hallTicketIssuedBy: clearanceRequest.hallTicketIssuedBy,
+                hallTicketNumber: clearanceRequest.hallTicketNumber || null,
+                hallTicketRemarks: clearanceRequest.hallTicketRemarks || '',
+                semester: clearanceRequest.semesterId,
+              }
+            : null,
+          verificationSummary: {
+            isAuthenticAndCompleted: isFullyCleared,
+            statusLabel: isFullyCleared ? 'VERIFIED & CLEARED' : clearanceRequest ? clearanceRequest.status.toUpperCase() : 'NO CLEARANCE RECORD',
+            certificateNumber,
+            totalItems: itemClearances.length,
+            approvedItems: itemClearances.filter((i) => i.status === 'approved').length,
+            totalSections: sectionClearances.length,
+            approvedSections: sectionClearances.filter((s) => s.status === 'approved' || s.fees_status === 'paid').length,
+          },
+          certificateDetails: certificateData,
+          items: itemClearances,
+          sections: sectionClearances,
+        };
+      })
+    );
+
+    return { matches: results };
+  },
+
+  /**
+   * Approve and issue hall ticket after verifying physical clearance certificate.
+   */
+  async issueHallTicket(clearanceRequestId, adminUserId, { hallTicketNumber, remarks } = {}) {
+    const clearanceRequest = await ClearanceRequest.findById(clearanceRequestId)
+      .populate('studentId', 'name email enrollmentNo section currentSemester programId')
+      .populate('semesterId', 'name semNumber academicYear type')
+      .populate('hallTicketIssuedBy', 'name email');
+
+    if (!clearanceRequest) {
+      throw AppError.notFound('Clearance request not found');
+    }
+
+    const adminUser = await User.findById(adminUserId).select('name email role');
+
+    clearanceRequest.hallTicketIssued = true;
+    clearanceRequest.hallTicketIssuedAt = new Date();
+    clearanceRequest.hallTicketIssuedBy = adminUserId;
+    if (hallTicketNumber) clearanceRequest.hallTicketNumber = hallTicketNumber.trim();
+    if (remarks) clearanceRequest.hallTicketRemarks = remarks.trim();
+
+    if (!clearanceRequest.certificateUrl) {
+      const year = new Date().getFullYear();
+      clearanceRequest.certificateUrl = `CM-${year}-${clearanceRequest._id.toString().slice(-8).toUpperCase()}`;
+    }
+
+    await clearanceRequest.save();
+
+    // Populate for response
+    await clearanceRequest.populate('hallTicketIssuedBy', 'name email role');
+
+    const student = clearanceRequest.studentId;
+    const semester = clearanceRequest.semesterId;
+    const prog = student?.programId ? await require('../models/Program').findById(student.programId) : null;
+
+    // Log audit
+    auditService.logAction(adminUserId, 'hall_ticket.issued', {
+      resource: 'ClearanceRequest',
+      targetId: clearanceRequest._id,
+      targetModel: 'ClearanceRequest',
+      newValue: {
+        hallTicketIssued: true,
+        hallTicketNumber: clearanceRequest.hallTicketNumber,
+        issuedAt: clearanceRequest.hallTicketIssuedAt,
+      },
+      details: {
+        studentId: student?._id,
+        studentName: student?.name,
+        enrollmentNo: student?.enrollmentNo,
+        certificateNumber: clearanceRequest.certificateUrl,
+      },
+    });
+
+    // Dispatch real-time notification + congratulatory email
+    if (student?._id) {
+      await notificationService.notifyHallTicketIssued(student._id, {
+        certificateNumber: clearanceRequest.certificateUrl,
+        hallTicketNumber: clearanceRequest.hallTicketNumber,
+        programName: prog?.name || 'Degree Program',
+        semesterName: semester?.name || `Sem ${student?.currentSemester || ''}`,
+        issuedBy: adminUser?.name || 'Department Administrator',
+        remarks: clearanceRequest.hallTicketRemarks,
+      });
+    }
+
+    logger.info('Hall ticket approved & issued', {
+      clearanceRequestId: clearanceRequest._id,
+      studentId: student?._id,
+      adminId: adminUserId,
+      hallTicketNumber: clearanceRequest.hallTicketNumber,
+    });
+
+    return {
+      clearanceRequest,
+      message: `Hall ticket successfully approved and issued for ${student?.name || 'Student'}. Congratulations email sent!`,
+    };
+  },
+
+  /**
+   * Get list of students eligible for or already issued hall tickets.
+   */
+  async getHallTicketRoster({ semesterId, programId, status = 'all', search = '' }) {
+    const studentQuery = { role: 'student', isActive: true };
+    if (programId) studentQuery.programId = programId;
+
+    if (search && search.trim()) {
+      studentQuery.$or = [
+        { name: { $regex: search.trim(), $options: 'i' } },
+        { enrollmentNo: { $regex: search.trim(), $options: 'i' } },
+      ];
+    }
+
+    const students = await User.find(studentQuery)
+      .populate('programId', 'name code')
+      .sort({ enrollmentNo: 1, name: 1 })
+      .lean();
+
+    const studentIds = students.map((s) => s._id);
+    const crQuery = { studentId: { $in: studentIds } };
+    if (semesterId) crQuery.semesterId = semesterId;
+
+    const clearanceRequests = await ClearanceRequest.find(crQuery)
+      .populate('hallTicketIssuedBy', 'name email')
+      .populate('semesterId', 'name semNumber')
+      .sort({ completedAt: -1, createdAt: -1 })
+      .lean();
+
+    const crMap = {};
+    for (const cr of clearanceRequests) {
+      const sid = cr.studentId.toString();
+      if (!crMap[sid]) crMap[sid] = cr;
+    }
+
+    let rows = students.map((st) => {
+      const cr = crMap[st._id.toString()];
+      const isCleared = cr?.status === 'completed';
+      const hallTicketIssued = !!cr?.hallTicketIssued;
+
+      return {
+        _id: st._id,
+        name: st.name,
+        enrollmentNo: st.enrollmentNo,
+        section: st.section,
+        currentSemester: st.currentSemester,
+        program: st.programId?.name || '—',
+        programCode: st.programId?.code || 'CSE',
+        clearanceRequestId: cr?._id || null,
+        clearanceStatus: cr ? cr.status : 'not_initiated',
+        isCleared,
+        certificateNumber: cr?.certificateUrl || (cr ? `CM-${new Date().getFullYear()}-${cr._id.toString().slice(-8).toUpperCase()}` : null),
+        hallTicketIssued,
+        hallTicketIssuedAt: cr?.hallTicketIssuedAt || null,
+        hallTicketIssuedBy: cr?.hallTicketIssuedBy?.name || null,
+        hallTicketNumber: cr?.hallTicketNumber || null,
+      };
+    });
+
+    if (status === 'issued') {
+      rows = rows.filter((r) => r.hallTicketIssued);
+    } else if (status === 'cleared_pending_ticket') {
+      rows = rows.filter((r) => r.isCleared && !r.hallTicketIssued);
+    } else if (status === 'not_cleared') {
+      rows = rows.filter((r) => !r.isCleared);
+    }
+
+    return {
+      roster: rows,
+      total: rows.length,
+      issuedCount: rows.filter((r) => r.hallTicketIssued).length,
+      pendingIssuanceCount: rows.filter((r) => r.isCleared && !r.hallTicketIssued).length,
+    };
+  },
+
+  // ══════════════════════════════════════════════
   // PRIVATE HELPERS — STAGE ADVANCEMENT
   // ══════════════════════════════════════════════
 

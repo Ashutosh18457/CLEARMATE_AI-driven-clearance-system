@@ -9,6 +9,7 @@ import {
   HiOutlineShieldCheck,
   HiOutlineBuildingLibrary,
   HiOutlineDocumentCheck,
+  HiOutlineMagnifyingGlass,
 } from 'react-icons/hi2';
 import api from '../../api/axios';
 import { useSocket } from '../../context/SocketContext';
@@ -19,6 +20,7 @@ import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
 import Badge, { getStatusVariant } from '../../components/common/Badge';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import StudentClearanceLookup from '../../components/clearance/StudentClearanceLookup';
 
 export default function HODDashboard() {
   const { socket } = useSocket();
@@ -357,6 +359,18 @@ export default function HODDashboard() {
           <HiOutlineUsers className="w-4 h-4" />
           <span>Department Faculty & Assigned Subjects ({teachers.length})</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('lookup')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-semibold transition-colors ${
+            activeTab === 'lookup'
+              ? 'bg-brand text-white shadow-sm'
+              : 'bg-surface hover:bg-canvas text-ink-secondary border border-border-subtle'
+          }`}
+        >
+          <HiOutlineMagnifyingGlass className="w-4 h-4" />
+          <span>Student Clearance Lookup</span>
+        </button>
       </div>
 
       {/* Error state */}
@@ -367,7 +381,7 @@ export default function HODDashboard() {
       )}
 
       {/* TAB 1: CLEARANCES TABLE */}
-      {activeTab === 'clearances' ? (
+      {activeTab === 'clearances' && (
         <Table
           columns={clearanceColumns}
           data={clearances}
@@ -375,8 +389,10 @@ export default function HODDashboard() {
           emptyMessage="No students currently pending final HOD approval."
           emptyIcon={<HiOutlineClipboardDocumentList className="w-10 h-10 text-ink-muted" />}
         />
-      ) : (
-        /* TAB 2: TEACHERS TABLE */
+      )}
+
+      {/* TAB 2: TEACHERS TABLE */}
+      {activeTab === 'teachers' && (
         <Table
           columns={teacherColumns}
           data={teachers}
@@ -384,6 +400,13 @@ export default function HODDashboard() {
           emptyMessage="No faculty members found in this department."
           emptyIcon={<HiOutlineUsers className="w-10 h-10 text-ink-muted" />}
         />
+      )}
+
+      {/* TAB 3: STUDENT CLEARANCE LOOKUP */}
+      {activeTab === 'lookup' && (
+        <div className="bg-surface border border-border-subtle rounded-lg p-5">
+          <StudentClearanceLookup />
+        </div>
       )}
 
       {/* ───────────────────────────────────────────────────────────── */}

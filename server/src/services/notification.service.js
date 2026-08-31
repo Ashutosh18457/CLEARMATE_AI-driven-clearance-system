@@ -304,6 +304,39 @@ const notificationService = {
 
     return notification;
   },
+
+  async notifyHallTicketIssued(studentId, { certificateNumber, hallTicketNumber, programName, semesterName, issuedBy, remarks } = {}) {
+    // 1. In-app notification
+    const notification = await this.createNotification(studentId, {
+      title: 'Hall Ticket Approved & Issued! 🎫',
+      message: `Congratulations! Your physical clearance documents have been verified. Hall Ticket ${hallTicketNumber ? `(#${hallTicketNumber}) ` : ''}has been issued for your semester exams.`,
+      type: 'success',
+      link: '/student/clearance-report',
+    });
+
+    // 2. Email notification (fire-and-forget)
+    try {
+      const student = await User.findById(studentId).select('email name enrollmentNo');
+      if (student && student.email) {
+        emailService.sendHallTicketIssuedEmail({
+          email: student.email,
+          name: student.name,
+          enrollmentNo: student.enrollmentNo,
+          programName,
+          semesterName,
+          certificateNumber,
+          hallTicketNumber,
+          issuedAt: new Date(),
+          issuedBy,
+          remarks,
+        });
+      }
+    } catch (err) {
+      logger.error('Failed to send hall ticket issued email', { studentId, error: err.message });
+    }
+
+    return notification;
+  },
 };
 
 module.exports = notificationService;

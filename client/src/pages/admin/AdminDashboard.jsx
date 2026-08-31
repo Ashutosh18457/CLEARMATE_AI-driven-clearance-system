@@ -9,21 +9,24 @@ import {
   HiOutlineArrowRight,
   HiOutlineExclamationTriangle,
   HiOutlineBolt,
-  HiOutlineMagnifyingGlass,
   HiOutlineBellAlert,
-  HiOutlineCheckCircle,
   HiOutlineClock,
   HiOutlineShieldCheck,
   HiOutlinePaperAirplane,
   HiOutlineSquares2X2,
   HiOutlineArrowPath,
-  HiOutlineIdentification,
+  HiOutlineCloudArrowUp,
+  HiOutlineSparkles,
+  HiOutlineTicket,
+  HiOutlineMagnifyingGlass,
 } from 'react-icons/hi2';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
+import StudentClearanceLookup from '../../components/clearance/StudentClearanceLookup';
+import HallTicketVerification from '../../components/admin/HallTicketVerification';
 
 function StatCard({ icon, label, value, loading, color, subtext }) {
   const colorMap = {
@@ -56,50 +59,51 @@ function StatCard({ icon, label, value, loading, color, subtext }) {
 
 const quickActions = [
   {
-    label: 'Manage Programs',
-    description: 'Configure academic branches and program codes',
-    to: '/admin/programs',
-    icon: <HiOutlineAcademicCap className="w-5 h-5" />,
-    badge: 'Phase 1',
+    label: 'Bulk Semester Setup',
+    description: 'Upload Excel to setup subjects, batches & student roster in 30s',
+    to: '/admin/bulk-setup',
+    icon: <HiOutlineCloudArrowUp className="w-5 h-5 text-amber-500" />,
+    badge: 'Fast Setup ⚡',
   },
   {
-    label: 'Manage Semesters',
-    description: 'Create & monitor active academic sessions',
+    label: 'Hall Ticket Verification',
+    description: 'Authenticate physical certificates & issue official hall tickets',
+    to: '/admin/clearance-report',
+    icon: <HiOutlineTicket className="w-5 h-5 text-emerald-600" />,
+    badge: 'Exam Cell 🎫',
+  },
+  {
+    label: 'Semesters & Deadlines',
+    description: 'Configure active semesters, term dates & clearance deadlines',
     to: '/admin/semesters',
     icon: <HiOutlineCalendarDays className="w-5 h-5" />,
-    badge: 'Phase 1',
+    badge: 'Terms',
   },
   {
-    label: 'Clearance Items',
-    description: 'Set up subjects, labs, and elective requirements',
+    label: 'Clearance Subjects',
+    description: 'Manage theory subjects, lab practicals & elective faculty',
     to: '/admin/clearance-items',
     icon: <HiOutlineCog6Tooth className="w-5 h-5" />,
-    badge: 'Phase 1',
+    badge: 'Subjects & Labs',
   },
   {
-    label: 'Manage Batches',
-    description: 'Create student batches and assign lab faculty',
+    label: 'Student Batches',
+    description: 'Manage practical batches (Batch A, B, C) and student assignments',
     to: '/admin/batches',
     icon: <HiOutlineClipboardDocumentList className="w-5 h-5" />,
-    badge: 'Phase 1',
+    badge: 'Batches',
   },
   {
-    label: 'Student & Staff Roster',
-    description: 'Bulk CSV uploads and class incharge mapping',
+    label: 'Students & Faculty',
+    description: 'View student roster, manage users & assign Class Incharges',
     to: '/admin/users',
     icon: <HiOutlineUsers className="w-5 h-5" />,
-    badge: 'Phase 1 & 2',
-  },
-  {
-    label: 'Clearance Approvals',
-    description: 'Supervise multi-stage department approvals',
-    to: '/admin/users',
-    icon: <HiOutlineShieldCheck className="w-5 h-5" />,
-    badge: 'Phase 3',
+    badge: 'Directory',
   },
 ];
 
 export default function AdminDashboard() {
+  const [activeTab, setActiveTab] = useState('hall_ticket'); // 'hall_ticket' | 'class_lookup'
   const [stats, setStats] = useState({
     programs: 0,
     semesters: 0,
@@ -110,11 +114,6 @@ export default function AdminDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // Student Quick Search Automation
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState(null);
 
   // Automation Action States
   const [sendingReminders, setSendingReminders] = useState(false);
@@ -163,37 +162,10 @@ export default function AdminDashboard() {
     fetchStats();
   }, [fetchStats]);
 
-  // Quick Student Clearance Lookup
-  const handleSearchStudent = async (e) => {
-    e?.preventDefault();
-    if (!searchQuery.trim()) {
-      setSearchResults(null);
-      return;
-    }
-
-    setSearching(true);
-    try {
-      const res = await api.get('/admin/users', {
-        params: { search: searchQuery.trim(), limit: 5 },
-      });
-      const data = res.data.data;
-      const list = Array.isArray(data?.users) ? data.users : Array.isArray(data) ? data : [];
-      setSearchResults(list);
-      if (list.length === 0) {
-        toast('No matching users found', { icon: '🔍' });
-      }
-    } catch (err) {
-      toast.error(err.message || 'Error searching student');
-    } finally {
-      setSearching(false);
-    }
-  };
-
   // Automated 1-Click Reminder Broadcast
   const handleSendReminders = async () => {
     setSendingReminders(true);
     try {
-      // Simulate/trigger notification blast
       await new Promise((resolve) => setTimeout(resolve, 800));
       toast.success('Automated deadline reminders broadcasted to all students with pending submissions!');
     } catch {
@@ -231,12 +203,19 @@ export default function AdminDashboard() {
               Clearance Management & Administrative Hub
             </h1>
             <p className="text-sm text-slate-200/90 mt-1 max-w-2xl">
-              Monitor real-time academic clearance bottlenecks, broadcast automated submission reminders, and manage multi-stage clearance workflows in one unified view.
+              Verify student physical certificates, authenticate clearance records, issue official Examination Hall Tickets, and manage multi-stage clearance workflows.
             </p>
           </div>
 
           {/* Quick Automation Actions */}
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <Link
+              to="/admin/bulk-setup"
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-bold text-xs rounded-lg shadow-sm transition-all"
+            >
+              <HiOutlineSparkles className="w-4 h-4" />
+              <span>⚡ Bulk Setup</span>
+            </Link>
             <Button
               variant="secondary"
               size="sm"
@@ -245,17 +224,17 @@ export default function AdminDashboard() {
               loading={refreshingPrereq}
               onClick={handleSyncPrerequisites}
             >
-              Sync Clearance Status
+              Sync Status
             </Button>
             <Button
               variant="primary"
               size="sm"
-              className="!bg-amber-500 hover:!bg-amber-600 text-slate-950 font-bold text-xs shadow-sm"
-              icon={<HiOutlineBellAlert className="w-4 h-4 text-slate-950" />}
+              className="!bg-white/10 hover:!bg-white/20 !text-white !border-white/20 text-xs"
+              icon={<HiOutlineBellAlert className="w-4 h-4 text-amber-300" />}
               loading={sendingReminders}
               onClick={handleSendReminders}
             >
-              Broadcast Reminders
+              Reminders
             </Button>
           </div>
         </div>
@@ -304,169 +283,53 @@ export default function AdminDashboard() {
         />
       </div>
 
-      {/* 2-Column Section: Workload Reducer / Student Lookup & Automation Center */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Fast Student Lookup Card */}
-        <div className="lg:col-span-2 bg-surface border border-border-subtle rounded-xl p-5 shadow-xs">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <HiOutlineMagnifyingGlass className="w-5 h-5 text-brand" />
-              <h2 className="text-sm font-bold text-ink-primary uppercase tracking-wide">
-                Instant Student Clearance Lookup
-              </h2>
-            </div>
-            <span className="text-2xs text-ink-muted">Quick Search by Name or Roll No</span>
-          </div>
+      {/* Verification & Clearance Operational Tabs */}
+      <div className="mb-8 space-y-4">
+        <div className="flex items-center gap-2 border-b border-border-subtle pb-2">
+          <button
+            onClick={() => setActiveTab('hall_ticket')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'hall_ticket'
+                ? 'bg-brand text-white shadow-sm ring-2 ring-brand/20'
+                : 'bg-surface hover:bg-canvas text-ink-secondary border border-border-subtle'
+            }`}
+          >
+            <HiOutlineTicket className="w-4 h-4 text-emerald-300" />
+            <span>Hall Ticket Verification &amp; Approval</span>
+          </button>
 
-          <form onSubmit={handleSearchStudent} className="flex items-center gap-2 mb-4">
-            <div className="relative flex-1">
-              <HiOutlineIdentification className="w-5 h-5 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Enter Student Name, Enrollment No (e.g. EN210401) or Email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 text-sm bg-canvas border border-border-subtle rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
-              />
-            </div>
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              loading={searching}
-              icon={<HiOutlineMagnifyingGlass className="w-4 h-4" />}
-            >
-              Search
-            </Button>
-            {searchResults && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => { setSearchResults(null); setSearchQuery(''); }}
-              >
-                Clear
-              </Button>
-            )}
-          </form>
-
-          {/* Search Results Display */}
-          {searchResults && (
-            <div className="border border-border-subtle rounded-lg divide-y divide-border-subtle overflow-hidden">
-              {searchResults.length === 0 ? (
-                <div className="p-4 text-center text-xs text-ink-muted">
-                  No student or user found matching "{searchQuery}".
-                </div>
-              ) : (
-                searchResults.map((user) => (
-                  <div key={user._id} className="p-3 bg-canvas/40 flex items-center justify-between gap-3 text-xs">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-ink-primary">{user.name}</span>
-                        <Badge variant="default" className="text-2xs uppercase">
-                          {user.role}
-                        </Badge>
-                        {user.enrollmentNo && (
-                          <span className="font-mono text-2xs px-1.5 py-0.5 bg-surface border border-border-subtle rounded text-ink-secondary">
-                            {user.enrollmentNo}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-2xs text-ink-muted mt-0.5 truncate">
-                        {user.email} • {user.programId?.code || user.programId?.name || 'Program N/A'} • Sem {user.currentSemester || 'N/A'} • Sec {user.section || 'All'}
-                      </p>
-                    </div>
-
-                    <Link
-                      to={`/admin/users`}
-                      className="px-2.5 py-1 text-2xs font-semibold text-brand bg-brand-50 hover:bg-brand-100 rounded-md transition-colors shrink-0"
-                    >
-                      Manage User →
-                    </Link>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-
-          {!searchResults && (
-            <div className="p-4 bg-canvas/40 border border-dashed border-border-subtle rounded-lg flex items-center justify-between text-xs text-ink-muted">
-              <div className="flex items-center gap-2.5">
-                <HiOutlineBolt className="w-4 h-4 text-amber-500 shrink-0" />
-                <span>Need to check a student's verification status? Search above to avoid browsing the full roster.</span>
-              </div>
-              <Link to="/admin/users" className="text-brand font-semibold hover:underline shrink-0">
-                View Full Directory
-              </Link>
-            </div>
-          )}
+          <button
+            onClick={() => setActiveTab('class_lookup')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'class_lookup'
+                ? 'bg-brand text-white shadow-sm ring-2 ring-brand/20'
+                : 'bg-surface hover:bg-canvas text-ink-secondary border border-border-subtle'
+            }`}
+          >
+            <HiOutlineMagnifyingGlass className="w-4 h-4" />
+            <span>Class Clearance Status Lookup</span>
+          </button>
         </div>
 
-        {/* Clearance Health & Workload Automation Card */}
-        <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <HiOutlineShieldCheck className="w-5 h-5 text-green-600" />
-              <h2 className="text-sm font-bold text-ink-primary uppercase tracking-wide">
-                System Workflow Health
-              </h2>
-            </div>
-            <p className="text-xs text-ink-muted mb-4">
-              Clearance automation is active across all 4 pipeline stages.
-            </p>
+        {/* Tab 1: Hall Ticket Verification & Issuance */}
+        {activeTab === 'hall_ticket' && <HallTicketVerification />}
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-ink-secondary flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-green-500" />
-                  Prerequisite Submissions
-                </span>
-                <span className="font-semibold text-ink-primary">Verified</span>
-              </div>
-
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-ink-secondary flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-blue-500" />
-                  Stage 1: Faculty Items
-                </span>
-                <span className="font-semibold text-ink-primary">Auto-Assigned</span>
-              </div>
-
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-ink-secondary flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-purple-500" />
-                  Stage 2: Institutional Sections
-                </span>
-                <span className="font-semibold text-ink-primary">Active</span>
-              </div>
-
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-ink-secondary flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-500" />
-                  Stage 3 & 4: Incharge & HOD
-                </span>
-                <span className="font-semibold text-ink-primary">Final Sign-Off</span>
-              </div>
-            </div>
+        {/* Tab 2: Class Clearance Roster Lookup */}
+        {activeTab === 'class_lookup' && (
+          <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-xs">
+            <StudentClearanceLookup />
           </div>
-
-          <div className="mt-4 pt-3 border-t border-border-subtle flex items-center justify-between text-xs">
-            <span className="text-2xs text-ink-muted">PDF Certificate Engine</span>
-            <span className="text-2xs font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
-              Online
-            </span>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Official 4-Phase System Flow & Quick Setup Grid */}
+      {/* Department Setup & Management Modules Grid */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-bold text-ink-primary flex items-center gap-2">
             <HiOutlineSquares2X2 className="w-5 h-5 text-brand" />
-            Administrative Setup & Management Modules
+            Department Setup & Management
           </h2>
-          <span className="text-xs text-ink-muted">4-Phase System Workflow</span>
+          <span className="text-xs text-ink-muted">Quick Access</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

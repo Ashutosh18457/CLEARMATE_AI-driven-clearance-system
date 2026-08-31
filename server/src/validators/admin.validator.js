@@ -26,7 +26,7 @@ const adminValidator = {
     departmentAdminId: objectId.optional().allow('', null),
     hodId: objectId.optional().allow('', null),
     isActive: Joi.boolean().optional(),
-  }),
+  }).unknown(true),
 
   updateProgramSchema: Joi.object({
     name: Joi.string().trim().max(100),
@@ -38,7 +38,7 @@ const adminValidator = {
     departmentAdminId: objectId.optional().allow('', null),
     hodId: objectId.optional().allow('', null),
     isActive: Joi.boolean(),
-  }).min(1).messages({ 'object.min': 'At least one field must be provided for update' }),
+  }).min(1).unknown(true).messages({ 'object.min': 'At least one field must be provided for update' }),
 
   // ──────────────────────────────────────────────
   // SEMESTERS
@@ -193,28 +193,28 @@ const adminValidator = {
       ).min(2).required(),
       otherwise: Joi.array().optional(),
     }),
-  }),
+  }).unknown(true),
 
   updateClearanceItemSchema: Joi.object({
     srNo: Joi.number().integer().min(1),
     title: Joi.string().trim(),
-    subjectCode: Joi.string().trim(),
+    subjectCode: Joi.string().trim().allow('', null),
     isRequired: Joi.boolean(),
-    theoryTeacherId: objectId,
+    theoryTeacherId: objectId.optional().allow('', null),
     labBatchTeachers: Joi.array().items(
       Joi.object({
         batchId: objectId.required(),
         teacherId: objectId.required(),
       })
-    ),
-    electiveGroup: Joi.string().trim(),
+    ).optional(),
+    electiveGroup: Joi.string().trim().optional(),
     electiveOptions: Joi.array().items(
       Joi.object({
         name: Joi.string().trim().required(),
         teacherId: objectId.required(),
       })
-    ),
-  }).min(1),
+    ).optional(),
+  }).min(1).unknown(true),
 };
 
 module.exports = adminValidator;

@@ -18,6 +18,8 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard'));
 const StudentSubmissions = lazy(() => import('./pages/student/StudentSubmissions'));
 const StudentClearance = lazy(() => import('./pages/student/StudentClearance'));
+const StudentClearanceReport = lazy(() => import('./pages/student/StudentClearanceReport'));
+const AdminClearanceReport = lazy(() => import('./pages/admin/AdminClearanceReport'));
 
 // Teacher
 const TeacherDashboard = lazy(() => import('./pages/teacher/TeacherDashboard'));
@@ -55,6 +57,8 @@ const Semesters = lazy(() => import('./pages/admin/Semesters'));
 const Batches = lazy(() => import('./pages/admin/Batches'));
 const Users = lazy(() => import('./pages/admin/Users'));
 const ClearanceItems = lazy(() => import('./pages/admin/ClearanceItems'));
+const BulkSetup = lazy(() => import('./pages/admin/BulkSetup'));
+const FacultyMappingConfig = lazy(() => import('./pages/admin/FacultyMappingConfig'));
 
 // ─── Toaster Config ───
 const toasterConfig = {
@@ -176,6 +180,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
                 <StudentClearance />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student/clearance-report"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+                <StudentClearanceReport />
               </ProtectedRoute>
             }
           />
@@ -348,6 +360,39 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
                 <ClearanceItems />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/bulk-setup"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
+                <BulkSetup />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/faculty-config"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
+                <FacultyMappingConfig />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/clearance-report"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.HOD, ROLES.CLASS_INCHARGE]}>
+                <AdminClearanceReport />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/clearance-report/:studentId"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.HOD, ROLES.CLASS_INCHARGE]}>
+                <AdminClearanceReport />
               </ProtectedRoute>
             }
           />
