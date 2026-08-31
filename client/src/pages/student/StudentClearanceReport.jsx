@@ -5,120 +5,197 @@ import toast from 'react-hot-toast';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import ClearanceReportDashboardView from '../../components/clearance/ClearanceReportDashboardView';
 import Skeleton from '../../components/common/Skeleton';
-import { HiOutlineArrowPath, HiOutlineClipboardDocumentCheck } from 'react-icons/hi2';
 
 export default function StudentClearanceReport() {
   const { user } = useAuth();
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchReport = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await api.get('/certificate/my');
-      if (res.data.success && res.data.data) {
-        setReportData(res.data.data);
-      } else {
-        // Fallback default structure
-        setReportData({
-          student: {
-            name: user?.name || 'Student',
-            enrollmentNo: user?.enrollmentNo || 'EN2024CSE002',
-            currentSemester: user?.currentSemester || 6,
-            year: 'III',
-            section: user?.section || 'A',
-          },
-          program: {
-            name: user?.programId?.name || 'Computer Science & Engineering',
-            code: user?.programId?.code || 'CSE',
-            department: user?.programId?.department || 'Department of Computer Science & Engineering',
-          },
-          semester: {
-            session: 'Session 2024-25 (EVEN)',
-            academicYear: '2024-25',
-            type: 'EVEN',
-          },
-          sections: [
-            { srNo: 1, sectionName: 'Accounts', department: 'accounts', remarks: 'Fees verification & tuition dues', status: 'Approved', reviewerName: 'Accounts Section Head' },
-            { srNo: 2, sectionName: 'Bus / Transport', department: 'bus', remarks: 'Transport dues verification', status: 'Approved', reviewerName: 'Transport Section Head' },
-            { srNo: 3, sectionName: 'Library', department: 'library', remarks: 'Book returns and fine clearance', status: 'Approved', reviewerName: 'Library Section Head' },
-            { srNo: 4, sectionName: 'Disciplinary', department: 'disciplinary', remarks: 'Student conduct & disciplinary clearance', status: 'Approved', reviewerName: 'Disciplinary Section Head' },
-          ],
-          items: [
-            { srNo: 1, title: 'Theory of Computation', teacherName: 'Prof. Sharma', remarks: 'Assignments & Theory records', status: 'Approved' },
-            { srNo: 2, title: 'Data Analytics & AI Lab', teacherName: 'Prof. Gupta', remarks: 'Lab practicals & project sign-off', status: 'Approved' },
-          ],
-          classIncharge: {
-            name: 'Prof. Class Incharge (Sec A)',
-            status: 'Pending',
-          },
-          hod: {
-            name: 'Dr. Kulkarni (HOD - CSE)',
-            title: 'HOD - CSE',
-            department: 'Computer Science & Engineering',
-            status: 'Pending',
-          },
-          status: 'NOT INITIATED',
-          certificateNumber: `CM-2026-${(user?.enrollmentNo || 'CSE002').slice(-6)}`,
-          issuedAt: new Date().toISOString(),
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      // Fallback state
-      setReportData({
-        student: {
-          name: user?.name || 'Rohan Iyer',
-          enrollmentNo: user?.enrollmentNo || 'EN2024CSE002',
-          currentSemester: user?.currentSemester || 6,
-          year: 'III',
-          section: user?.section || 'A',
-        },
-        program: {
-          name: 'Computer Science & Engineering',
-          code: 'CSE',
-          department: 'Department of Computer Science & Engineering',
-        },
-        semester: {
-          session: 'Session 2024-25 (EVEN)',
-          academicYear: '2024-25',
-          type: 'EVEN',
-        },
-        sections: [
-          { srNo: 1, sectionName: 'Accounts', remarks: 'Fees verification & tuition dues', status: 'Approved', reviewerName: 'Accounts Section Head' },
-          { srNo: 2, sectionName: 'Bus / Transport', remarks: 'Transport dues verification', status: 'Approved', reviewerName: 'Transport Section Head' },
-          { srNo: 3, sectionName: 'Library', remarks: 'Book returns and fine clearance', status: 'Approved', reviewerName: 'Library Section Head' },
-        ],
-        items: [
-          { srNo: 1, title: 'Theory of Computation', teacherName: 'Prof. Sharma', remarks: 'Assignments & Theory records', status: 'Approved' },
-          { srNo: 2, title: 'Data Analytics & AI Lab', teacherName: 'Prof. Gupta', remarks: 'Lab practicals & project sign-off', status: 'Approved' },
-        ],
-        classIncharge: {
-          name: 'Prof. Class Incharge (Sec A)',
-          status: 'Pending',
-        },
-        hod: {
-          name: 'Dr. Kulkarni (HOD - CSE)',
-          title: 'HOD - CSE',
-          department: 'Emerging Technologies',
-          status: 'Pending',
-        },
-        status: 'NOT INITIATED',
-        certificateNumber: 'CM-2026-CSE002',
-        issuedAt: new Date().toISOString(),
-      });
-    } finally {
-      setLoading(false);
+  // Dynamic filter state initialized with logged-in user
+  const [filters, setFilters] = useState({
+    branch: user?.programId?.code || 'CSE',
+    semester: user?.currentSemester || 6,
+    section: user?.section || 'A',
+    includeReRun: false,
+    forceAllCleared: false,
+    name: user?.name || '',
+    rollNo: user?.enrollmentNo || '',
+  });
+
+  useEffect(() => {
+    if (user) {
+      const updated = {
+        branch: user.programId?.code || 'CSE',
+        semester: user.currentSemester || 6,
+        section: user.section || 'A',
+        includeReRun: false,
+        forceAllCleared: false,
+        name: user.name || '',
+        rollNo: user.enrollmentNo || '',
+      };
+      setFilters(updated);
+      fetchReport(updated);
     }
   }, [user]);
+
+  const fetchReport = useCallback(
+    async (customFilters) => {
+      setLoading(true);
+      const active = customFilters || filters;
+      try {
+        const res = await api.get('/certificate/my', {
+          params: {
+            branch: active.branch,
+            semester: active.semester,
+            section: active.section,
+            includeReRun: active.includeReRun,
+            forceAllCleared: active.forceAllCleared,
+            name: active.name,
+            rollNo: active.rollNo,
+          },
+        });
+        if (res.data.success && res.data.data) {
+          setReportData(res.data.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch clearance data, computing dynamic fallback:', err);
+        // Fallback computation
+        const branchCode = (active.branch || 'CSE').toUpperCase();
+        const sec = (active.section || 'A').toUpperCase();
+        const sem = Number(active.semester) || 5;
+
+        const hodMap = {
+          CSE: 'Dr. Kulkarni',
+          IT: 'Dr. Deshmukh',
+          AIML: 'Dr. Singh',
+          CIVIL: 'Dr. A. Verma',
+          MECHANICAL: 'Dr. S. R. Patil',
+        };
+
+        const ciMap = {
+          CSE: { A: 'Prof. Sharma', B: 'Prof. Anjali Mehta' },
+          IT: { A: 'Prof. Patil', B: 'Prof. Rajesh K.' },
+          AIML: { A: 'Prof. Verma', B: 'Prof. Sneha Roy' },
+          CIVIL: { A: 'Prof. Joshi' },
+          MECHANICAL: { A: 'Prof. Rao' },
+        };
+
+        const subjectMap = {
+          CSE: [
+            { code: 'CS501', title: 'Database Management Systems (DBMS)', teacherName: 'Prof. Sharma', type: 'theory', remarks: 'Theory records & assignments verified' },
+            { code: 'CS502', title: 'Computer Networks (CN)', teacherName: 'Prof. K. Verma', type: 'theory', remarks: 'Assignments & viva cleared' },
+            { code: 'CS503', title: 'Theory of Computation (TOC)', teacherName: 'Prof. S. Mehta', type: 'theory', remarks: 'Tutorials cleared' },
+          ],
+          IT: [
+            { code: 'IT501', title: 'Web Technologies & Frameworks', teacherName: 'Prof. Patil', type: 'theory', remarks: 'Assignments & practical cleared' },
+            { code: 'IT502', title: 'Cloud Computing & DevOps', teacherName: 'Prof. S. Joshi', type: 'theory', remarks: 'Cloud lab tasks verified' },
+            { code: 'IT503', title: 'Information & Cyber Security', teacherName: 'Prof. N. Deshmukh', type: 'theory', remarks: 'Audit assignment submitted' },
+          ],
+          AIML: [
+            { code: 'AI501', title: 'Machine Learning (ML)', teacherName: 'Prof. Verma', type: 'theory', remarks: 'Model implementations verified' },
+            { code: 'AI502', title: 'Deep Learning Architectures (DL)', teacherName: 'Prof. P. Gupta', type: 'theory', remarks: 'Neural network projects signed off' },
+            { code: 'AI503', title: 'Natural Language Processing (NLP)', teacherName: 'Dr. Singh', type: 'theory', remarks: 'Transformer labs cleared' },
+          ],
+          CIVIL: [
+            { code: 'CE501', title: 'Structural Analysis-II', teacherName: 'Prof. Joshi', type: 'theory', remarks: 'Calculation sheets verified' },
+            { code: 'CE502', title: 'Geotechnical Engineering', teacherName: 'Prof. R. Dave', type: 'theory', remarks: 'Soil sample tests evaluated' },
+            { code: 'CE503', title: 'Surveying & GIS', teacherName: 'Dr. A. Verma', type: 'theory', remarks: 'Field survey maps submitted' },
+          ],
+          MECHANICAL: [
+            { code: 'ME501', title: 'Heat Transfer & Thermodynamics', teacherName: 'Prof. Rao', type: 'theory', remarks: 'Assignments & term tests cleared' },
+            { code: 'ME502', title: 'Design of Machine Elements', teacherName: 'Prof. S. R. Patil', type: 'theory', remarks: 'CAD sheets submitted' },
+            { code: 'ME503', title: 'Fluid Mechanics & Machinery', teacherName: 'Prof. M. Shinde', type: 'theory', remarks: 'Practical journals verified' },
+          ],
+        };
+
+        const isCleared = active.forceAllCleared;
+
+        const resolvedSubjects = (subjectMap[branchCode] || subjectMap.CSE).map((s, idx) => ({
+          srNo: idx + 1,
+          title: s.title,
+          subjectCode: s.code,
+          teacherName: s.teacherName,
+          remarks: s.remarks,
+          status: isCleared ? 'Approved' : (idx === 0 ? 'Approved' : (idx === 1 ? 'Approved' : 'Pending')),
+          isReRun: false,
+        }));
+
+        if (active.includeReRun) {
+          resolvedSubjects.push({
+            srNo: resolvedSubjects.length + 1,
+            title: 'Data Structures & Algorithms [RE-RUN]',
+            subjectCode: 'BCK-302',
+            teacherName: ciMap[branchCode]?.[sec] || 'Prof. Sharma',
+            remarks: 'Re-run evaluation pending viva',
+            status: isCleared ? 'Approved' : 'Pending',
+            isReRun: true,
+          });
+        }
+
+        const sectionsList = [
+          { srNo: 1, sectionName: 'Accounts', department: 'accounts', remarks: 'Tuition fees & dues clearance', status: isCleared ? 'Approved' : 'Approved', reviewerName: 'Accounts Section Head' },
+          { srNo: 2, sectionName: 'Bus / Transport', department: 'bus', remarks: 'Transport dues verification', status: isCleared ? 'Approved' : 'Approved', reviewerName: 'Transport Section Head' },
+          { srNo: 3, sectionName: 'Library', department: 'library', remarks: 'Book returns and fine clearance', status: isCleared ? 'Approved' : 'Pending', reviewerName: 'Library Section Head' },
+          { srNo: 4, sectionName: 'Disciplinary', department: 'disciplinary', remarks: 'Student conduct & disciplinary clearance', status: isCleared ? 'Approved' : 'Approved', reviewerName: 'Disciplinary Section Head' },
+        ];
+
+        setReportData({
+          student: {
+            name: active.name || user?.name || 'Rohan Iyer',
+            enrollmentNo: active.rollNo || user?.enrollmentNo || 'EN2024CSE002',
+            rollNo: active.rollNo || user?.enrollmentNo || 'EN2024CSE002',
+            currentSemester: sem,
+            year: sem <= 2 ? 'I' : sem <= 4 ? 'II' : sem <= 6 ? 'III' : 'IV',
+            section: sec,
+          },
+          program: {
+            name: branchCode === 'AIML' ? 'Artificial Intelligence & Machine Learning' : branchCode === 'IT' ? 'Information Technology' : branchCode === 'CIVIL' ? 'Civil Engineering' : branchCode === 'MECHANICAL' ? 'Mechanical Engineering' : 'Computer Science & Engineering',
+            code: branchCode,
+            department: `Department of ${branchCode}`,
+          },
+          semester: {
+            name: `Semester ${sem}`,
+            number: sem,
+            session: 'Session 2024-25 (EVEN)',
+            academicYear: '2024-25',
+            type: sem % 2 === 0 ? 'EVEN' : 'ODD',
+          },
+          sections: sectionsList,
+          items: resolvedSubjects,
+          classIncharge: {
+            name: ciMap[branchCode]?.[sec] || `Prof. Class Incharge (Sec ${sec})`,
+            designation: `Assistant Professor & Class Incharge (Sec ${sec})`,
+            status: isCleared ? 'Approved' : 'Pending',
+          },
+          hod: {
+            name: hodMap[branchCode] || 'Dr. Kulkarni',
+            title: `HOD - ${branchCode}`,
+            department: `Department of ${branchCode}`,
+            status: isCleared ? 'Approved' : 'Pending',
+          },
+          status: isCleared ? 'FINAL APPROVED' : 'ACTION REQUIRED / PENDING',
+          certificateNumber: `CM-2026-${(active.rollNo || 'CSE002').slice(-6)}`,
+          issuedAt: new Date().toISOString(),
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [filters, user]
+  );
 
   useEffect(() => {
     fetchReport();
   }, [fetchReport]);
 
+  const handleDynamicFilterChange = (newFilters) => {
+    setFilters(newFilters);
+    fetchReport(newFilters);
+  };
+
   return (
-    <DashboardLayout title="Clearance Report">
-      {loading ? (
+    <DashboardLayout title="Student Clearance Report (Official ERP)">
+      {loading && !reportData ? (
         <div className="space-y-6 max-w-5xl mx-auto">
           <Skeleton className="h-14 w-full rounded-2xl" />
           <Skeleton className="h-48 w-full rounded-3xl" />
@@ -127,9 +204,10 @@ export default function StudentClearanceReport() {
       ) : (
         <ClearanceReportDashboardView
           reportData={reportData}
-          onRefresh={fetchReport}
+          onRefresh={() => fetchReport(filters)}
           loading={loading}
           isStudent={true}
+          onDynamicFilterChange={handleDynamicFilterChange}
         />
       )}
     </DashboardLayout>

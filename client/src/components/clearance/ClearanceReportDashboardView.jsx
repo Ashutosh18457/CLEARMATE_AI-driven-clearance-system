@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   HiOutlineShieldCheck,
   HiOutlineUser,
@@ -11,8 +11,22 @@ import {
   HiOutlineBookOpen,
   HiOutlineArrowPath,
   HiCheck,
+  HiOutlineSparkles,
+  HiOutlineExclamationTriangle,
+  HiOutlineCheckBadge,
+  HiOutlineAdjustmentsHorizontal,
 } from 'react-icons/hi2';
-import { FaGraduationCap, FaUniversity, FaBus, FaWallet, FaBook, FaHourglassHalf, FaShieldAlt, FaBalanceScale } from 'react-icons/fa';
+import {
+  FaGraduationCap,
+  FaUniversity,
+  FaBus,
+  FaWallet,
+  FaBook,
+  FaHourglassHalf,
+  FaShieldAlt,
+  FaBalanceScale,
+  FaStamp,
+} from 'react-icons/fa';
 import ClearanceReportPdfModal from './ClearanceReportPdfModal';
 import { downloadClearancePdf, printClearanceReport } from '../../utils/pdfGenerator';
 import toast from 'react-hot-toast';
@@ -22,8 +36,46 @@ export default function ClearanceReportDashboardView({
   onRefresh,
   loading = false,
   isStudent = false,
+  onDynamicFilterChange,
 }) {
   const [showPdfModal, setShowPdfModal] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  // Dynamic Downstream Controls State
+  const [activeBranch, setActiveBranch] = useState(reportData?.program?.code || 'CSE');
+  const [activeSem, setActiveSem] = useState(reportData?.semester?.number || reportData?.student?.currentSemester || 5);
+  const [activeSection, setActiveSection] = useState(reportData?.student?.section || 'A');
+  const [hasReRun, setHasReRun] = useState(false);
+  const [forceClearAll, setForceClearAll] = useState(false);
+  const [studentName, setStudentName] = useState(reportData?.student?.name || 'Rohan Iyer');
+  const [rollNo, setRollNo] = useState(reportData?.student?.enrollmentNo || 'EN2024CSE002');
+  const [showControls, setShowControls] = useState(!isStudent);
+
+  // Synchronize initial data
+  useEffect(() => {
+    if (reportData) {
+      setActiveBranch(reportData.program?.code || 'CSE');
+      setActiveSem(reportData.semester?.number || reportData.student?.currentSemester || 5);
+      setActiveSection(reportData.student?.section || 'A');
+      setStudentName(reportData.student?.name || 'Rohan Iyer');
+      setRollNo(reportData.student?.enrollmentNo || 'EN2024CSE002');
+    }
+  }, [reportData]);
+
+  // Handle dynamic filtering
+  const handleTriggerDynamicChange = (branch, sem, sec, rerun, clearAll, name, roll) => {
+    if (onDynamicFilterChange) {
+      onDynamicFilterChange({
+        branch: branch || activeBranch,
+        semester: sem || activeSem,
+        section: sec || activeSection,
+        includeReRun: rerun !== undefined ? rerun : hasReRun,
+        forceAllCleared: clearAll !== undefined ? clearAll : forceClearAll,
+        name: name || studentName,
+        rollNo: roll || rollNo,
+      });
+    }
+  };
 
   if (!reportData) {
     return (
@@ -55,15 +107,23 @@ export default function ClearanceReportDashboardView({
     items = [],
     classIncharge = {},
     hod = {},
+    workflow = {},
     certificateNumber = 'CM-2026-CSE002',
-    issuedAt = '2025-05-27T11:45:00.000Z',
-    status = 'NOT INITIATED',
+    issuedAt = new Date().toISOString(),
+    status = 'FINAL APPROVED',
   } = reportData;
 
-  const deptCode = program.code || 'CSE';
-  const deptName = program.department || program.name || 'Emerging Technologies';
-  const rawStatus = (status || 'NOT INITIATED').toUpperCase();
-  const isCleared = rawStatus === 'CLEARED' || rawStatus === 'COMPLETED' || rawStatus === 'APPROVED';
+  const deptCode = program.code || activeBranch || 'CSE';
+  const deptName = program.department || program.name || 'Department of Computer Science & Engineering';
+
+  // Determine Approval status
+  const allSectionsCleared = sections.length > 0 && sections.every((s) => s.status?.toLowerCase() === 'approved');
+  const allItemsCleared = items.length > 0 && items.every((i) => i.status?.toLowerCase() === 'approved');
+  const isFinalApproved = (status || '').toUpperCase() === 'FINAL APPROVED' || (allSectionsCleared && allItemsCleared);
+
+  // Compute pending items if any
+  const pendingSections = sections.filter((s) => s.status?.toLowerCase() !== 'approved');
+  const pendingItems = items.filter((i) => i.status?.toLowerCase() !== 'approved');
 
   // Section icon resolver
   const getSectionTheme = (secName = '', dept = '') => {
@@ -113,30 +173,32 @@ export default function ClearanceReportDashboardView({
     };
   };
 
-  const institutionalRows = sections.length > 0
-    ? sections
-    : [
-        { srNo: 1, sectionName: 'Accounts', department: 'accounts', remarks: 'Fees verification & tuition dues', status: 'Approved', reviewerName: 'Accounts Section Head' },
-        { srNo: 2, sectionName: 'Bus / Transport', department: 'bus', remarks: 'Transport dues verification', status: 'Approved', reviewerName: 'Transport Section Head' },
-        { srNo: 3, sectionName: 'Library', department: 'library', remarks: 'Book returns and fine clearance', status: 'Approved', reviewerName: 'Library Section Head' },
-        { srNo: 4, sectionName: 'Disciplinary', department: 'disciplinary', remarks: 'Student conduct & disciplinary clearance', status: 'Approved', reviewerName: 'Disciplinary Section Head' },
-      ];
-
-  const facultyRows = items.length > 0
-    ? items
-    : [
-        { srNo: 1, title: 'Theory of Computation', teacherName: 'Prof. Sharma', remarks: 'Assignments & Theory records', status: 'Approved' },
-        { srNo: 2, title: 'Data Analytics & AI Lab', teacherName: 'Prof. Gupta', remarks: 'Lab practicals & project sign-off', status: 'Approved' },
-      ];
+  const handleDirectDownload = async () => {
+    if (!isFinalApproved) {
+      toast.error('Clearance Incomplete: All institutional sections (4/4), faculty coursework, Class Incharge, and HOD must approve before generating the Official Clearance PDF.');
+      return;
+    }
+    setDownloading(true);
+    try {
+      const fileName = `Clearance_Report_${student.enrollmentNo || rollNo || 'Student'}.pdf`;
+      await downloadClearancePdf('official-clearance-card', fileName, isFinalApproved);
+      toast.success(`Official Clearance PDF downloaded: ${fileName}`);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Failed to export PDF');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
-    <div className="max-w-[860px] mx-auto pb-12 space-y-5">
-      {/* Top Action Utility Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-2">
+    <div className="max-w-[900px] mx-auto pb-12 space-y-4">
+      {/* ─── TOP ACTION UTILITY TOOLBAR ─── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 px-1">
         <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse" />
+          <span className={`w-2.5 h-2.5 rounded-full ${isFinalApproved ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse`} />
           <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-            Official University Template
+            Official University Clearance Report • {deptCode}
           </span>
         </div>
 
@@ -146,7 +208,7 @@ export default function ClearanceReportDashboardView({
               type="button"
               onClick={onRefresh}
               disabled={loading}
-              className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition border border-slate-200 bg-white"
+              className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition border border-slate-200 bg-white shadow-2xs"
               title="Refresh / Sync"
             >
               <HiOutlineArrowPath className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -162,23 +224,45 @@ export default function ClearanceReportDashboardView({
             Print
           </button>
 
+          {isFinalApproved ? (
+            <button
+              type="button"
+              onClick={handleDirectDownload}
+              disabled={downloading}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition shadow-xs"
+            >
+              <HiOutlineArrowDownTray className="w-4 h-4" />
+              {downloading ? 'Exporting...' : 'Export PDF'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-slate-400 bg-slate-100 rounded-xl transition border border-slate-200 cursor-not-allowed"
+              title="Clearance Incomplete: PDF locked until all approvals are cleared"
+            >
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+              Export PDF (Locked)
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setShowPdfModal(true)}
             className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition shadow-xs"
           >
-            <HiOutlineArrowDownTray className="w-4 h-4" />
-            PDF Export / Preview
+            <HiOutlineEye className="w-4 h-4" />
+            Preview Document
           </button>
         </div>
       </div>
 
-      {/* Main Official Template Card (Matches Attached UI Image Precisely) */}
+      {/* ─── MAIN OFFICIAL UNIVERSITY CLEARANCE CARD ─── */}
       <div
         id="official-clearance-card"
         className="bg-white rounded-[28px] border border-[#E2E8F0] shadow-sm p-6 sm:p-10 space-y-7 relative overflow-hidden"
       >
-        {/* ─── Top Header ─── */}
+        {/* Top Header */}
         <div className="text-center space-y-1.5">
           {/* Blue Shield Icon Badge */}
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#EEF4FF] border border-[#D0E1FD] text-[#2563EB] shadow-2xs mx-auto mb-1">
@@ -193,7 +277,7 @@ export default function ClearanceReportDashboardView({
           <div className="flex items-center justify-center gap-3 pt-0.5">
             <div className="h-[1px] w-12 sm:w-16 bg-[#BFDBFE]" />
             <div className="text-sm sm:text-[15px] font-bold text-[#2563EB]">
-              {deptCode} — ({semester.session || `(Session 2024-25 (EVEN))`})
+              {deptCode} — ({semester.session || `Session 2024-25 (EVEN)`})
             </div>
             <div className="h-[1px] w-12 sm:w-16 bg-[#BFDBFE]" />
           </div>
@@ -217,11 +301,11 @@ export default function ClearanceReportDashboardView({
               <div className="space-y-1">
                 <div className="text-xs font-medium text-[#64748B]">Name</div>
                 <div className="text-base sm:text-lg font-extrabold text-[#0F172A] leading-tight">
-                  {student.name || 'Rohan Iyer'}
+                  {student.name || studentName}
                 </div>
                 <div className="text-xs font-medium text-[#64748B] pt-0.5">Roll / Enr. No.</div>
                 <div className="text-xs sm:text-sm font-mono font-extrabold text-[#0F172A]">
-                  {student.enrollmentNo || 'EN2024CSE002'}
+                  {student.enrollmentNo || rollNo}
                 </div>
               </div>
             </div>
@@ -234,18 +318,18 @@ export default function ClearanceReportDashboardView({
               <div>
                 <div className="text-xs font-medium text-[#64748B]">Year / Sem</div>
                 <div className="text-sm sm:text-base font-extrabold text-[#0F172A]">
-                  {student.year || 'III'} / {student.currentSemester || '6'} (Sem {student.currentSemester || '6'} {deptCode})
+                  {student.year || 'III'} / {student.currentSemester || activeSem} (Sem {student.currentSemester || activeSem} {deptCode})
                 </div>
               </div>
               <div>
                 <div className="text-xs font-medium text-[#64748B]">Section</div>
                 <div className="text-sm sm:text-base font-extrabold text-[#0F172A]">
-                  {student.section || 'A'}
+                  Section {student.section || activeSection}
                 </div>
               </div>
             </div>
 
-            {/* Right: University Emblem Crest Watermark */}
+            {/* Right: University Crest Watermark */}
             <div className="hidden md:flex md:col-span-2 justify-end items-center">
               <div className="w-20 h-20 rounded-full border-2 border-dashed border-[#BFDBFE] flex flex-col items-center justify-center text-[#93C5FD] p-1 bg-[#F8FAFC]">
                 <FaGraduationCap className="w-7 h-7 text-[#93C5FD] mb-0.5" />
@@ -266,7 +350,7 @@ export default function ClearanceReportDashboardView({
             i
           </div>
           <p className="leading-snug">
-            The following sections and subject faculty have verified and cleared all institutional requirements, practical records, and financial dues for the above student.
+            The following institutional sections and assigned department faculty have verified academic requirements, practical records, and financial clearance for the above student.
           </p>
         </div>
 
@@ -304,12 +388,17 @@ export default function ClearanceReportDashboardView({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E2E8F0]">
-                  {institutionalRows.map((sec, idx) => {
+                  {sections.map((sec, idx) => {
                     const theme = getSectionTheme(sec.sectionName, sec.department);
-                    const secCleared = sec.status === 'Approved' || sec.status === 'CLEARED';
+                    const secCleared = sec.status?.toLowerCase() === 'approved';
 
                     return (
-                      <tr key={idx} className="hover:bg-[#F8FAFC]/60 transition">
+                      <tr
+                        key={idx}
+                        className={`transition ${
+                          secCleared ? 'hover:bg-[#F8FAFC]/60' : 'bg-rose-50/20'
+                        }`}
+                      >
                         <td className="py-3.5 px-4 text-center">
                           <span className="w-6 h-6 inline-flex items-center justify-center rounded-md bg-[#F1F5F9] text-xs font-bold text-[#475569]">
                             {idx + 1}
@@ -330,16 +419,28 @@ export default function ClearanceReportDashboardView({
                             {sec.remarks || theme.defaultRemark}
                           </div>
                           <div className="flex items-center gap-1 mt-0.5">
-                            <span className="inline-flex items-center gap-1 text-[#16A34A] font-bold text-xs">
-                              <span className="w-3.5 h-3.5 rounded-full bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center text-[9px]">✓</span> Cleared
-                            </span>
+                            {secCleared ? (
+                              <span className="inline-flex items-center gap-1 text-[#16A34A] font-bold text-xs">
+                                <span className="w-3.5 h-3.5 rounded-full bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center text-[9px]">✓</span> Cleared
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-rose-600 font-bold text-xs">
+                                <span className="w-3.5 h-3.5 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-[9px]">✕</span> Pending Clearance
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="py-3.5 px-4 text-center">
                           <div className="flex flex-col items-center justify-center">
-                            <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wide bg-[#DCFCE7] text-[#15803D] border border-[#86EFAC]">
-                              <HiCheck className="w-3.5 h-3.5 stroke-[3]" /> CLEARED
-                            </span>
+                            {secCleared ? (
+                              <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wide bg-[#DCFCE7] text-[#15803D] border border-[#86EFAC]">
+                                <HiCheck className="w-3.5 h-3.5 stroke-[3]" /> CLEARED
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wide bg-rose-100 text-rose-700 border border-rose-300">
+                                PENDING
+                              </span>
+                            )}
                             <span className="text-[11px] text-[#64748B] mt-1 font-medium">
                               {sec.reviewerName || theme.authority}
                             </span>
@@ -354,7 +455,7 @@ export default function ClearanceReportDashboardView({
           </div>
         </div>
 
-        {/* ─── 2. FACULTY & SUBJECT CLEARANCE ─── */}
+        {/* ─── 2. FACULTY & SUBJECT CLEARANCE (DYNAMIC WITH RE-RUN SUPPORT) ─── */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -362,7 +463,7 @@ export default function ClearanceReportDashboardView({
                 <FaGraduationCap className="w-3 h-3" />
               </div>
               <h2 className="text-xs sm:text-sm font-extrabold text-[#0F172A] uppercase tracking-wide">
-                2. FACULTY & SUBJECT CLEARANCE
+                2. FACULTY & SUBJECT CLEARANCE ({deptCode} — SEMESTER {activeSem})
               </h2>
             </div>
 
@@ -383,69 +484,111 @@ export default function ClearanceReportDashboardView({
                   <tr className="bg-[#F8FAFC] text-[#475569] font-bold border-b border-[#E2E8F0] text-[11px] uppercase tracking-wider">
                     <th className="py-3 px-4 w-16 text-center">SR. NO.</th>
                     <th className="py-3 px-4">SUBJECT / COURSE TITLE</th>
-                    <th className="py-3 px-4 w-44">SUBJECT IN-CHARGE (FACULTY)</th>
+                    <th className="py-3 px-4 w-48">SUBJECT IN-CHARGE (FACULTY)</th>
                     <th className="py-3 px-4">REMARKS</th>
                     <th className="py-3 px-4 text-center w-52">APPROVAL & SIGNATURE</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E2E8F0]">
-                  {facultyRows.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-[#F8FAFC]/60 transition">
-                      <td className="py-3.5 px-4 text-center">
-                        <span className="w-6 h-6 inline-flex items-center justify-center rounded-md bg-[#F1F5F9] text-xs font-bold text-[#475569]">
-                          {idx + 1}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-[#0F172A]">
-                        <span className="text-xs sm:text-sm font-bold text-[#0F172A]">
-                          {item.title}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-[#0F172A] font-bold text-xs sm:text-sm">
-                        {item.teacherName || 'Prof. Sharma'}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="text-[#334155] font-normal text-xs sm:text-sm">
-                          {item.remarks || 'Assignments & Theory records'}
-                        </div>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <span className="inline-flex items-center gap-1 text-[#16A34A] font-bold text-xs">
-                            <span className="w-3.5 h-3.5 rounded-full bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center text-[9px]">✓</span> Cleared
+                  {items.map((item, idx) => {
+                    const isItemCleared = item.status?.toLowerCase() === 'approved';
+                    return (
+                      <tr
+                        key={idx}
+                        className={`transition ${
+                          item.isReRun
+                            ? 'bg-amber-50/40 hover:bg-amber-50/70'
+                            : isItemCleared
+                            ? 'hover:bg-[#F8FAFC]/60'
+                            : 'bg-rose-50/20'
+                        }`}
+                      >
+                        <td className="py-3.5 px-4 text-center">
+                          <span className="w-6 h-6 inline-flex items-center justify-center rounded-md bg-[#F1F5F9] text-xs font-bold text-[#475569]">
+                            {idx + 1}
                           </span>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <div className="flex flex-col items-center justify-center">
-                          <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wide bg-[#DCFCE7] text-[#15803D] border border-[#86EFAC]">
-                            <HiCheck className="w-3.5 h-3.5 stroke-[3]" /> CLEARED
-                          </span>
-                          <span className="text-[11px] text-[#64748B] mt-1 font-medium">
-                            {item.teacherName || 'Prof. Faculty'}
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="py-3.5 px-4 font-bold text-[#0F172A]">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs sm:text-sm font-bold text-[#0F172A]">
+                              {item.title}
+                            </span>
+                            {item.isReRun && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide bg-rose-100 text-rose-700 border border-rose-300">
+                                RE-RUN / BACKLOG
+                              </span>
+                            )}
+                          </div>
+                          {item.subjectCode && (
+                            <span className="text-[11px] text-slate-500 font-mono block mt-0.5">
+                              Code: {item.subjectCode}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-[#0F172A] font-bold text-xs sm:text-sm">
+                          {item.teacherName || 'Assigned Faculty'}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="text-[#334155] font-normal text-xs sm:text-sm">
+                            {item.remarks || (item.isReRun ? 'Re-run viva & practicals' : 'Assignments & Theory records')}
+                          </div>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            {isItemCleared ? (
+                              <span className="inline-flex items-center gap-1 text-[#16A34A] font-bold text-xs">
+                                <span className="w-3.5 h-3.5 rounded-full bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center text-[9px]">✓</span> Cleared
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-rose-600 font-bold text-xs">
+                                <span className="w-3.5 h-3.5 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-[9px]">✕</span> Pending Faculty Sign-Off
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <div className="flex flex-col items-center justify-center">
+                            {isItemCleared ? (
+                              <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wide bg-[#DCFCE7] text-[#15803D] border border-[#86EFAC]">
+                                <HiCheck className="w-3.5 h-3.5 stroke-[3]" /> CLEARED
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wide bg-rose-100 text-rose-700 border border-rose-300">
+                                PENDING
+                              </span>
+                            )}
+                            <span className="text-[11px] text-[#64748B] mt-1 font-medium">
+                              {item.teacherName || 'Prof. Faculty'}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
 
-        {/* ─── 3. APPROVAL WORKFLOW CARDS ─── */}
+        {/* ─── 3. APPROVAL WORKFLOW CARDS & DYNAMIC STAMPS ─── */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
           {/* Card 1: Class In-Charge */}
-          <div className="border border-dashed border-[#86EFAC] bg-[#F0FDF4]/40 rounded-2xl p-5 flex flex-col justify-between">
+          <div
+            className={`border rounded-2xl p-5 flex flex-col justify-between ${
+              allItemsCleared
+                ? 'border-emerald-300 bg-[#F0FDF4]/50'
+                : 'border-dashed border-amber-300 bg-amber-50/30'
+            }`}
+          >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center font-bold shrink-0">
                 <HiOutlineUser className="w-5 h-5 text-[#16A34A]" />
               </div>
               <div>
                 <div className="text-xs font-black uppercase tracking-wide text-[#15803D]">
-                  PENDING STAGE 3 APPROVAL
+                  {allItemsCleared ? '✓ STAGE 2: CLASS IN-CHARGE CLEARED' : 'PENDING STAGE 2 APPROVAL'}
                 </div>
                 <div className="text-xs text-[#64748B]">
-                  prof. class incharge review
+                  {classIncharge.designation || `Class Incharge (Sec ${activeSection})`}
                 </div>
               </div>
             </div>
@@ -454,38 +597,64 @@ export default function ClearanceReportDashboardView({
               <div className="border-t-2 border-[#86EFAC] mb-3" />
               <div className="text-center">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-[#16A34A]">
-                  CLASS IN-CHARGE
+                  CLASS IN-CHARGE ({deptCode} — SEC {activeSection})
                 </div>
-                <div className="text-sm font-bold text-[#0F172A] mt-0.5">
-                  {classIncharge.name || `Prof. Class Incharge (Sec ${student.section || 'A'})`}
+                <div className="text-sm font-black text-[#0F172A] mt-0.5">
+                  {classIncharge.name || `Prof. Class Incharge (Sec ${activeSection})`}
+                </div>
+                <div className="text-[10px] text-slate-500">
+                  {classIncharge.email || `ci.${activeSection.toLowerCase()}.${deptCode.toLowerCase()}@clearmate.edu`}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Card 2: Head of Department */}
-          <div className="border border-dashed border-[#DDD6FE] bg-[#FAF5FF]/40 rounded-2xl p-5 flex flex-col justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#F3E8FF] text-[#7C3AED] flex items-center justify-center font-bold shrink-0">
-                <FaShieldAlt className="w-4 h-4 text-[#7C3AED]" />
-              </div>
-              <div>
-                <div className="text-xs font-black uppercase tracking-wide text-[#6D28D9]">
-                  PENDING FINAL HOD SIGN-OFF
+          {/* Card 2: Head of Department (Dynamic with Official Stamp) */}
+          <div
+            className={`border rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden ${
+              isFinalApproved
+                ? 'border-purple-300 bg-[#FAF5FF]/60'
+                : 'border-dashed border-slate-300 bg-slate-50/40'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#F3E8FF] text-[#7C3AED] flex items-center justify-center font-bold shrink-0">
+                  <FaShieldAlt className="w-4 h-4 text-[#7C3AED]" />
                 </div>
-                <div className="text-xs text-[#64748B]">
-                  {hod.name ? `${hod.name.toLowerCase()} sign-off` : 'dr. kulkarni (hod) sign-off'}
+                <div>
+                  <div className="text-xs font-black uppercase tracking-wide text-[#6D28D9]">
+                    {isFinalApproved ? '★ FINAL STAGE: HOD VERIFIED & SEALED' : 'PENDING FINAL HOD SIGN-OFF'}
+                  </div>
+                  <div className="text-xs text-[#64748B]">
+                    {hod.name || 'Dr. Kulkarni'} (Head of Dept)
+                  </div>
                 </div>
               </div>
+
+              {/* Dynamic Circular University Stamp */}
+              {isFinalApproved && (
+                <div className="w-20 h-20 rounded-full border-2 border-dashed border-[#7C3AED] bg-purple-100/40 flex flex-col items-center justify-center text-center p-1 transform rotate-[-8deg] shrink-0">
+                  <div className="text-[6.5px] font-black uppercase text-[#6D28D9]">S.B. JAIN TECH</div>
+                  <div className="text-[7.5px] font-black text-[#7C3AED] leading-none my-0.5">DEPT. OF {deptCode}</div>
+                  <span className="bg-[#7C3AED] text-white text-[6px] font-extrabold px-1.5 py-0.5 rounded leading-none">
+                    SEALED
+                  </span>
+                  <div className="text-[5.5px] font-bold text-slate-600 mt-0.5">OFFICIAL STAMP</div>
+                </div>
+              )}
             </div>
 
-            <div className="mt-6">
+            <div className="mt-4">
               <div className="border-t-2 border-[#DDD6FE] mb-3" />
               <div className="text-center">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-[#7C3AED]">
-                  HEAD OF DEPARTMENT
+                  HEAD OF DEPARTMENT ({deptCode})
                 </div>
-                <div className="text-sm font-bold text-[#0F172A] mt-0.5">
+                <div className="text-sm font-black text-[#0F172A] mt-0.5">
+                  {hod.name || 'Dr. Kulkarni'}
+                </div>
+                <div className="text-[10px] text-slate-500">
                   {deptName}
                 </div>
               </div>
@@ -497,12 +666,16 @@ export default function ClearanceReportDashboardView({
         <div className="bg-[#FAFAFA] border border-[#E2E8F0] rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
           {/* Left: Shield + Reference */}
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#2563EB] text-white flex items-center justify-center shadow-2xs shrink-0">
-              <HiCheck className="w-5 h-5 stroke-[3]" />
+            <div
+              className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-2xs shrink-0 ${
+                isFinalApproved ? 'bg-[#2563EB] text-white' : 'bg-amber-500 text-white'
+              }`}
+            >
+              {isFinalApproved ? <HiCheck className="w-5 h-5 stroke-[3]" /> : <FaHourglassHalf className="w-4 h-4" />}
             </div>
             <div>
               <div className="text-xs sm:text-sm font-extrabold text-[#0F172A]">
-                ClearMate Official Verifiable Report
+                ClearMate Official University Clearance System
               </div>
               <div className="text-xs text-[#64748B] font-mono">
                 Ref : <span className="font-bold text-[#2563EB]">{certificateNumber}</span>
@@ -530,17 +703,23 @@ export default function ClearanceReportDashboardView({
           </div>
 
           {/* Right: Status Pill */}
-          <div className="bg-[#FFFBEB] border border-[#FDE68A] rounded-xl px-4 py-2 flex items-center gap-3">
+          <div
+            className={`border rounded-xl px-4 py-2 flex items-center gap-3 ${
+              isFinalApproved
+                ? 'bg-[#DCFCE7] border-[#86EFAC] text-[#15803D]'
+                : 'bg-rose-50 border-rose-300 text-rose-700'
+            }`}
+          >
             <div>
-              <span className="text-[10px] uppercase font-bold text-[#92400E] block leading-none">
+              <span className="text-[10px] uppercase font-bold block leading-none opacity-80">
                 Status
               </span>
-              <span className="text-xs sm:text-sm font-black text-[#D97706] uppercase tracking-wide">
-                {rawStatus}
+              <span className="text-xs sm:text-sm font-black uppercase tracking-wide">
+                {isFinalApproved ? 'FINAL APPROVED' : 'PENDING'}
               </span>
             </div>
-            <div className="text-[#D97706]">
-              <FaHourglassHalf className="w-4 h-4" />
+            <div>
+              {isFinalApproved ? <HiOutlineCheckBadge className="w-5 h-5" /> : <FaHourglassHalf className="w-4 h-4 text-rose-600" />}
             </div>
           </div>
         </div>

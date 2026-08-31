@@ -61,6 +61,7 @@ const NAV_ITEMS = {
   [ROLES.SUPER_ADMIN]: [
     { to: '/super-admin', icon: HiOutlineHome, label: 'Overview', end: true },
     { to: '/admin/clearance-report', icon: HiOutlineBuildingLibrary, label: 'Clearance Reports' },
+    { to: '/admin/faculty-config', icon: HiOutlineCog6Tooth, label: 'Faculty & Subject Mapping' },
     { to: '/admin/programs', icon: HiOutlineAcademicCap, label: 'College Programs' },
     { to: '/admin/bulk-setup', icon: HiOutlineCloudArrowUp, label: 'Bulk Setup' },
     { to: '/admin/users', icon: HiOutlineUsers, label: 'Admins & Staff' },
@@ -69,6 +70,7 @@ const NAV_ITEMS = {
   [ROLES.ADMIN]: [
     { to: '/admin', icon: HiOutlineHome, label: 'Dashboard', end: true },
     { to: '/admin/clearance-report', icon: HiOutlineBuildingLibrary, label: 'Clearance Reports' },
+    { to: '/admin/faculty-config', icon: HiOutlineCog6Tooth, label: 'Faculty & Subject Mapping' },
     { to: '/admin/bulk-setup', icon: HiOutlineCloudArrowUp, label: 'Bulk Setup' },
     { to: '/admin/semesters', icon: HiOutlineCalendarDays, label: 'Semesters' },
     { to: '/admin/clearance-items', icon: HiOutlineBookOpen, label: 'Clearance Subjects' },
