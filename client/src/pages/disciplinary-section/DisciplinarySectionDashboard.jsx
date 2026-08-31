@@ -8,7 +8,6 @@ import EmptyState from '../../components/common/EmptyState';
 import api from '../../api/axios';
 import { useSocket } from '../../context/SocketContext';
 import toast from 'react-hot-toast';
-import * as XLSX from 'xlsx';
 import {
   HiOutlineMagnifyingGlass,
   HiOutlineScale,
@@ -17,7 +16,6 @@ import {
   HiOutlineClock,
   HiOutlinePencilSquare,
   HiOutlineArrowPath,
-  HiOutlineArrowUpTray,
   HiOutlineCheckBadge,
   HiOutlineShieldCheck,
 } from 'react-icons/hi2';
@@ -141,12 +139,9 @@ export default function DisciplinarySectionDashboard() {
   const [reason, setReason] = useState('fine_pending');
   const [remarkText, setRemarkText] = useState('');
 
-  // Bulk Selection & Upload State
+  // Bulk Selection State
   const [selectedStudentIds, setSelectedStudentIds] = useState([]);
-  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
-  const [parsedRows, setParsedRows] = useState([]);
   const [bulkLoading, setBulkLoading] = useState(false);
-  const [uploadedFileName, setUploadedFileName] = useState('');
   const [bulkRemarkText, setBulkRemarkText] = useState('');
 
   // Fetch metadata: active programs & semesters
@@ -376,138 +371,6 @@ export default function DisciplinarySectionDashboard() {
     }
   };
 
-  // CSV / Excel file parsing
-  const handleFileUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File size exceeds maximum 5MB limit.');
-      return;
-    }
-
-    setUploadedFileName(file.name);
-    const fileExtension = file.name.split('.').pop().toLowerCase();
-    const reader = new FileReader();
-
-    if (fileExtension === 'xlsx' || fileExtension === 'xls') {
-      reader.onload = (event) => {
-        try {
-          const data = new Uint8Array(event.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-          if (!jsonData || jsonData.length < 2) {
-            toast.error('Uploaded file is empty or missing data rows');
-            return;
-          }
-
-          const headers = (jsonData[0] || []).map((h) => String(h || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, ''));
-          const rows = [];
-
-          for (let i = 1; i < jsonData.length; i++) {
-            const rowData = jsonData[i];
-            if (!Array.isArray(rowData) || rowData.length === 0) continue;
-
-            const rowObj = {};
-            headers.forEach((h, colIdx) => {
-              rowObj[h] = String(rowData[colIdx] || '').trim();
-            });
-
-            const student_id = rowObj.student_id || rowObj.enrollment_no || rowObj.enrollmentno || rowObj.id || rowData[0] || '';
-            const full_name = rowObj.full_name || rowObj.name || rowData[1] || '';
-            const email = rowObj.email || rowData[2] || '';
-            const department = rowObj.department || rowObj.program || rowObj.branch || rowData[3] || '';
-            const semester = rowObj.semester || rowObj.sem || rowData[4] || '';
-            const section = rowObj.section || rowData[5] || '';
-
-            if (student_id || full_name || email) {
-              rows.push({ student_id, full_name, email, department, semester, section });
-            }
-          }
-
-          setParsedRows(rows);
-          toast.success(`Loaded ${rows.length} student records from ${file.name}`);
-        } catch (err) {
-          toast.error('Failed to parse Excel file: ' + err.message);
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    } else {
-      reader.onload = (event) => {
-        try {
-          const text = event.target.result;
-          const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-          if (lines.length === 0) {
-            toast.error('CSV file is empty');
-            return;
-          }
-
-          const firstLineCells = lines[0].split(/[\t,;]+/).map((c) => c.trim().toLowerCase().replace(/[^a-z0-9_]/g, ''));
-          const isHeader = firstLineCells.some((c) => ['student_id', 'enrollment_no', 'full_name', 'email', 'department', 'semester'].includes(c));
-
-          const startIndex = isHeader ? 1 : 0;
-          const rows = [];
-
-          for (let i = startIndex; i < lines.length; i++) {
-            const cells = lines[i].split(/[\t,;]+/).map((c) => c.trim().replace(/^["']|["']$/g, ''));
-            if (cells.length === 0 || (cells.length === 1 && !cells[0])) continue;
-
-            let student_id = '', full_name = '', email = '', department = '', semester = '', section = '';
-
-            if (isHeader) {
-              firstLineCells.forEach((h, colIdx) => {
-                const val = cells[colIdx] || '';
-                if (h.includes('student') || h.includes('enrollment') || h === 'id') student_id = val;
-                else if (h.includes('name')) full_name = val;
-                else if (h.includes('email')) email = val;
-                else if (h.includes('department') || h.includes('program') || h.includes('branch')) department = val;
-                else if (h.includes('semester') || h.includes('sem')) semester = val;
-                else if (h.includes('section')) section = val;
-              });
-            }
-
-            if (!student_id) student_id = cells[0] || '';
-            if (!full_name) full_name = cells[1] || '';
-            if (!email) email = cells[2] || '';
-            if (!department) department = cells[3] || '';
-            if (!semester) semester = cells[4] || '';
-            if (!section) section = cells[5] || '';
-
-            if (student_id || full_name || email) {
-              rows.push({ student_id, full_name, email, department, semester, section });
-            }
-          }
-
-          setParsedRows(rows);
-          toast.success(`Loaded ${rows.length} student records from ${file.name}`);
-        } catch (err) {
-          toast.error('Failed to parse CSV file: ' + err.message);
-        }
-      };
-      reader.readAsText(file);
-    }
-  };
-
-  // Download Sample CSV
-  const handleDownloadSample = () => {
-    const sampleHeaders = 'student_id,full_name,email,department,semester,section\n';
-    const sampleData =
-      'EN2021CSE099,Phalguni,phalguni@sbjit.edu.in,CSE,6,A\n' +
-      'EN823680,Rahul Verma,student@sbjit.edu.in,AIML,5,A\n' +
-      'EN_BULK_101,Aarav Singh,aarav_bulk101@sbjit.edu.in,CSE,6,A\n';
-    const blob = new Blob([sampleHeaders + sampleData], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'Sample_Disciplinary_Students_Bulk_Upload.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   // Bulk mark selected students as cleared
   const handleBulkMarkClearedSelected = async () => {
     if (selectedStudentIds.length === 0) {
@@ -547,63 +410,6 @@ export default function DisciplinarySectionDashboard() {
       );
       toast.success(`Successfully granted Disciplinary NOC to ${selectedStudentIds.length} students!`);
       setSelectedStudentIds([]);
-    } finally {
-      setBulkLoading(false);
-    }
-  };
-
-  // Confirm CSV upload batch execution
-  const handleConfirmUpload = async () => {
-    if (parsedRows.length === 0) {
-      toast.error('No valid student records to upload');
-      return;
-    }
-
-    const updates = parsedRows.map((r) => ({
-      studentId: r.student_id || r.email || r.full_name,
-      disciplinary_status: 'cleared',
-      remark_text: 'Good conduct verified & disciplinary NOC granted via bulk upload',
-    }));
-
-    setBulkLoading(true);
-    try {
-      const res = await api.post('/disciplinary-section/students/bulk-update', { updates });
-
-      toast.success(
-        res.data?.message || `Bulk Upload Complete: ${parsedRows.length} student records processed & NOC updated!`
-      );
-      setIsBulkModalOpen(false);
-      setUploadedFileName('');
-      setParsedRows([]);
-      fetchStudents();
-    } catch (err) {
-      const cleanIdentifiers = updates.map((u) => u.studentId.toLowerCase());
-      setStudents((prev) =>
-        prev.map((s) => {
-          const sId = (s.student.id || s.student._id || '').toLowerCase();
-          const sEnroll = (s.student.enrollmentNo || '').toLowerCase();
-          const sEmail = (s.student.email || '').toLowerCase();
-          if (
-            cleanIdentifiers.includes(sId) ||
-            cleanIdentifiers.includes(sEnroll) ||
-            cleanIdentifiers.includes(sEmail)
-          ) {
-            return {
-              ...s,
-              disciplinary_status: 'cleared',
-              fees_status: 'paid',
-              reason: null,
-              remark_text: 'Good conduct verified & disciplinary NOC granted via bulk upload',
-              updated_at: new Date().toISOString(),
-            };
-          }
-          return s;
-        })
-      );
-      toast.success(`Bulk Upload Complete! ${parsedRows.length} students updated to Cleared / NOC Issued.`);
-      setIsBulkModalOpen(false);
-      setUploadedFileName('');
-      setParsedRows([]);
     } finally {
       setBulkLoading(false);
     }
@@ -893,7 +699,7 @@ export default function DisciplinarySectionDashboard() {
           />
         </div>
 
-        {/* Right: Status filter tabs + Bulk Upload + Refresh */}
+        {/* Right: Status filter tabs + Refresh */}
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-between md:justify-end">
           <div className="inline-flex rounded-md p-1 bg-slate-100 border border-slate-200">
             <button
@@ -927,16 +733,6 @@ export default function DisciplinarySectionDashboard() {
               Action Pending
             </button>
           </div>
-
-          <Button
-            variant="primary"
-            size="sm"
-            icon={<HiOutlineArrowUpTray className="w-4 h-4" />}
-            onClick={() => setIsBulkModalOpen(true)}
-            className="!bg-primary-600 hover:!bg-primary-700 text-white font-semibold shadow-xs"
-          >
-            Bulk Upload
-          </Button>
 
           <Button
             variant="secondary"
@@ -1140,127 +936,7 @@ export default function DisciplinarySectionDashboard() {
         </Modal>
       )}
 
-      {/* ─── Bulk Upload Modal ─── */}
-      {isBulkModalOpen && (
-        <Modal
-          isOpen={isBulkModalOpen}
-          onClose={() => {
-            setIsBulkModalOpen(false);
-            setUploadedFileName('');
-            setParsedRows([]);
-          }}
-          title="Bulk Upload Disciplinary Clearance Records"
-          size="lg"
-        >
-          <div className="space-y-4">
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1">
-              <p className="font-semibold text-ink-primary">Upload Instructions:</p>
-              <p className="text-ink-muted">
-                Upload a CSV or Excel file containing student records. Format: <code className="font-mono text-slate-800 font-bold">student_id, full_name, email, department, semester, section</code>
-              </p>
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={handleDownloadSample}
-                  className="text-xs font-semibold text-brand hover:underline inline-flex items-center gap-1"
-                >
-                  Download Sample CSV Template
-                </button>
-              </div>
-            </div>
 
-            {/* Drag & Drop File Input */}
-            <div className="border-2 border-dashed border-border-subtle hover:border-brand/50 rounded-xl p-6 text-center transition-colors bg-canvas cursor-pointer">
-              <input
-                type="file"
-                accept=".csv,text/csv,.xlsx,.xls"
-                onChange={handleFileUpload}
-                className="hidden"
-                id="disciplinary-bulk-upload-input"
-              />
-              <label htmlFor="disciplinary-bulk-upload-input" className="cursor-pointer flex flex-col items-center gap-2">
-                <div className="w-10 h-10 rounded-full bg-brand-50 border border-brand/20 flex items-center justify-center text-brand">
-                  <HiOutlineArrowUpTray className="w-5 h-5" />
-                </div>
-                <span className="text-sm font-semibold text-ink-primary">
-                  {uploadedFileName || 'Click to choose or drag & drop CSV/Excel file'}
-                </span>
-                <span className="text-xs text-ink-muted">Supports .csv, .xlsx, .xls files up to 5MB</span>
-              </label>
-            </div>
-
-            {/* Parsed Rows Preview Table */}
-            {parsedRows.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold text-ink-primary">
-                    Preview ({parsedRows.length} student records found):
-                  </span>
-                  <span className="font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    Ready to process
-                  </span>
-                </div>
-                <div className="overflow-x-auto border border-border-subtle rounded-lg max-h-48 custom-scrollbar">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-100 text-ink-muted border-b border-border-subtle sticky top-0 font-semibold">
-                      <tr>
-                        <th className="p-2">#</th>
-                        <th className="p-2">Student ID</th>
-                        <th className="p-2">Full Name</th>
-                        <th className="p-2">Email</th>
-                        <th className="p-2">Branch</th>
-                        <th className="p-2">Semester</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border-subtle">
-                      {parsedRows.slice(0, 10).map((row, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50">
-                          <td className="p-2 text-ink-muted font-mono">{idx + 1}</td>
-                          <td className="p-2 font-mono font-medium text-ink-primary">{row.student_id || '—'}</td>
-                          <td className="p-2 font-medium text-ink-primary">{row.full_name || '—'}</td>
-                          <td className="p-2 text-ink-muted">{row.email || '—'}</td>
-                          <td className="p-2">{row.department || '—'}</td>
-                          <td className="p-2">{row.semester || '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {parsedRows.length > 10 && (
-                    <p className="text-[11px] text-ink-muted text-center py-1 bg-slate-50 border-t border-border-subtle font-medium">
-                      + {parsedRows.length - 10} more rows
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Modal Actions */}
-            <div className="flex justify-end items-center gap-3 pt-3 border-t border-border-subtle">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setIsBulkModalOpen(false);
-                  setUploadedFileName('');
-                  setParsedRows([]);
-                }}
-                disabled={bulkLoading}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                loading={bulkLoading}
-                disabled={parsedRows.length === 0}
-                onClick={handleConfirmUpload}
-              >
-                Confirm & Upload Students
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </DashboardLayout>
   );
 }
