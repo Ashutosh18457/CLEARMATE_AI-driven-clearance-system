@@ -2,17 +2,22 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 /**
- * Downloads a high-resolution A4 PDF of the clearance report.
+ * Downloads a high-resolution A4 PDF of the official clearance report.
+ * Blocks download if clearance is not 100% approved.
  * @param {HTMLElement|string} elementOrId - The DOM element or its ID to capture
  * @param {string} fileName - Destination filename
+ * @param {boolean} isCleared - Approval flag
  */
-export async function downloadClearancePdf(elementOrId, fileName = 'Clearance_Report.pdf') {
+export async function downloadClearancePdf(elementOrId, fileName = 'Clearance_Report.pdf', isCleared = true) {
+  if (isCleared === false) {
+    throw new Error('Clearance is incomplete. All institutional sections and faculty approvals must be cleared before downloading the official certificate.');
+  }
+
   const element = typeof elementOrId === 'string' ? document.getElementById(elementOrId) : elementOrId;
   if (!element) {
     throw new Error('Report element not found for PDF export');
   }
 
-  // Create temporary container styling if needed
   const canvas = await html2canvas(element, {
     scale: 2.5, // High resolution for crystal clear text and stamps
     useCORS: true,
@@ -34,14 +39,12 @@ export async function downloadClearancePdf(elementOrId, fileName = 'Clearance_Re
   const imgWidth = pdfWidth - 16; // 8mm margin on left and right
   const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-  // Center horizontally with margin
   const posX = 8;
   const posY = 8;
 
   if (imgHeight <= pdfHeight - 16) {
     pdf.addImage(imgData, 'PNG', posX, posY, imgWidth, imgHeight, undefined, 'FAST');
   } else {
-    // Multi-page handling if content exceeds one A4 page
     let heightLeft = imgHeight;
     let position = posY;
 
@@ -61,8 +64,20 @@ export async function downloadClearancePdf(elementOrId, fileName = 'Clearance_Re
 
 /**
  * Generates an official university print window for immediate physical printing or browser PDF saving.
+ * Enforces approval verification.
  */
 export function printClearanceReport(data) {
+  if (!data) return;
+
+  const allSectionsCleared = (data.sections || []).length > 0 && (data.sections || []).every((s) => s.status?.toLowerCase() === 'approved');
+  const allItemsCleared = (data.items || []).length > 0 && (data.items || []).every((i) => i.status?.toLowerCase() === 'approved');
+  const isApproved = (data.status || '').toUpperCase() === 'FINAL APPROVED' || (allSectionsCleared && allItemsCleared);
+
+  if (!isApproved) {
+    alert('Clearance Incomplete!\n\nThe official university clearance certificate can ONLY be generated after all Institutional Sections, Faculty Coursework, Class Incharge, and HOD approvals are cleared.');
+    return;
+  }
+
   const printWindow = window.open('', '_blank');
   if (!printWindow) return;
 
@@ -72,8 +87,8 @@ export function printClearanceReport(data) {
       <td style="font-weight: 600; color: #0f172a;">${s.sectionName || s.department}</td>
       <td style="color: #475569;">${s.remarks || 'No Dues / Verified'}</td>
       <td style="text-align: center; width: 140px;">
-        <span style="display: inline-block; padding: 2px 8px; font-size: 10px; font-weight: 700; border-radius: 9999px; background: ${s.status === 'Approved' || s.status === 'CLEARED' ? '#dcfce7; color: #15803d; border: 1px solid #86efac;' : '#fef3c7; color: #b45309; border: 1px solid #fde68a;'}">
-          ${s.status === 'Approved' || s.status === 'CLEARED' ? '✓ CLEARED' : 'PENDING'}
+        <span style="display: inline-block; padding: 2px 8px; font-size: 10px; font-weight: 700; border-radius: 9999px; background: #dcfce7; color: #15803d; border: 1px solid #86efac;">
+          ✓ CLEARED
         </span>
         <span style="display: block; font-size: 9px; color: #64748b; margin-top: 2px;">${s.reviewerName || 'Authority'}</span>
       </td>
@@ -90,8 +105,8 @@ export function printClearanceReport(data) {
       <td style="color: #334155; font-weight: 500;">${item.teacherName || 'Faculty'}</td>
       <td style="color: #475569;">${item.remarks || 'Assignments & Theory records cleared'}</td>
       <td style="text-align: center; width: 140px;">
-        <span style="display: inline-block; padding: 2px 8px; font-size: 10px; font-weight: 700; border-radius: 9999px; background: ${item.status === 'Approved' || item.status === 'CLEARED' ? '#dcfce7; color: #15803d; border: 1px solid #86efac;' : '#fef3c7; color: #b45309; border: 1px solid #fde68a;'}">
-          ${item.status === 'Approved' || item.status === 'CLEARED' ? '✓ CLEARED' : 'PENDING'}
+        <span style="display: inline-block; padding: 2px 8px; font-size: 10px; font-weight: 700; border-radius: 9999px; background: #dcfce7; color: #15803d; border: 1px solid #86efac;">
+          ✓ CLEARED
         </span>
         <span style="display: block; font-size: 9px; color: #64748b; margin-top: 2px;">${item.teacherName || 'Faculty'}</span>
       </td>

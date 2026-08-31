@@ -4,8 +4,9 @@ const { protect, restrictTo } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Public verification endpoint (no auth required — for QR code scans)
+// Public verification & preview endpoints
 router.get('/verify/:certificateNumber', certificateController.verifyCertificate);
+router.get('/preview', certificateController.getPreviewCertificate);
 
 // Student: Get my certificate data
 router.get('/my', protect, restrictTo('student', 'admin', 'super_admin'), certificateController.getMyCertificate);

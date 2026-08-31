@@ -38,6 +38,7 @@ router.use('/tasks', require('./task.routes'));
 router.use('/chatbot', require('./chatbot.routes'));
 router.use('/analytics', require('./analytics.routes'));
 router.use('/certificate', require('./certificate.routes'));
+router.use('/faculty-mappings', require('./facultyMapping.routes'));
 router.use('/risk', require('./risk.routes'));
 
 module.exports = router;

@@ -58,6 +58,7 @@ const Batches = lazy(() => import('./pages/admin/Batches'));
 const Users = lazy(() => import('./pages/admin/Users'));
 const ClearanceItems = lazy(() => import('./pages/admin/ClearanceItems'));
 const BulkSetup = lazy(() => import('./pages/admin/BulkSetup'));
+const FacultyMappingConfig = lazy(() => import('./pages/admin/FacultyMappingConfig'));
 
 // ─── Toaster Config ───
 const toasterConfig = {
@@ -367,6 +368,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
                 <BulkSetup />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/faculty-config"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
+                <FacultyMappingConfig />
               </ProtectedRoute>
             }
           />
