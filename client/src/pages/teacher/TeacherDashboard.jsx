@@ -16,6 +16,7 @@ import {
 } from 'react-icons/hi2';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import { useSocket } from '../../context/SocketContext';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Button from '../../components/common/Button';
 import Badge, { getStatusVariant } from '../../components/common/Badge';
@@ -49,6 +50,7 @@ function StatCard({ icon, label, value, subtext, color = 'brand' }) {
 }
 
 export default function TeacherDashboard() {
+  const { socket } = useSocket() || {};
   const navigate = useNavigate();
 
   const [pendingClearances, setPendingClearances] = useState([]);
@@ -76,6 +78,23 @@ export default function TeacherDashboard() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Real-time socket updates for faculty
+  useEffect(() => {
+    if (!socket) return;
+    const handleUpdate = () => {
+      fetchData();
+    };
+    socket.on('clearance_initiated', handleUpdate);
+    socket.on('submission_created', handleUpdate);
+    socket.on('new_notification', handleUpdate);
+
+    return () => {
+      socket.off('clearance_initiated', handleUpdate);
+      socket.off('submission_created', handleUpdate);
+      socket.off('new_notification', handleUpdate);
+    };
+  }, [socket, fetchData]);
 
   const totalItems = submissionItems.length;
   const pendingReviews = pendingClearances.length;

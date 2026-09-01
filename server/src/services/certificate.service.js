@@ -225,8 +225,10 @@ const certificateService = {
         subjectCode: sub.code || '',
         type: sub.type || 'theory',
         teacherName: sub.teacherName || 'Faculty In-charge',
-        status: (forceAllCleared || studentId === 'demo-student') ? 'Approved' : (clearanceRequest ? (sub.status || 'Approved') : 'Pending'),
-        remarks: (forceAllCleared || studentId === 'demo-student') ? (sub.remarks || 'Assignments & Theory records cleared') : (clearanceRequest ? (sub.remarks || 'Assignments & Theory records cleared') : 'Clearance not initiated'),
+        status: forceAllCleared ? 'Approved' : (sub.status === 'approved' ? 'Approved' : 'Pending'),
+        remarks: forceAllCleared
+          ? (sub.remarks || 'Assignments & Theory records cleared')
+          : (sub.status === 'approved' ? 'Coursework cleared' : (clearanceRequest ? 'Awaiting faculty evaluation' : 'Clearance not initiated')),
         isReRun: !!sub.isReRun,
       }));
     }
@@ -262,35 +264,37 @@ const certificateService = {
     }
 
     const defaultInstitutional = [
-      { srNo: 1, department: 'accounts', sectionName: 'Accounts', remarks: 'Fees verification & tuition dues', status: 'Approved', reviewerName: 'Accounts Section Head' },
-      { srNo: 2, department: 'bus', sectionName: 'Bus / Transport', remarks: 'Transport dues verification', status: 'Approved', reviewerName: 'Transport Section Head' },
-      { srNo: 3, department: 'library', sectionName: 'Library', remarks: 'Book returns and fine clearance', status: 'Approved', reviewerName: 'Library Section Head' },
-      { srNo: 4, department: 'disciplinary', sectionName: 'Disciplinary', remarks: 'Student conduct & disciplinary clearance', status: 'Approved', reviewerName: 'Disciplinary Section Head' },
+      { srNo: 1, department: 'accounts', sectionName: 'Accounts', remarks: 'Fees verification & tuition dues', status: 'Pending', reviewerName: 'Accounts Section Head' },
+      { srNo: 2, department: 'bus', sectionName: 'Bus / Transport', remarks: 'Transport dues verification', status: 'Pending', reviewerName: 'Transport Section Head' },
+      { srNo: 3, department: 'library', sectionName: 'Library', remarks: 'Book returns and fine clearance', status: 'Pending', reviewerName: 'Library Section Head' },
+      { srNo: 4, department: 'disciplinary', sectionName: 'Disciplinary', remarks: 'Student conduct & disciplinary clearance', status: 'Pending', reviewerName: 'Disciplinary Section Head' },
     ];
 
     const formattedSections = defaultInstitutional.map((sec, idx) => {
       const match = sectionClearances.find((sc) => sc.department === sec.department);
       if (match) {
         const isPaid = match.fees_status === 'paid' || match.bus_fees_status === 'paid' || match.status === 'approved';
+        const isRej = match.status === 'rejected';
         return {
           srNo: idx + 1,
           department: sec.department,
           sectionName: departmentMap[sec.department] || sec.sectionName,
-          status: forceAllCleared ? 'Approved' : (isPaid ? 'Approved' : (match.status === 'rejected' ? 'Rejected' : 'Pending')),
-          remarks: match.remark_text || match.remarks || (isPaid ? 'No Dues / Cleared' : 'Verification pending'),
+          status: forceAllCleared ? 'Approved' : (isPaid ? 'Approved' : (isRej ? 'Rejected' : 'Pending')),
+          remarks: match.remark_text || match.remarks || (isPaid ? 'No Dues / Cleared' : (isRej ? 'Clearance rejected' : 'Verification pending')),
           reviewerName: match.reviewerId?.name || sec.reviewerName,
           reviewedAt: match.reviewedAt || match.updatedAt,
         };
       }
       return {
         ...sec,
-        status: (forceAllCleared || studentId === 'demo-student') ? 'Approved' : (clearanceRequest ? 'Approved' : 'Pending'),
+        status: forceAllCleared ? 'Approved' : 'Pending',
+        remarks: forceAllCleared ? 'No Dues / Cleared' : (clearanceRequest ? 'Verification pending' : 'Clearance not initiated'),
       };
     });
 
     // 7. Calculate 3-stage Approval Workflow State
-    const allSectionsCleared = formattedSections.every((s) => s.status.toLowerCase() === 'approved');
-    const allSubjectsCleared = finalSubjectRows.every((s) => s.status.toLowerCase() === 'approved');
+    const allSectionsCleared = formattedSections.length > 0 && formattedSections.every((s) => s.status.toLowerCase() === 'approved');
+    const allSubjectsCleared = finalSubjectRows.length > 0 && finalSubjectRows.every((s) => s.status.toLowerCase() === 'approved');
 
     const clearanceRequestExists = !!clearanceRequest;
     let isFinalApproved = false;
@@ -298,24 +302,15 @@ const certificateService = {
     let approvalStage = 1;
     let pendingReasons = [];
 
-    if (studentId === 'demo-student' || forceAllCleared) {
-      isFinalApproved = allSectionsCleared && allSubjectsCleared;
-      approvalStage = isFinalApproved ? 3 : 1;
-      overallStatus = isFinalApproved ? 'FINAL APPROVED' : 'PENDING';
-      if (!allSectionsCleared) {
-        formattedSections
-          .filter((s) => s.status.toLowerCase() !== 'approved')
-          .forEach((s) => pendingReasons.push(`${s.sectionName} section clearance is pending`));
-      } else if (!allSubjectsCleared) {
-        finalSubjectRows
-          .filter((s) => s.status.toLowerCase() !== 'approved')
-          .forEach((s) => pendingReasons.push(`${s.title} (${s.teacherName}) approval is pending`));
-      }
+    if (forceAllCleared) {
+      isFinalApproved = true;
+      approvalStage = 3;
+      overallStatus = 'FINAL APPROVED';
     } else if (!clearanceRequestExists) {
       isFinalApproved = false;
       approvalStage = 1;
       overallStatus = 'NOT INITIATED';
-      pendingReasons.push('Clearance request not initiated by student');
+      pendingReasons.push('Clearance request has not been initiated by student yet');
     } else {
       const crStatus = clearanceRequest.status;
       if (crStatus === 'completed') {
@@ -335,7 +330,7 @@ const certificateService = {
           class_incharge: 2,
           hod: 3,
         };
-        approvalStage = stageMap[clearanceRequest.currentStage] || 1;
+        approvalStage = stageMap[clearanceRequest.currentStage] || (crStatus === 'ci_review' ? 2 : crStatus === 'hod_review' ? 3 : 1);
         
         if (crStatus === 'initiated' || crStatus === 'items_review') {
           overallStatus = 'STAGE 1: SUBJECT & LAB REVIEW';
@@ -346,7 +341,7 @@ const certificateService = {
         } else if (crStatus === 'hod_review') {
           overallStatus = 'STAGE 3: HOD FINAL REVIEW';
         } else {
-          overallStatus = 'PENDING';
+          overallStatus = 'IN PROGRESS';
         }
 
         // Gather reasons for pending sections and subjects
@@ -401,7 +396,7 @@ const certificateService = {
         status: isFinalApproved 
           ? 'Approved' 
           : (clearanceRequestExists 
-              ? (['hod_review', 'completed'].includes(clearanceRequest.status) ? 'Approved' : (clearanceRequest.status === 'ci_review' ? 'In Review' : 'Pending'))
+              ? (['hod_review', 'completed'].includes(clearanceRequest.status) || clearanceRequest.classInchargeApproval?.approvedBy ? 'Approved' : (clearanceRequest.status === 'ci_review' ? 'In Review' : 'Pending'))
               : 'Pending'),
       },
       hod: {
@@ -412,11 +407,11 @@ const certificateService = {
         department: resolvedHOD.department,
         status: isFinalApproved 
           ? 'Approved' 
-          : (clearanceRequestExists && clearanceRequest.status === 'hod_review' ? 'In Review' : 'Pending'),
+          : (clearanceRequestExists && (clearanceRequest.status === 'completed' || clearanceRequest.hodApproval?.approvedBy) ? 'Approved' : (clearanceRequest.status === 'hod_review' ? 'In Review' : 'Pending')),
       },
       workflow: {
         stage: approvalStage,
-        stageName: approvalStage === 1 ? 'Stage 1: Institutional Clearance' : approvalStage === 2 ? 'Stage 2: Faculty & Class Incharge Approval' : 'Stage 3: Final HOD Sign-Off',
+        stageName: approvalStage === 1 ? 'Stage 1: Institutional & Coursework Clearance' : approvalStage === 2 ? 'Stage 2: Class Incharge Approval' : 'Stage 3: Final HOD Sign-Off',
         allSectionsCleared,
         allSubjectsCleared,
         isFinalApproved,

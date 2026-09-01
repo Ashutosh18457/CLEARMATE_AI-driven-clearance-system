@@ -7,6 +7,7 @@ import {
 } from 'react-icons/hi2';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import { useSocket } from '../../context/SocketContext';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Table from '../../components/common/Table';
 import Button from '../../components/common/Button';
@@ -21,6 +22,7 @@ const STATUS_LABELS = {
 };
 
 export default function ItemClearances() {
+  const { socket } = useSocket() || {};
   const [clearances, setClearances] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -47,6 +49,21 @@ export default function ItemClearances() {
   useEffect(() => {
     fetchClearances();
   }, [fetchClearances]);
+
+  // Real-time socket listener
+  useEffect(() => {
+    if (!socket) return;
+    const handleUpdate = () => {
+      fetchClearances();
+    };
+    socket.on('clearance_initiated', handleUpdate);
+    socket.on('new_notification', handleUpdate);
+
+    return () => {
+      socket.off('clearance_initiated', handleUpdate);
+      socket.off('new_notification', handleUpdate);
+    };
+  }, [socket, fetchClearances]);
 
   const openReviewModal = (type, item) => {
     setReviewModal({ open: true, type, item });

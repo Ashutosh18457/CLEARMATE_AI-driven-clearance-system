@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useSocket } from '../../context/SocketContext';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import DashboardLayout from '../../components/layout/DashboardLayout';
@@ -8,14 +9,25 @@ import Skeleton from '../../components/common/Skeleton';
 
 export default function StudentClearanceReport() {
   const { user } = useAuth();
+  const { socket } = useSocket() || {};
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Dynamic filter state initialized with logged-in user
+  const semNum =
+    user?.currentSemester?.semNumber ||
+    user?.currentSemester?.number ||
+    (typeof user?.currentSemester === 'number' ? user.currentSemester : parseInt(user?.currentSemester) || 5);
+
+  const semId =
+    user?.currentSemester?._id ||
+    (typeof user?.currentSemester === 'string' && user.currentSemester.length === 24 ? user.currentSemester : undefined);
+
+  // Dynamic filter state initialized with logged-in student's real profile
   const [filters, setFilters] = useState({
     branch: user?.programId?.code || 'CSE',
-    semester: user?.currentSemester || 6,
-    section: user?.section || 'A',
+    semester: semNum,
+    semesterId: semId,
+    section: user?.section ? user.section.replace(/^Sec(tion)?\s*/i, '').trim() : 'A',
     includeReRun: false,
     forceAllCleared: false,
     name: user?.name || '',
@@ -24,10 +36,20 @@ export default function StudentClearanceReport() {
 
   useEffect(() => {
     if (user) {
+      const currentSemNum =
+        user.currentSemester?.semNumber ||
+        user.currentSemester?.number ||
+        (typeof user.currentSemester === 'number' ? user.currentSemester : parseInt(user.currentSemester) || 5);
+
+      const currentSemId =
+        user.currentSemester?._id ||
+        (typeof user.currentSemester === 'string' && user.currentSemester.length === 24 ? user.currentSemester : undefined);
+
       const updated = {
         branch: user.programId?.code || 'CSE',
-        semester: user.currentSemester || 6,
-        section: user.section || 'A',
+        semester: currentSemNum,
+        semesterId: currentSemId,
+        section: user.section ? user.section.replace(/^Sec(tion)?\s*/i, '').trim() : 'A',
         includeReRun: false,
         forceAllCleared: false,
         name: user.name || '',
@@ -47,6 +69,7 @@ export default function StudentClearanceReport() {
           params: {
             branch: active.branch,
             semester: active.semester,
+            semesterId: active.semesterId,
             section: active.section,
             includeReRun: active.includeReRun,
             forceAllCleared: active.forceAllCleared,
@@ -116,7 +139,7 @@ export default function StudentClearanceReport() {
           subjectCode: s.code,
           teacherName: s.teacherName,
           remarks: s.remarks,
-          status: isCleared ? 'Approved' : (idx === 0 ? 'Approved' : (idx === 1 ? 'Approved' : 'Pending')),
+          status: isCleared ? 'Approved' : 'Pending',
           isReRun: false,
         }));
 
@@ -133,15 +156,15 @@ export default function StudentClearanceReport() {
         }
 
         const sectionsList = [
-          { srNo: 1, sectionName: 'Accounts', department: 'accounts', remarks: 'Tuition fees & dues clearance', status: isCleared ? 'Approved' : 'Approved', reviewerName: 'Accounts Section Head' },
-          { srNo: 2, sectionName: 'Bus / Transport', department: 'bus', remarks: 'Transport dues verification', status: isCleared ? 'Approved' : 'Approved', reviewerName: 'Transport Section Head' },
+          { srNo: 1, sectionName: 'Accounts', department: 'accounts', remarks: 'Tuition fees & dues clearance', status: isCleared ? 'Approved' : 'Pending', reviewerName: 'Accounts Section Head' },
+          { srNo: 2, sectionName: 'Bus / Transport', department: 'bus', remarks: 'Transport dues verification', status: isCleared ? 'Approved' : 'Pending', reviewerName: 'Transport Section Head' },
           { srNo: 3, sectionName: 'Library', department: 'library', remarks: 'Book returns and fine clearance', status: isCleared ? 'Approved' : 'Pending', reviewerName: 'Library Section Head' },
-          { srNo: 4, sectionName: 'Disciplinary', department: 'disciplinary', remarks: 'Student conduct & disciplinary clearance', status: isCleared ? 'Approved' : 'Approved', reviewerName: 'Disciplinary Section Head' },
+          { srNo: 4, sectionName: 'Disciplinary', department: 'disciplinary', remarks: 'Student conduct & disciplinary clearance', status: isCleared ? 'Approved' : 'Pending', reviewerName: 'Disciplinary Section Head' },
         ];
 
         setReportData({
           student: {
-            name: active.name || user?.name || 'Rohan Iyer',
+            name: active.name || user?.name || 'Student',
             enrollmentNo: active.rollNo || user?.enrollmentNo || 'EN2024CSE002',
             rollNo: active.rollNo || user?.enrollmentNo || 'EN2024CSE002',
             currentSemester: sem,
@@ -173,7 +196,7 @@ export default function StudentClearanceReport() {
             department: `Department of ${branchCode}`,
             status: isCleared ? 'Approved' : 'Pending',
           },
-          status: isCleared ? 'FINAL APPROVED' : 'ACTION REQUIRED / PENDING',
+          status: isCleared ? 'FINAL APPROVED' : 'PENDING',
           certificateNumber: `CM-2026-${(active.rollNo || 'CSE002').slice(-6)}`,
           issuedAt: new Date().toISOString(),
         });
@@ -187,6 +210,23 @@ export default function StudentClearanceReport() {
   useEffect(() => {
     fetchReport();
   }, [fetchReport]);
+
+  // Real-time socket event listener for live synchronization
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleClearanceUpdate = () => {
+      fetchReport();
+    };
+
+    socket.on('clearance_updated', handleClearanceUpdate);
+    socket.on('new_notification', handleClearanceUpdate);
+
+    return () => {
+      socket.off('clearance_updated', handleClearanceUpdate);
+      socket.off('new_notification', handleClearanceUpdate);
+    };
+  }, [socket, fetchReport]);
 
   const handleDynamicFilterChange = (newFilters) => {
     setFilters(newFilters);

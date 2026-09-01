@@ -119,7 +119,9 @@ export default function ClearanceReportDashboardView({
   // Determine Approval status
   const allSectionsCleared = sections.length > 0 && sections.every((s) => s.status?.toLowerCase() === 'approved');
   const allItemsCleared = items.length > 0 && items.every((i) => i.status?.toLowerCase() === 'approved');
-  const isFinalApproved = (status || '').toUpperCase() === 'FINAL APPROVED' || (allSectionsCleared && allItemsCleared);
+  const isCiCleared = (status || '').toUpperCase() === 'FINAL APPROVED' || classIncharge.status?.toLowerCase() === 'approved';
+  const isHodCleared = (status || '').toUpperCase() === 'FINAL APPROVED' || hod.status?.toLowerCase() === 'approved';
+  const isFinalApproved = (status || '').toUpperCase() === 'FINAL APPROVED' || (allSectionsCleared && allItemsCleared && isCiCleared && isHodCleared);
 
   // Compute pending items if any
   const pendingSections = sections.filter((s) => s.status?.toLowerCase() !== 'approved');
@@ -574,7 +576,7 @@ export default function ClearanceReportDashboardView({
           {/* Card 1: Class In-Charge */}
           <div
             className={`border rounded-2xl p-5 flex flex-col justify-between ${
-              allItemsCleared
+              isCiCleared
                 ? 'border-emerald-300 bg-[#F0FDF4]/50'
                 : 'border-dashed border-amber-300 bg-amber-50/30'
             }`}
@@ -585,7 +587,7 @@ export default function ClearanceReportDashboardView({
               </div>
               <div>
                 <div className="text-xs font-black uppercase tracking-wide text-[#15803D]">
-                  {allItemsCleared ? '✓ STAGE 2: CLASS IN-CHARGE CLEARED' : 'PENDING STAGE 2 APPROVAL'}
+                  {isCiCleared ? '✓ STAGE 2: CLASS IN-CHARGE CLEARED' : 'PENDING STAGE 2 APPROVAL'}
                 </div>
                 <div className="text-xs text-[#64748B]">
                   {classIncharge.designation || `Class Incharge (Sec ${activeSection})`}
