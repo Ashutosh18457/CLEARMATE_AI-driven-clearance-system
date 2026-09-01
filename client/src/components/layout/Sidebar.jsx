@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import logoIcon from '../../assets/logo_icon.png';
+import logoIcon from '../../assets/logo.png';
 import { ROLES, ROLE_LABELS } from '../../utils/constants';
 import {
   HiOutlineHome,

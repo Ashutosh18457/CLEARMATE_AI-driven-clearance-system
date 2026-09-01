@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { HiOutlineMagnifyingGlass, HiOutlineCheckCircle, HiOutlineXCircle, HiOutlineClock, HiOutlineExclamationCircle } from 'react-icons/hi2';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
@@ -158,7 +158,7 @@ export default function StudentClearanceLookup() {
                   {displayedStudents.map((s, idx) => (
                     <tr key={s.enrollmentNo || idx} className="hover:bg-canvas transition-colors">
                       <td className="px-4 py-3 text-xs text-ink-muted">{idx + 1}</td>
-                      <td className="px-4 py-3 font-mono font-semibold text-ink-secondary text-sm">{s.enrollmentNo || '—'}</td>
+                      <td className="px-4 py-3 font-mono font-semibold text-ink-secondary text-sm">{s.enrollmentNo || '�'}</td>
                       <td className="px-4 py-3 text-ink-primary font-medium">{s.name}</td>
                       <td className="px-4 py-3 text-right">
                         <ClearanceBadge label={s.label} />

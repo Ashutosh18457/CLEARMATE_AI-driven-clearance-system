@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import logoIcon from '../assets/logo_icon.png';
+import logoIcon from '../assets/logo.png';
 import {
   HiOutlineClipboardDocumentCheck,
   HiOutlineShieldCheck,

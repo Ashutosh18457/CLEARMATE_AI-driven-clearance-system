@@ -7,7 +7,7 @@ import {
   HiOutlineShieldCheck,
 } from 'react-icons/hi2';
 import { useAuth } from '../context/AuthContext';
-import logoIcon from '../assets/logo_icon.png';
+import logoIcon from '../assets/logo.png';
 import { ROLE_DASHBOARD_ROUTES } from '../utils/constants';
 import Button from '../components/common/Button';
 

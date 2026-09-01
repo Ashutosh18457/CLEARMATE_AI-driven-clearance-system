@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Table from '../../components/common/Table';
 import Badge from '../../components/common/Badge';
@@ -671,7 +671,7 @@ export default function AccountSectionDashboard() {
       label: 'Last Updated',
       render: (val) => (
         <span className="text-xs text-ink-muted">
-          {val ? new Date(val).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'â€”'}
+          {val ? new Date(val).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
         </span>
       ),
     },
@@ -692,7 +692,7 @@ export default function AccountSectionDashboard() {
   ];
 
   return (
-    <DashboardLayout title="Account Section â€” Fee Clearance">
+    <DashboardLayout title="Account Section — Fee Clearance">
       {/* Metrics Banner */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-surface border border-border-subtle p-5 rounded-xl shadow-xs flex items-center justify-between">
@@ -1071,7 +1071,7 @@ export default function AccountSectionDashboard() {
                                 dateStyle: 'short',
                                 timeStyle: 'short',
                               })
-                            : 'â€”'}
+                            : '—'}
                         </span>
                       </div>
                     ))}

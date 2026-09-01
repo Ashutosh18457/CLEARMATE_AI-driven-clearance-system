@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Table from '../../components/common/Table';
 import Button from '../../components/common/Button';
@@ -714,7 +714,7 @@ export default function DisciplinarySectionDashboard() {
       key: 'lastUpdated',
       label: 'LAST UPDATED',
       render: (_, row) => {
-        if (!row.updated_at) return <span className="text-sm text-ink-muted">â€”</span>;
+        if (!row.updated_at) return <span className="text-sm text-ink-muted">—</span>;
         const dateObj = new Date(row.updated_at);
         return (
           <span className="text-xs text-ink-secondary font-tabular">
@@ -744,12 +744,12 @@ export default function DisciplinarySectionDashboard() {
   ];
 
   return (
-    <DashboardLayout title="Disciplinary Section â€” Conduct Clearance">
-      {/* â”€â”€â”€ Header bar / User Info â”€â”€â”€ */}
+    <DashboardLayout title="Disciplinary Section — Conduct Clearance">
+      {/* ─── Header bar / User Info ─── */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border-subtle pb-4">
         <div>
           <h1 className="text-xl font-bold text-ink-primary font-display tracking-tight">
-            Disciplinary Section â€” Conduct Clearance
+            Disciplinary Section — Conduct Clearance
           </h1>
           <p className="text-xs text-ink-secondary mt-0.5">
             Manage student conduct records, disciplinary fines, and clearance approvals.
@@ -766,7 +766,7 @@ export default function DisciplinarySectionDashboard() {
         </div>
       </div>
 
-      {/* â”€â”€â”€ Top 3 Stat Cards â”€â”€â”€ */}
+      {/* ─── Top 3 Stat Cards ─── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Card 1: Total Students */}
         <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-xs flex items-center justify-between">
@@ -775,7 +775,7 @@ export default function DisciplinarySectionDashboard() {
               TOTAL STUDENTS
             </p>
             <p className="text-3xl font-extrabold text-ink-primary font-tabular">
-              {loading ? 'â€”' : totalStudents}
+              {loading ? '—' : totalStudents}
             </p>
           </div>
           <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600">
@@ -790,7 +790,7 @@ export default function DisciplinarySectionDashboard() {
               CONDUCT CLEARED
             </p>
             <p className="text-3xl font-extrabold text-emerald-600 font-tabular">
-              {loading ? 'â€”' : clearedCount}
+              {loading ? '—' : clearedCount}
             </p>
           </div>
           <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
@@ -805,7 +805,7 @@ export default function DisciplinarySectionDashboard() {
               ACTION PENDING
             </p>
             <p className="text-3xl font-extrabold text-amber-600 font-tabular">
-              {loading ? 'â€”' : pendingCount}
+              {loading ? '—' : pendingCount}
             </p>
           </div>
           <div className="w-10 h-10 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
@@ -814,7 +814,7 @@ export default function DisciplinarySectionDashboard() {
         </div>
       </div>
 
-      {/* â”€â”€â”€ Branch & Semester Filter Card â”€â”€â”€ */}
+      {/* ─── Branch & Semester Filter Card ─── */}
       <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-xs mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-border-subtle">
           <div>
@@ -879,7 +879,7 @@ export default function DisciplinarySectionDashboard() {
         </div>
       </div>
 
-      {/* â”€â”€â”€ Search & Status Filter Bar â”€â”€â”€ */}
+      {/* ─── Search & Status Filter Bar ─── */}
       <div className="bg-surface border border-border-subtle rounded-xl p-4 shadow-xs mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Left: Search input */}
         <div className="relative w-full md:w-80">
@@ -970,7 +970,7 @@ export default function DisciplinarySectionDashboard() {
         </div>
       )}
 
-      {/* â”€â”€â”€ Main Table Container â”€â”€â”€ */}
+      {/* ─── Main Table Container ─── */}
       <div className="bg-surface border border-border-subtle rounded-xl shadow-xs overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-4">
@@ -1004,12 +1004,12 @@ export default function DisciplinarySectionDashboard() {
         )}
       </div>
 
-      {/* â”€â”€â”€ Single Student Update Modal â”€â”€â”€ */}
+      {/* ─── Single Student Update Modal ─── */}
       {isModalOpen && selectedStudent && (
         <Modal
           isOpen={isModalOpen}
           onClose={handleCloseModal}
-          title={`Manage Disciplinary Status â€” ${selectedStudent.student.name}`}
+          title={`Manage Disciplinary Status — ${selectedStudent.student.name}`}
           size="md"
         >
           {modalLoading ? (

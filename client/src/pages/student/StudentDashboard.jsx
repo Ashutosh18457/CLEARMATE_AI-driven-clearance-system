@@ -34,7 +34,7 @@ import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import Skeleton from '../../components/common/Skeleton';
 import ClearanceReportDashboardView from '../../components/clearance/ClearanceReportDashboardView';
-import logoIcon from '../../assets/logo_icon.png';
+import logoIcon from '../../assets/logo.png';
 
 function StatCard({ icon, label, value, subtext, color = 'brand' }) {
   const colorMap = {
