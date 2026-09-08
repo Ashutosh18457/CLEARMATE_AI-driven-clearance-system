@@ -25,14 +25,14 @@ export function SocketProvider({ children }) {
     // Determine backend socket URL
     const backendUrl =
       import.meta.env.VITE_API_URL?.replace('/api', '') ||
-      'http://localhost:5000';
+      (window.location.port === '5173' ? '' : 'http://localhost:5000');
 
     const newSocket = io(backendUrl, {
       auth: { token },
-      transports: ['polling', 'websocket'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
-      reconnectionDelay: 3000,
+      reconnectionDelay: 2000,
       timeout: 10000,
     });
 
