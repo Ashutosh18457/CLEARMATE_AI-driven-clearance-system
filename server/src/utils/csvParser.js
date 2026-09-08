@@ -122,6 +122,27 @@ function normalizeHeaderKey(header) {
   if (['section', 'sec'].includes(clean)) {
     return 'section';
   }
+  if (['batch', 'lab_batch', 'practical_batch'].includes(clean)) {
+    return 'batch';
+  }
+  if (['elective', 'electives', 'elective_choice', 'subject_choice', 'selected_electives'].includes(clean)) {
+    return 'electives';
+  }
+  // Roman numeral map for PE-I, PE-II, P-I, P-II, etc.
+  const romanMap = { i: 1, ii: 2, iii: 3, iv: 4, v: 5 };
+
+  // Match numeric digits: pe1, pe2, p1, p2, elective_1, elective_2, oe1, etc.
+  const numMatch = clean.match(/^(?:elective|program_?elective|open_?elective|pe|oe|p)[_]?(\d+)$/);
+  if (numMatch) {
+    return `elective_${numMatch[1]}`;
+  }
+
+  // Match Roman numerals: p_ii, pii, pe_ii, peii, pe_i, pei, elective_ii, etc.
+  const romanMatch = clean.match(/^(?:elective|program_?elective|open_?elective|pe|oe|p)[_]?(i|ii|iii|iv|v)$/);
+  if (romanMatch) {
+    return `elective_${romanMap[romanMatch[1]]}`;
+  }
+
   return clean;
 }
 

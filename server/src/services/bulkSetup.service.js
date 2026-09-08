@@ -167,6 +167,21 @@ const bulkSetupService = {
       teacherEmailMap[email.toLowerCase()] = teacher._id;
     }
 
+    if (Object.keys(teacherEmailMap).length === 0) {
+      let fallbackTeacher = await User.findOne({ role: 'teacher' });
+      if (!fallbackTeacher) {
+        fallbackTeacher = await User.create({
+          name: 'Prof. Faculty Incharge',
+          email: `faculty.${(program.code || 'dept').toLowerCase()}@sbjit.edu.in`,
+          password: 'Pass@Teacher123!',
+          role: 'teacher',
+          department: program.department || 'Academic Department',
+          isActive: true,
+        });
+      }
+      teacherEmailMap['default'] = fallbackTeacher._id;
+    }
+
     // Helper to find a Batch document by flexible name matching
     const findBatchDoc = (name) => {
       if (!name) return null;
@@ -306,11 +321,27 @@ const bulkSetupService = {
             updateFields.batchId = batchMap[row.batch.trim()]._id;
           }
 
-          if (row.electiveChoice) {
-            const electiveId = electiveOptionMap[row.electiveChoice.toLowerCase().trim()];
-            if (electiveId) {
-              updateFields.selectedElective = electiveId;
+          // Resolve all elective choices
+          const electiveNames = [];
+          if (row.electiveChoice) electiveNames.push(row.electiveChoice.trim());
+          Object.keys(row).forEach((k) => {
+            const cleanKey = k.toLowerCase().replace(/[^a-z0-9_]/g, '');
+            if ((cleanKey.startsWith('elective') || cleanKey.startsWith('pe') || cleanKey.startsWith('p') || cleanKey.startsWith('oe')) && k !== 'electiveChoice' && row[k]) {
+              electiveNames.push(String(row[k]).trim());
             }
+          });
+
+          const matchedElectiveIds = [];
+          for (const elName of electiveNames) {
+            const optId = electiveOptionMap[elName.toLowerCase().trim()];
+            if (optId && !matchedElectiveIds.some((id) => id.toString() === optId.toString())) {
+              matchedElectiveIds.push(optId);
+            }
+          }
+
+          if (matchedElectiveIds.length > 0) {
+            updateFields.selectedElectives = matchedElectiveIds;
+            updateFields.selectedElective = matchedElectiveIds[0];
           }
 
           student = await User.findByIdAndUpdate(existingUser._id, updateFields, { new: true });
@@ -350,16 +381,27 @@ const bulkSetupService = {
             studentData.batchId = batchMap[row.batch.trim()]._id;
           }
 
-          // Assign elective
-          if (row.electiveChoice) {
-            const electiveId = electiveOptionMap[row.electiveChoice.toLowerCase().trim()];
-            if (electiveId) {
-              studentData.selectedElective = electiveId;
-            } else {
-              result.warnings.push(
-                `Row ${rowIndex} (${row.name}): elective "${row.electiveChoice}" not found in created items`
-              );
+          // Assign electives
+          const electiveNames = [];
+          if (row.electiveChoice) electiveNames.push(row.electiveChoice.trim());
+          Object.keys(row).forEach((k) => {
+            const cleanKey = k.toLowerCase().replace(/[^a-z0-9_]/g, '');
+            if ((cleanKey.startsWith('elective') || cleanKey.startsWith('pe') || cleanKey.startsWith('p') || cleanKey.startsWith('oe')) && k !== 'electiveChoice' && row[k]) {
+              electiveNames.push(String(row[k]).trim());
             }
+          });
+
+          const matchedElectiveIds = [];
+          for (const elName of electiveNames) {
+            const optId = electiveOptionMap[elName.toLowerCase().trim()];
+            if (optId && !matchedElectiveIds.some((id) => id.toString() === optId.toString())) {
+              matchedElectiveIds.push(optId);
+            }
+          }
+
+          if (matchedElectiveIds.length > 0) {
+            studentData.selectedElectives = matchedElectiveIds;
+            studentData.selectedElective = matchedElectiveIds[0];
           }
 
           student = await User.create(studentData);
@@ -525,13 +567,33 @@ const bulkSetupService = {
           ],
           [
             3,
-            'Open Elective II',
+            'Professional Elective I',
             'elective',
-            'OEC201',
+            'PE503',
             '',
             '',
-            'OEC-II',
+            'PE-I',
+            'Machine Learning:prof.ml@college.edu,Cloud Computing:prof.cc@college.edu',
+          ],
+          [
+            4,
+            'Professional Elective II',
+            'elective',
+            'PE504',
+            '',
+            '',
+            'PE-II',
             'Deep Learning:prof.dl@college.edu,NLP:prof.nlp@college.edu',
+          ],
+          [
+            5,
+            'Professional Elective III',
+            'elective',
+            'PE505',
+            '',
+            '',
+            'PE-III',
+            'Cyber Security:prof.cs@college.edu,Internet of Things:prof.iot@college.edu',
           ],
         ],
       },
@@ -542,11 +604,13 @@ const bulkSetupService = {
           'email',
           'section',
           'batch',
-          'elective_choice',
+          'elective_1',
+          'elective_2',
+          'elective_3',
         ],
         sampleRows: [
-          ['2024AIDS001', 'Rahul Sharma', 'rahul@college.edu', 'A', 'Batch A', 'Deep Learning'],
-          ['2024AIDS002', 'Priya Patel', 'priya@college.edu', 'A', 'Batch B', 'NLP'],
+          ['2024AIDS001', 'Rahul Sharma', 'rahul@college.edu', 'A', 'Batch A', 'Machine Learning', 'Deep Learning', 'Cyber Security'],
+          ['2024AIDS002', 'Priya Patel', 'priya@college.edu', 'A', 'Batch B', 'Cloud Computing', 'NLP', 'Internet of Things'],
         ],
       },
     };
@@ -646,14 +710,23 @@ const bulkSetupService = {
     }).filter((item) => item.title !== '');
 
     // Normalize students
-    const normalizedStudents = (students || []).map((s) => ({
-      enrollmentNo: String(getVal(s, 'enrollmentNo', 'enrollment_no', 'roll_no', 'rollNo', 'enrolment_no', 'student_id') || '').trim(),
-      name: String(getVal(s, 'name', 'full_name', 'student_name', 'studentName') || '').trim(),
-      email: String(getVal(s, 'email', 'student_email', 'mail') || '').toLowerCase().trim(),
-      section: String(getVal(s, 'section', 'sec') || 'A').trim(),
-      batch: String(getVal(s, 'batch', 'practical_batch', 'lab_batch') || '').trim(),
-      electiveChoice: String(getVal(s, 'electiveChoice', 'elective_choice', 'elective', 'subject_choice') || '').trim(),
-    })).filter((s) => s.email !== '');
+    const normalizedStudents = (students || []).map((s) => {
+      const studentObj = {
+        enrollmentNo: String(getVal(s, 'enrollmentNo', 'enrollment_no', 'roll_no', 'rollNo', 'enrolment_no', 'student_id') || '').trim(),
+        name: String(getVal(s, 'name', 'full_name', 'student_name', 'studentName') || '').trim(),
+        email: String(getVal(s, 'email', 'student_email', 'mail') || '').toLowerCase().trim(),
+        section: String(getVal(s, 'section', 'sec') || 'A').trim(),
+        batch: String(getVal(s, 'batch', 'practical_batch', 'lab_batch') || '').trim(),
+        electiveChoice: String(getVal(s, 'electiveChoice', 'elective_choice', 'elective', 'subject_choice') || '').trim(),
+      };
+      Object.keys(s).forEach((k) => {
+        const cleanKey = k.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        if (cleanKey.startsWith('elective') || cleanKey.startsWith('pe') || cleanKey.startsWith('p') || cleanKey.startsWith('oe')) {
+          studentObj[k] = s[k];
+        }
+      });
+      return studentObj;
+    }).filter((s) => s.email !== '');
 
     return {
       semesterConfig: {

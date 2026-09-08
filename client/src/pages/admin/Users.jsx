@@ -11,6 +11,7 @@ import {
   HiOutlinePlusCircle,
   HiOutlinePencilSquare,
   HiOutlineArrowUpTray,
+  HiOutlineArrowDownTray,
   HiOutlineNoSymbol,
   HiOutlineUsers,
   HiOutlineUserGroup,
@@ -72,6 +73,7 @@ export default function Users() {
   const [previewRows, setPreviewRows] = useState([]);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkResults, setBulkResults] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   // Faculty / Class Incharge Student Assignment Modal
   const [ciModalOpen, setCiModalOpen] = useState(false);
@@ -278,7 +280,7 @@ export default function Users() {
       link.click();
       link.remove();
     } catch {
-      const csvStr = 'student_id,full_name,email,department,semester,section\nEN2024CSE001,Aarav Sharma,aarav.sharma@sbjain.edu.in,CSE,6,A\nEN2024CSE002,Ananya Patel,ananya.patel@sbjain.edu.in,CSE,6,A\nEN2024ECE001,Rohan Verma,rohan.verma@sbjain.edu.in,ECE,4,B\n';
+      const csvStr = 'student_id,full_name,email,department,semester,section,elective_1,elective_2,elective_3\nEN2024CSE001,Aarav Sharma,aarav.sharma@sbjain.edu.in,CSE,6,A,Cloud Computing,Natural Language Processing,Cyber Security\nEN2024CSE002,Ananya Patel,ananya.patel@sbjain.edu.in,CSE,6,A,Data Mining,Computer Vision,Internet of Things\nEN2024ECE001,Rohan Verma,rohan.verma@sbjain.edu.in,ECE,4,B,VLSI Design,Embedded Systems,Wireless Sensor Networks\n';
       const blob = new Blob([csvStr], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -287,6 +289,28 @@ export default function Users() {
       document.body.appendChild(link);
       link.click();
       link.remove();
+    }
+  };
+
+  const handleExportStudents = async () => {
+    setExporting(true);
+    try {
+      const params = {};
+      if (search.trim()) params.search = search.trim();
+      const res = await api.get('/admin/students/export', { params, responseType: 'blob' });
+      const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `clearmate_students_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('Students exported to Excel (CSV) successfully');
+    } catch (err) {
+      toast.error(err.message || 'Failed to export students');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -881,14 +905,26 @@ export default function Users() {
         {/* Dynamic Action Buttons */}
         <div className="flex items-center gap-2">
           {activeTab === 'student' && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => { setBulkResults(null); setCsvData(''); setBulkOpen(true); }}
-              icon={<HiOutlineArrowUpTray className="w-4 h-4" />}
-            >
-              Bulk Upload Students
-            </Button>
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleExportStudents}
+                loading={exporting}
+                icon={<HiOutlineArrowDownTray className="w-4 h-4" />}
+                title="Export students list to Excel-compatible CSV file"
+              >
+                Export to Excel
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => { setBulkResults(null); setCsvData(''); setBulkOpen(true); }}
+                icon={<HiOutlineArrowUpTray className="w-4 h-4" />}
+              >
+                Bulk Upload Students
+              </Button>
+            </>
           )}
           <Button
             variant="primary"
@@ -1155,20 +1191,27 @@ export default function Users() {
       >
         {!bulkResults ? (
           <div className="space-y-4">
-            <div className="flex items-center justify-between bg-canvas p-3 rounded-md border border-border-subtle">
-              <div>
-                <p className="text-xs font-semibold text-ink-primary">Expected Columns:</p>
-                <p className="text-[11px] font-mono text-ink-muted">
-                  student_id, full_name, email, department, semester, section
-                </p>
+            <div className="bg-canvas p-3 rounded-md border border-border-subtle space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-ink-primary">Required Columns:</p>
+                  <p className="text-[11px] font-mono text-ink-muted">
+                    student_id, full_name, email, department, semester, section
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDownloadTemplate}
+                  className="px-2.5 py-1 bg-surface hover:bg-surface-hover border border-border-subtle text-brand text-xs font-medium rounded transition-all flex items-center gap-1.5"
+                >
+                  <HiOutlineArrowDownTray className="w-3.5 h-3.5" />
+                  Download Sample CSV
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={handleDownloadTemplate}
-                className="px-2.5 py-1 bg-surface hover:bg-surface-hover border border-border-subtle text-brand text-xs font-medium rounded transition-all flex items-center gap-1.5"
-              >
-                Download Sample CSV
-              </button>
+              <div className="text-[11px] text-ink-muted border-t border-border-subtle/60 pt-1.5 flex items-center gap-1.5 flex-wrap">
+                <span className="font-semibold text-ink-secondary">Electives Support:</span>
+                <span>Supports any number of electives (1, 2, 3, etc.) using columns like <code className="bg-surface px-1 py-0.5 rounded text-ink-primary font-mono">P I</code>, <code className="bg-surface px-1 py-0.5 rounded text-ink-primary font-mono">P II</code>, <code className="bg-surface px-1 py-0.5 rounded text-ink-primary font-mono">P III</code> (or <code className="bg-surface px-1 py-0.5 rounded text-ink-primary font-mono">elective_1</code>, <code className="bg-surface px-1 py-0.5 rounded text-ink-primary font-mono">elective_2</code>, <code className="bg-surface px-1 py-0.5 rounded text-ink-primary font-mono">elective_3</code>).</span>
+              </div>
             </div>
 
             <div className="border-2 border-dashed border-border-subtle hover:border-brand/40 rounded-lg p-6 text-center transition-colors">

@@ -1,5 +1,10 @@
 const mongoose = require('mongoose');
+const dns = require('dns');
 const env = require('../config/env');
+
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (e) {}
 
 const User = require('../models/User');
 const Program = require('../models/Program');
@@ -13,6 +18,8 @@ const Submission = require('../models/Submission');
 const SubmissionItem = require('../models/SubmissionItem');
 const Notification = require('../models/Notification');
 const AuditLog = require('../models/AuditLog');
+const FacultyMapping = require('../models/FacultyMapping');
+const Task = require('../models/Task');
 
 async function cleanDatabase() {
   try {
@@ -20,7 +27,7 @@ async function cleanDatabase() {
     await mongoose.connect(env.mongoUri);
     console.log('✅ Connected to MongoDB successfully.');
 
-    console.log('🧹 Clearing all collections...');
+    console.log('🧹 Clearing all collections for clean production deployment...');
 
     const resClearanceRequests = await ClearanceRequest.deleteMany({});
     const resItemClearance = await ItemClearance.deleteMany({});
@@ -29,6 +36,8 @@ async function cleanDatabase() {
     const resSubmissionItems = await SubmissionItem.deleteMany({});
     const resNotifications = await Notification.deleteMany({});
     const resAuditLogs = await AuditLog.deleteMany({});
+    const resTasks = await Task.deleteMany({});
+    const resFacultyMappings = await FacultyMapping.deleteMany({});
     const resClearanceItems = await ClearanceItem.deleteMany({});
     const resBatches = await Batch.deleteMany({});
     const resSemesters = await Semester.deleteMany({});
@@ -41,6 +50,8 @@ async function cleanDatabase() {
     console.log(`🗑️  Deleted Semesters:          ${resSemesters.deletedCount}`);
     console.log(`🗑️  Deleted Batches:            ${resBatches.deletedCount}`);
     console.log(`🗑️  Deleted Clearance Items:    ${resClearanceItems.deletedCount}`);
+    console.log(`🗑️  Deleted Faculty Mappings:   ${resFacultyMappings.deletedCount}`);
+    console.log(`🗑️  Deleted Tasks:              ${resTasks.deletedCount}`);
     console.log(`🗑️  Deleted Clearance Requests: ${resClearanceRequests.deletedCount}`);
     console.log(`🗑️  Deleted Item Clearances:    ${resItemClearance.deletedCount}`);
     console.log(`🗑️  Deleted Section Clearances: ${resSectionClearance.deletedCount}`);
@@ -50,20 +61,28 @@ async function cleanDatabase() {
     console.log(`🗑️  Deleted Audit Logs:         ${resAuditLogs.deletedCount}`);
     console.log('--------------------------------------------------');
 
-    // Create fresh default admin
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@sbjit.edu.in';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'Password123!';
+    const shouldCreateAdmin = process.env.CREATE_ADMIN !== 'false';
+    if (shouldCreateAdmin) {
+      const adminName = process.env.ADMIN_NAME || 'Super Admin';
+      const adminEmail = process.env.ADMIN_EMAIL || 'admin@sbjit.edu.in';
+      const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123456';
 
-    const admin = await User.create({
-      name: 'System Administrator',
-      email: adminEmail,
-      password: adminPassword,
-      role: 'admin',
-    });
+      const admin = await User.create({
+        name: adminName,
+        email: adminEmail,
+        password: adminPassword,
+        role: 'super_admin',
+        isActive: true,
+      });
 
-    console.log('🎉 Database cleaned & fresh Admin account created:');
-    console.log(`👤 Email:    ${admin.email}`);
-    console.log(`🔑 Password: ${adminPassword}`);
+      console.log('🎉 Production Super Admin account created:');
+      console.log(`👤 Name:     ${admin.name}`);
+      console.log(`📧 Email:    ${admin.email}`);
+      console.log(`🔑 Password: ${adminPassword}`);
+      console.log(`🛡️ Role:     super_admin`);
+    } else {
+      console.log('✨ All collections wiped to 0 documents (no admin created).');
+    }
     console.log('--------------------------------------------------');
 
     await mongoose.disconnect();

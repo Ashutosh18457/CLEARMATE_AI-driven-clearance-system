@@ -56,6 +56,9 @@ if (typeof adminController.bulkUploadStudentsCsv === 'function') {
 if (typeof adminController.downloadSampleCsv === 'function') {
   router.get('/students/sample-csv', restrictTo('admin', 'super_admin', 'hod'), adminController.downloadSampleCsv);
 }
+if (typeof adminController.exportStudentsCsv === 'function') {
+  router.get('/students/export', restrictTo('admin', 'super_admin', 'hod', 'teacher', 'class_incharge'), adminController.exportStudentsCsv);
+}
 router.patch('/users/:id/deactivate', restrictTo('admin', 'super_admin'), validate(idParamSchema, 'params'), adminController.deactivateUser);
 router.delete('/users/:id', restrictTo('admin', 'super_admin'), validate(idParamSchema, 'params'), adminController.deactivateUser);
 

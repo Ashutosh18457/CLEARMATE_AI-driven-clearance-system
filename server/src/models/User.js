@@ -82,9 +82,13 @@ const userSchema = new mongoose.Schema(
       // Optional initially, assigned by admin later
     },
     selectedElective: {
-      type: mongoose.Schema.Types.ObjectId, // Will link to the sub-document ID in ClearanceItem
-      // Optional, selected by student during semester
+      type: mongoose.Schema.Types.ObjectId, // Legacy single elective link
     },
+    selectedElectives: [
+      {
+        type: mongoose.Schema.Types.ObjectId, // Links to sub-document IDs in ClearanceItem electiveOptions
+      },
+    ],
 
     // ----------------------------------------------------
     // SECTION HEAD-SPECIFIC FIELDS
