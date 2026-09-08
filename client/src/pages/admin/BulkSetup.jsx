@@ -539,34 +539,24 @@ export default function BulkSetup() {
 
   return (
     <DashboardLayout title="Bulk Semester Setup">
-      {/* Header Banner */}
-      <div className="mb-6 p-6 rounded-2xl bg-gradient-to-r from-brand-900 via-indigo-900 to-slate-900 text-white shadow-md">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold text-indigo-200 mb-2">
-              <HiOutlineSparkles className="w-3.5 h-3.5 text-amber-300" />
-              Admin Workload Reduction Engine
-            </div>
-            <h1 className="text-2xl font-black font-display tracking-wide">
-              1-Click Bulk Semester Setup
-            </h1>
-            <p className="text-sm text-slate-200/90 mt-1 max-w-2xl">
-              Initialize an entire semester in 30 seconds. Automatically provisions Academic Semesters, Student Batches, Clearance Items with faculty mappings, and Enrolled Student Rosters from a single structured file.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="!bg-white/10 hover:!bg-white/20 !text-white !border-white/20 text-xs"
-              icon={<HiOutlineDocumentArrowDown className="w-4 h-4 text-amber-300" />}
-              onClick={handleDownloadTemplate}
-            >
-              Download Excel Template (.xlsx)
-            </Button>
-          </div>
+      {/* Top Header & Actions Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-border-subtle">
+        <div>
+          <h1 className="text-xl font-bold text-ink-primary">Bulk Semester Setup</h1>
+          <p className="text-xs text-ink-muted mt-0.5">
+            Provision academic semesters, clearance items, batches, and student rosters in bulk
+          </p>
         </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs font-semibold self-start sm:self-auto"
+          icon={<HiOutlineDocumentArrowDown className="w-4 h-4 text-brand" />}
+          onClick={handleDownloadTemplate}
+        >
+          Download Excel Template (.xlsx)
+        </Button>
       </div>
 
       {/* Tabs Switcher */}
