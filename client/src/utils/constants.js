@@ -47,6 +47,7 @@ export const CLEARANCE_STATUSES = {
   ITEMS_REVIEW: 'items_review',
   SECTIONS_REVIEW: 'sections_review',
   CI_REVIEW: 'ci_review',
+  DISCIPLINARY_REVIEW: 'disciplinary_review',
   HOD_REVIEW: 'hod_review',
   COMPLETED: 'completed',
   REJECTED: 'rejected',
@@ -57,6 +58,7 @@ export const CLEARANCE_STATUS_LABELS = {
   [CLEARANCE_STATUSES.ITEMS_REVIEW]: 'Items Review',
   [CLEARANCE_STATUSES.SECTIONS_REVIEW]: 'Sections Review',
   [CLEARANCE_STATUSES.CI_REVIEW]: 'CI Review',
+  [CLEARANCE_STATUSES.DISCIPLINARY_REVIEW]: 'Disciplinary Section',
   [CLEARANCE_STATUSES.HOD_REVIEW]: 'HOD Review',
   [CLEARANCE_STATUSES.COMPLETED]: 'Completed',
   [CLEARANCE_STATUSES.REJECTED]: 'Rejected',
@@ -68,6 +70,7 @@ export const CLEARANCE_STAGES = [
   { key: 'items_review', label: 'Items Review' },
   { key: 'sections_review', label: 'Sections Review' },
   { key: 'ci_review', label: 'CI Review' },
+  { key: 'disciplinary_review', label: 'Disciplinary Section' },
   { key: 'hod_review', label: 'HOD Review' },
   { key: 'completed', label: 'Completed' },
 ];

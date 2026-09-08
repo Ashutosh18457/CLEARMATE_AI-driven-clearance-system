@@ -148,7 +148,7 @@ export default function ClassInchargeDashboard() {
       });
       toast.success(
         modalAction === 'approved'
-          ? 'Clearance approved and advanced to Stage 4 (HOD Review)!'
+          ? 'Clearance approved and advanced to Disciplinary Section Review!'
           : 'Clearance rejected'
       );
       closeReviewModal();
@@ -186,10 +186,16 @@ export default function ClassInchargeDashboard() {
             Stage 2: Dept Clearances
           </span>
         );
+      case 'disciplinary_review':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+            Stage 4: Disciplinary Section
+          </span>
+        );
       case 'hod_review':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-            Stage 4: HOD Review
+            Stage 5: HOD Review
           </span>
         );
       case 'completed':

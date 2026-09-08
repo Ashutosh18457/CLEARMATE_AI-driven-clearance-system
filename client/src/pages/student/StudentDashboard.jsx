@@ -279,7 +279,8 @@ export default function StudentDashboard() {
     if (isRejected) return 'Clearance Rejected';
     if (!isInitiated) return 'Not Initiated';
     if (rawStatus === 'ci_review') return 'Stage 2: Class Incharge Review';
-    if (rawStatus === 'hod_review') return 'Stage 3: HOD Final Review';
+    if (rawStatus === 'disciplinary_review') return 'Stage 3: Disciplinary Section Review';
+    if (rawStatus === 'hod_review') return 'Stage 4: HOD Final Review';
     if (rawStatus === 'sections_review') return 'Stage 1: Institutional Sections Review';
     return 'Stage 1: Coursework & Faculty Review';
   }, [isFullyCleared, isRejected, isInitiated, rawStatus]);

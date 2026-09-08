@@ -157,6 +157,7 @@ export default function DisciplinarySectionDashboard() {
       } catch (err) {
         setBranches([
           { _id: 'cse', code: 'CSE', name: 'Computer Science & Engineering' },
+          { _id: 'aiml', code: 'AIML', name: 'Artificial Intelligence & Machine Learning' },
           { _id: 'aids', code: 'AI&DS', name: 'Artificial Intelligence & Data Science' },
           { _id: 'me', code: 'ME', name: 'Mechanical Engineering' },
           { _id: 'ce', code: 'CE', name: 'Civil Engineering' },
@@ -625,14 +626,37 @@ export default function DisciplinarySectionDashboard() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-border-subtle">
           <div>
             <h3 className="text-xs font-extrabold text-ink-primary uppercase tracking-wider">
-              SEMESTER FILTER
+              BRANCH &amp; SEMESTER FILTER
             </h3>
             <p className="text-xs text-ink-muted mt-0.5">
-              Select academic semester to view disciplinary status records.
+              Select academic branch and semester to view disciplinary status records.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label htmlFor="branch-select" className="text-xs font-medium text-ink-secondary shrink-0">
+                Branch:
+              </label>
+              <select
+                id="branch-select"
+                className="input-base text-xs py-1.5 px-3 min-w-[140px]"
+                value={selectedBranch}
+                onChange={(e) => setSelectedBranch(e.target.value)}
+              >
+                <option value="all">All Branches</option>
+                {branches.map((b) => {
+                  const val = typeof b === 'string' ? b : b.code || b._id;
+                  const label = typeof b === 'string' ? b : b.code || b.name;
+                  return (
+                    <option key={val} value={val}>
+                      {label}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
             <div className="flex items-center gap-2">
               <label htmlFor="sem-select" className="text-xs font-medium text-ink-secondary shrink-0">
                 Semester:

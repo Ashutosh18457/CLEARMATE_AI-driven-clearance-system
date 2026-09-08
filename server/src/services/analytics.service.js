@@ -32,7 +32,7 @@ const analyticsService = {
     const results = await ClearanceRequest.aggregate(pipeline);
 
     // Build a clean response with all statuses defaulting to 0
-    const statuses = ['initiated', 'items_review', 'sections_review', 'ci_review', 'hod_review', 'completed', 'rejected'];
+    const statuses = ['initiated', 'items_review', 'sections_review', 'ci_review', 'disciplinary_review', 'hod_review', 'completed', 'rejected'];
     const overview = { total: 0 };
     for (const s of statuses) {
       overview[s] = 0;

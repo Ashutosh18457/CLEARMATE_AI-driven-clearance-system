@@ -858,15 +858,15 @@ const clearanceService = {
         clearanceRequest.studentId, 'Class Incharge Review', remarks
       );
     } else {
-      clearanceRequest.status = 'hod_review';
-      clearanceRequest.currentStage = 'hod';
+      clearanceRequest.status = 'disciplinary_review';
+      clearanceRequest.currentStage = 'disciplinary';
       await clearanceRequest.save();
-      logger.info('Clearance advanced to HOD review', {
+      logger.info('Clearance advanced to Disciplinary Section review', {
         requestId: clearanceRequestId,
         classInchargeId,
       });
       await notificationService.notifyStageAdvanced(
-        clearanceRequest.studentId, 'hod_review'
+        clearanceRequest.studentId, 'disciplinary_review'
       );
     }
 
@@ -1479,7 +1479,7 @@ const clearanceService = {
       const nextStatus = allItemsApproved ? 'ci_review' : 'sections_review';
       const nextStage = allItemsApproved ? 'class_incharge' : 'sections';
 
-      if (request.status !== nextStatus && request.status !== 'ci_review' && request.status !== 'hod_review') {
+      if (request.status !== nextStatus && request.status !== 'ci_review' && request.status !== 'disciplinary_review' && request.status !== 'hod_review' && request.status !== 'completed') {
         const updatedRequest = await ClearanceRequest.findByIdAndUpdate(clearanceRequestId, {
           status: nextStatus,
           currentStage: nextStage,

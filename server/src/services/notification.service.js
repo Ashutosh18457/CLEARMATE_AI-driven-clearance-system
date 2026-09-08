@@ -213,6 +213,7 @@ const notificationService = {
     const stageNames = {
       sections_review: 'Sections Review (Library, Accounts, etc.)',
       ci_review: 'Class Incharge Review',
+      disciplinary_review: 'Disciplinary Section Review',
       hod_review: 'HOD Final Review',
       completed: 'Completed! 🎉',
     };

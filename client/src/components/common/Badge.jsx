@@ -36,6 +36,7 @@ export function getStatusVariant(status) {
     case 'items_review':
     case 'sections_review':
     case 'ci_review':
+    case 'disciplinary_review':
     case 'hod_review':
       return 'pending';
     case 'rejected':

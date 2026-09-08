@@ -16,13 +16,13 @@ const clearanceRequestSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['initiated', 'items_review', 'sections_review', 'ci_review', 'hod_review', 'completed', 'rejected'],
+      enum: ['initiated', 'items_review', 'sections_review', 'ci_review', 'disciplinary_review', 'hod_review', 'completed', 'rejected'],
       default: 'initiated',
       index: true,
     },
     currentStage: {
       type: String,
-      enum: ['items', 'sections', 'class_incharge', 'hod', 'completed'],
+      enum: ['items', 'sections', 'class_incharge', 'disciplinary', 'hod', 'completed'],
       default: 'items',
     },
     certificateUrl: {

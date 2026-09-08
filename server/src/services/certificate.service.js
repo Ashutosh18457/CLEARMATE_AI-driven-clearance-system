@@ -328,9 +328,10 @@ const certificateService = {
           items: 1,
           sections: 1,
           class_incharge: 2,
-          hod: 3,
+          disciplinary: 3,
+          hod: 4,
         };
-        approvalStage = stageMap[clearanceRequest.currentStage] || (crStatus === 'ci_review' ? 2 : crStatus === 'hod_review' ? 3 : 1);
+        approvalStage = stageMap[clearanceRequest.currentStage] || (crStatus === 'ci_review' ? 2 : crStatus === 'disciplinary_review' ? 3 : crStatus === 'hod_review' ? 4 : 1);
         
         if (crStatus === 'initiated' || crStatus === 'items_review') {
           overallStatus = 'STAGE 1: SUBJECT & LAB REVIEW';
@@ -338,8 +339,10 @@ const certificateService = {
           overallStatus = 'STAGE 1: INSTITUTIONAL SECTION REVIEW';
         } else if (crStatus === 'ci_review') {
           overallStatus = 'STAGE 2: CLASS INCHARGE REVIEW';
+        } else if (crStatus === 'disciplinary_review') {
+          overallStatus = 'STAGE 3: DISCIPLINARY SECTION REVIEW';
         } else if (crStatus === 'hod_review') {
-          overallStatus = 'STAGE 3: HOD FINAL REVIEW';
+          overallStatus = 'STAGE 4: HOD FINAL REVIEW';
         } else {
           overallStatus = 'IN PROGRESS';
         }
@@ -396,7 +399,7 @@ const certificateService = {
         status: isFinalApproved 
           ? 'Approved' 
           : (clearanceRequestExists 
-              ? (['hod_review', 'completed'].includes(clearanceRequest.status) || clearanceRequest.classInchargeApproval?.approvedBy ? 'Approved' : (clearanceRequest.status === 'ci_review' ? 'In Review' : 'Pending'))
+              ? (['disciplinary_review', 'hod_review', 'completed'].includes(clearanceRequest.status) || clearanceRequest.classInchargeApproval?.approvedBy ? 'Approved' : (clearanceRequest.status === 'ci_review' ? 'In Review' : 'Pending'))
               : 'Pending'),
       },
       hod: {

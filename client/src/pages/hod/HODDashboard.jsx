@@ -290,7 +290,7 @@ export default function HODDashboard() {
             Head of Department (HOD) Review & Clearance Console
           </h1>
           <p className="text-xs text-ink-muted mt-1">
-            Supervise department faculty subject evaluations, verify teacher clearance chains, and perform Stage 4 final approval to issue verifiable Clearance Certificates.
+            Supervise department faculty subject evaluations, verify teacher clearance chains, and perform final HOD approval to issue verifiable Clearance Certificates.
           </p>
         </div>
       </div>

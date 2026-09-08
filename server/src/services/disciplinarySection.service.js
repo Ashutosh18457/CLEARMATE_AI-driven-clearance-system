@@ -240,17 +240,38 @@ const disciplinarySectionService = {
 
     await sc.save();
 
-    // Check & advance overall clearance request if in sections_review stage
-    if (sc.clearanceRequestId) {
-      try {
-        const clearanceService = require('./clearance.service');
-        const allSections = await SectionClearance.find({ clearanceRequestId: sc.clearanceRequestId });
-        const allApproved = allSections.length > 0 && allSections.every((sec) => sec.status === 'approved');
+    // Check & advance overall clearance request
+    try {
+      const cr = sc.clearanceRequestId
+        ? await ClearanceRequest.findById(sc.clearanceRequestId)
+        : await ClearanceRequest.findOne({ studentId }).sort({ createdAt: -1 });
 
-        if (allApproved) {
-          const cr = await ClearanceRequest.findById(sc.clearanceRequestId);
-          if (cr && cr.status === 'sections_review') {
+      if (cr) {
+        // If clearance request is at disciplinary_review stage and conduct is cleared, advance to hod_review
+        if (cr.status === 'disciplinary_review' && isCleared) {
+          cr.status = 'hod_review';
+          cr.currentStage = 'hod';
+          cr.timeline.push({
+            stage: 'hod_review',
+            status: 'approved',
+            actorId: reviewerId,
+            remarks: 'Disciplinary Section clearance granted. Advanced to HOD Review.',
+            timestamp: new Date(),
+          });
+          await cr.save();
+          logger.info('Clearance request advanced from disciplinary_review to hod_review', {
+            requestId: cr._id,
+            studentId,
+          });
+          await notificationService.notifyStageAdvanced(studentId, 'hod_review');
+        } else if (cr.status === 'sections_review') {
+          // If in sections_review, check if all section clearances are approved
+          const allSections = await SectionClearance.find({ clearanceRequestId: cr._id });
+          const allApproved = allSections.length > 0 && allSections.every((sec) => sec.status === 'approved');
+
+          if (allApproved) {
             cr.status = 'ci_review';
+            cr.currentStage = 'class_incharge';
             cr.timeline.push({
               stage: 'ci_review',
               status: 'approved',
@@ -261,9 +282,9 @@ const disciplinarySectionService = {
             await cr.save();
           }
         }
-      } catch (err) {
-        logger.error('Error auto-advancing clearance request in Disciplinary service:', err);
       }
+    } catch (err) {
+      logger.error('Error auto-advancing clearance request in Disciplinary service:', err);
     }
 
     // Send notification to student
