@@ -11,11 +11,18 @@ export function SocketProvider({ children }) {
   const [isConnected, setIsConnected] = useState(false);
   const audioRef = useRef(null);
 
+  const socketRef = useRef(null);
+
   useEffect(() => {
-    const token = sessionStorage.getItem('clearmate_token') || localStorage.getItem('clearmate_token') || localStorage.getItem('token');
+    const token =
+      sessionStorage.getItem('clearmate_token') ||
+      localStorage.getItem('clearmate_token') ||
+      localStorage.getItem('token');
+
     if (!token || !user) {
-      if (socket) {
-        socket.disconnect();
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
         setSocket(null);
         setIsConnected(false);
       }
@@ -25,7 +32,12 @@ export function SocketProvider({ children }) {
     // Determine backend socket URL
     const backendUrl =
       import.meta.env.VITE_API_URL?.replace('/api', '') ||
-      (window.location.port === '5173' ? '' : 'http://localhost:5000');
+      `${window.location.protocol}//${window.location.hostname}:5000`;
+
+    // Avoid duplicate initialization in React StrictMode
+    if (socketRef.current?.connected) {
+      return;
+    }
 
     const newSocket = io(backendUrl, {
       auth: { token },
@@ -41,7 +53,6 @@ export function SocketProvider({ children }) {
     });
 
     newSocket.on('connect_error', () => {
-      // Quietly fall back without spamming console
       setIsConnected(false);
     });
 
@@ -97,10 +108,18 @@ export function SocketProvider({ children }) {
       }
     });
 
+    socketRef.current = newSocket;
     setSocket(newSocket);
 
     return () => {
+      // Disconnect cleanly when component unmounts or user logs out
+      newSocket.off('connect');
+      newSocket.off('connect_error');
+      newSocket.off('disconnect');
+      newSocket.off('new_notification');
+      newSocket.off('new_task');
       newSocket.disconnect();
+      socketRef.current = null;
     };
   }, [user]);
 
