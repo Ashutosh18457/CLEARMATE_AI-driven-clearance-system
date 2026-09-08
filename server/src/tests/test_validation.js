@@ -74,11 +74,11 @@ runTest('Accepts valid payload on strict schema', () => {
 // ─── 2. AUTH SCHEMAS ────────────────────────────────────────────────────────
 console.log('\n--- Testing Auth Validation Schemas ---');
 
-runTest('Auth Login: Rejects invalid email format', () => {
-  const payload = { email: 'not-an-email', password: 'Password123' };
+runTest('Auth Login: Rejects empty or missing email', () => {
+  const payload = { email: '', password: 'Password123' };
   const { error } = mockMiddlewareExecution(authValidator.loginSchema, payload);
   assert(error !== null);
-  assert(error.message.includes('email') || error.message.includes('valid'));
+  assert(error.message.includes('Email') || error.message.includes('empty'));
 });
 
 runTest('Auth Register: Rejects non-college domain email', () => {

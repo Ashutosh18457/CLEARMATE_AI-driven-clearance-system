@@ -5,13 +5,13 @@ const authValidator = {
   loginSchema: Joi.object({
     email: Joi.string()
       .trim()
-      .email()
+      .min(1)
       .max(255)
       .required()
       .messages({
-        'string.email': 'Please provide a valid email address format',
-        'string.max': 'Email cannot exceed 255 characters',
-        'any.required': 'Email is required',
+        'string.empty': 'Email or Enrollment Number cannot be empty',
+        'string.max': 'Email or Enrollment Number cannot exceed 255 characters',
+        'any.required': 'Email or Enrollment Number is required',
       }),
     password: Joi.string()
       .min(1)

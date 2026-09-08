@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-require('dotenv').config({ path: './server/.env' });
+require('dotenv').config();
 
 const User = require('../models/User');
 const Program = require('../models/Program');
@@ -141,6 +141,14 @@ async function seedWorkflowDemo() {
       password: 'Password123!',
       role: 'library_section',
       sectionType: 'library',
+    });
+
+    const disciplinary = await User.create({
+      name: 'Disciplinary Head',
+      email: 'disciplinary@sbjit.edu.in',
+      password: 'Password123!',
+      role: 'disciplinary_section',
+      sectionType: 'disciplinary',
     });
 
     // 5. Create Batch A

@@ -15,8 +15,13 @@ const authService = {
    */
   async login(email, password, ip, userAgent) {
     const cleanEmail = email ? email.toLowerCase().trim() : '';
-    // 1. Find user by email and explicitly select the password field
-    let user = await User.findOne({ email: cleanEmail }).select('+password +loginAttempts +lockUntil');
+    // 1. Find user by email or enrollment number and explicitly select the password field
+    let user = await User.findOne({
+      $or: [
+        { email: cleanEmail },
+        { enrollmentNo: new RegExp(`^${cleanEmail}$`, 'i') },
+      ],
+    }).select('+password +loginAttempts +lockUntil');
     
     // Auto-provision missing @sbjit.edu.in accounts with default password in demo/dev mode only
     if (env.isDev && !user && cleanEmail.endsWith('@sbjit.edu.in') && password === 'Password123!') {
@@ -25,20 +30,50 @@ const authService = {
       if (!program) {
         program = await Program.findOne();
       }
+      if (!program) {
+        program = await Program.create({
+          name: 'Computer Science & Engineering',
+          code: 'CSE',
+          department: 'Department of Computer Science & Engineering',
+          degree: 'B.Tech',
+          branch: 'CSE',
+          totalSemesters: 8,
+          isActive: true,
+        });
+      }
+
       const usernamePart = cleanEmail.split('@')[0];
       const formattedName = usernamePart.charAt(0).toUpperCase() + usernamePart.slice(1);
       const enrollmentNo = `EN${Date.now().toString().slice(-6)}`;
-      
-      await User.create({
+
+      let role = 'student';
+      let sectionType;
+      if (cleanEmail.startsWith('teacher')) role = 'teacher';
+      else if (cleanEmail.startsWith('admin') || cleanEmail.startsWith('superadmin')) role = 'super_admin';
+      else if (cleanEmail.startsWith('deptadmin')) role = 'admin';
+      else if (cleanEmail.startsWith('hod')) role = 'hod';
+      else if (cleanEmail.startsWith('ci')) role = 'class_incharge';
+      else if (cleanEmail.startsWith('accounts')) { role = 'account_section'; sectionType = 'accounts'; }
+      else if (cleanEmail.startsWith('library')) { role = 'library_section'; sectionType = 'library'; }
+      else if (cleanEmail.startsWith('bus')) { role = 'bus_section'; sectionType = 'bus'; }
+      else if (cleanEmail.startsWith('disciplinary')) { role = 'disciplinary_section'; sectionType = 'disciplinary'; }
+
+      const userPayload = {
         name: formattedName,
         email: cleanEmail,
         password: 'Password123!',
-        role: 'student',
-        programId: program ? program._id : undefined,
-        enrollmentNo: enrollmentNo,
-        currentSemester: 6,
-        section: 'A',
-      });
+        role,
+        sectionType,
+      };
+
+      if (role === 'student') {
+        userPayload.programId = program._id;
+        userPayload.enrollmentNo = enrollmentNo;
+        userPayload.currentSemester = 6;
+        userPayload.section = 'A';
+      }
+
+      await User.create(userPayload);
       user = await User.findOne({ email: cleanEmail }).select('+password +loginAttempts +lockUntil');
     }
 
