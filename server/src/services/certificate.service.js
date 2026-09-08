@@ -398,7 +398,7 @@ const certificateService = {
         designation: resolvedCI.designation,
         status: isFinalApproved 
           ? 'Approved' 
-          : (clearanceRequestExists 
+          : (clearanceRequestExists && clearanceRequest 
               ? (['disciplinary_review', 'hod_review', 'completed'].includes(clearanceRequest.status) || clearanceRequest.classInchargeApproval?.approvedBy ? 'Approved' : (clearanceRequest.status === 'ci_review' ? 'In Review' : 'Pending'))
               : 'Pending'),
       },
@@ -410,7 +410,9 @@ const certificateService = {
         department: resolvedHOD.department,
         status: isFinalApproved 
           ? 'Approved' 
-          : (clearanceRequestExists && (clearanceRequest.status === 'completed' || clearanceRequest.hodApproval?.approvedBy) ? 'Approved' : (clearanceRequest.status === 'hod_review' ? 'In Review' : 'Pending')),
+          : (clearanceRequestExists && clearanceRequest 
+              ? (['completed'].includes(clearanceRequest.status) || clearanceRequest.hodApproval?.approvedBy ? 'Approved' : (clearanceRequest.status === 'hod_review' ? 'In Review' : 'Pending'))
+              : 'Pending'),
       },
       workflow: {
         stage: approvalStage,
