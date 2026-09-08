@@ -831,67 +831,39 @@ export default function BulkSetup() {
                 {/* Panel 3: Students Preview */}
                 <div className="bg-surface border border-border-subtle rounded-2xl p-5 shadow-xs flex flex-col justify-between">
                   <div>
-                    <div className="flex items-center justify-between pb-3 border-b border-border-subtle/60 mb-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center border border-emerald-200/50 shrink-0">
-                          <HiOutlineUsers className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <h3 className="text-xs font-bold text-ink-primary">
-                            3. Students Roster
-                          </h3>
-                          <p className="text-3xs text-ink-muted">{parsedData.students.length} students loaded</p>
-                        </div>
-                      </div>
+                    <div className="flex items-center justify-between pb-3 border-b border-border-subtle/60 mb-3">
+                      <h3 className="text-xs font-bold text-ink-primary flex items-center gap-2">
+                        <HiOutlineUsers className="w-4 h-4 text-emerald-600" />
+                        3. Students ({parsedData.students.length})
+                      </h3>
                       {parsedData.students.length > 0 && (
                         <button
                           type="button"
                           onClick={() => { setStudentSearchQuery(''); setShowAllStudentsModal(true); }}
-                          className="text-2xs font-semibold text-brand hover:text-brand-dark bg-brand/5 hover:bg-brand/10 border border-brand/20 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                          className="text-2xs font-semibold text-brand hover:underline flex items-center gap-1 cursor-pointer"
                         >
                           <HiOutlineMagnifyingGlass className="w-3 h-3" />
-                          <span>View All</span>
+                          View All
                         </button>
                       )}
                     </div>
 
-                    <div className="divide-y divide-border-subtle/40 overflow-y-auto max-h-52 custom-scrollbar pr-1">
-                      {parsedData.students.slice(0, 8).map((st, idx) => {
-                        const electives = extractStudentElectives(st);
-                        return (
-                          <div key={idx} className="py-2.5 first:pt-0.5 last:pb-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="font-semibold text-xs text-ink-primary truncate">
-                                {st.full_name || st.name || st.email}
-                              </span>
-                              <span className="text-3xs font-mono px-1.5 py-0.5 rounded bg-canvas border border-border-subtle text-ink-muted shrink-0">
-                                {st.section ? `Sec ${st.section}` : ''} {st.batch ? `• ${st.batch}` : 'Batch A'}
-                              </span>
-                            </div>
-                            
-                            <div className="flex items-center justify-between gap-2 mt-1">
-                              <span className="text-3xs font-mono text-ink-muted">
-                                {st.enrollment_no || st.enrollmentNo || st.roll_no || st.rollNo || '—'}
-                              </span>
-
-                              {electives.length > 0 && (
-                                <div className="flex flex-wrap items-center gap-1 justify-end max-w-[65%]">
-                                  {electives.map((el, i) => (
-                                    <span
-                                      key={i}
-                                      className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-md bg-purple-50/90 dark:bg-purple-950/40 border border-purple-200/70 dark:border-purple-800/50 text-3xs font-medium text-purple-800 dark:text-purple-300 max-w-[130px] truncate"
-                                      title={`${el.track}: ${el.choice}`}
-                                    >
-                                      <span className="font-bold text-purple-900 dark:text-purple-200">{el.track}:</span>
-                                      <span className="truncate">{el.choice}</span>
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
+                    <div className="divide-y divide-border-subtle/40 overflow-y-auto max-h-52 custom-scrollbar">
+                      {parsedData.students.slice(0, 8).map((st, idx) => (
+                        <div key={idx} className="py-2.5 flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-xs text-ink-primary truncate">
+                              {st.full_name || st.name || st.email}
+                            </p>
+                            <p className="text-2xs text-ink-muted font-mono mt-0.5">
+                              {st.enrollment_no || st.enrollmentNo || st.roll_no || st.rollNo || 'N/A'}
+                            </p>
                           </div>
-                        );
-                      })}
+                          <span className="text-2xs px-2 py-0.5 bg-canvas border border-border-subtle rounded-md font-mono text-ink-secondary shrink-0">
+                            {st.batch || 'Batch A'}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
@@ -899,15 +871,10 @@ export default function BulkSetup() {
                     <button
                       type="button"
                       onClick={() => { setStudentSearchQuery(''); setShowAllStudentsModal(true); }}
-                      className="w-full mt-3 py-2 px-3 bg-canvas hover:bg-surface border border-border-subtle hover:border-brand/30 rounded-xl text-xs font-semibold text-ink-secondary hover:text-brand transition-all flex items-center justify-between group cursor-pointer shadow-2xs"
+                      className="w-full mt-3 py-2 px-3 bg-brand/5 hover:bg-brand/10 border border-brand/20 rounded-xl text-2xs font-bold text-brand hover:text-brand-dark transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      <span className="flex items-center gap-1.5 text-2xs text-ink-muted">
-                        <HiOutlineUsers className="w-3.5 h-3.5 text-brand" />
-                        <span>+{parsedData.students.length - 8} more students</span>
-                      </span>
-                      <span className="text-2xs font-semibold text-brand flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                        Open Complete Roster <HiOutlineArrowRight className="w-3 h-3" />
-                      </span>
+                      <HiOutlineUsers className="w-3.5 h-3.5" />
+                      <span>+ {parsedData.students.length - 8} more students in roster (Click to view full list)</span>
                     </button>
                   )}
                 </div>
