@@ -75,13 +75,26 @@ async function cleanDatabase() {
         isActive: true,
       });
 
+      // Create core programs
+      const defaultPrograms = [
+        { name: 'B.Tech Artificial Intelligence & Data Science', code: 'AIDS', department: 'Emerging Technologies' },
+        { name: 'B.Tech Artificial Intelligence & Machine Learning', code: 'AIML', department: 'Emerging Technologies' },
+        { name: 'B.Tech Computer Science & Engineering', code: 'CSE', department: 'Computer Science' },
+        { name: 'B.Tech Information Technology', code: 'IT', department: 'Information Technology' },
+      ];
+
+      for (const p of defaultPrograms) {
+        await Program.create(p);
+      }
+
       console.log('🎉 Production Super Admin account created:');
       console.log(`👤 Name:     ${admin.name}`);
       console.log(`📧 Email:    ${admin.email}`);
       console.log(`🔑 Password: ${adminPassword}`);
       console.log(`🛡️ Role:     super_admin`);
+      console.log(`🎓 Programs: Created ${defaultPrograms.map((p) => p.code).join(', ')}`);
     } else {
-      console.log('✨ All collections wiped to 0 documents (no admin created).');
+      console.log('✨ All collections wiped to 0 documents.');
     }
     console.log('--------------------------------------------------');
 
