@@ -154,22 +154,56 @@ const notificationService = {
   // CONVENIENCE METHODS — Used by other services
   // ══════════════════════════════════════════════
 
-  async notifySubmissionVerified(studentId, itemTitle) {
-    return this.createNotification(studentId, {
+  async notifySubmissionVerified(studentId, itemTitle, grade, remarks) {
+    const notification = await this.createNotification(studentId, {
       title: 'Submission Verified ✅',
       message: `Your submission for "${itemTitle}" has been verified.`,
       type: 'success',
-      link: '/dashboard/submissions',
+      link: '/student/submissions',
     });
+
+    try {
+      const student = await User.findById(studentId).select('email name');
+      if (student && student.email) {
+        emailService.sendSubmissionVerifiedEmail({
+          email: student.email,
+          studentName: student.name,
+          taskTitle: itemTitle,
+          grade,
+          remarks,
+        });
+      }
+    } catch (err) {
+      logger.error('Failed to send submission verified email', { studentId, error: err.message });
+    }
+
+    return notification;
   },
 
   async notifySubmissionRejected(studentId, itemTitle, remarks) {
-    return this.createNotification(studentId, {
+    const notification = await this.createNotification(studentId, {
       title: 'Submission Rejected ❌',
       message: `Your submission for "${itemTitle}" was rejected.${remarks ? ` Reason: ${remarks}` : ''} Please re-submit.`,
       type: 'error',
-      link: '/dashboard/submissions',
+      link: '/student/submissions',
     });
+
+    try {
+      const student = await User.findById(studentId).select('email name');
+      if (student && student.email) {
+        emailService.sendClearanceRejectionEmail({
+          email: student.email,
+          name: student.name,
+          itemTitle,
+          stage: 'Submission Review',
+          remarks,
+        });
+      }
+    } catch (err) {
+      logger.error('Failed to send submission rejection email', { studentId, error: err.message });
+    }
+
+    return notification;
   },
 
   async notifyItemClearanceApproved(studentId, itemTitle) {

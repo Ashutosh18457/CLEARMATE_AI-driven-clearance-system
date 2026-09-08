@@ -300,10 +300,95 @@ const sendHallTicketIssuedEmail = async ({
   }).catch((err) => logger.error('Failed to send hall ticket issued email', { email, error: err.message }));
 };
 
+/**
+ * Sends email to student when a teacher assigns a new task / coursework assignment.
+ */
+const sendTaskAssignedEmail = async ({ email, studentName, teacherName, taskTitle, description, deadline }) => {
+  const transporter = createTransporter();
+  const formattedDeadline = deadline
+    ? new Date(deadline).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+    : 'Not specified';
+
+  return transporter.sendMail({
+    from: EMAIL_FROM(),
+    to: email,
+    subject: `📚 New Assignment Assigned: ${taskTitle} — ClearMate`,
+    html: `<!DOCTYPE html>
+    <html>
+    <head><style>${baseStyle}</style></head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <div class="logo">CM</div>
+          <div class="title">New Assignment Assigned 📚</div>
+        </div>
+        <div class="content">
+          <p>Hello <strong>${studentName || 'Student'}</strong>,</p>
+          <div class="alert-blue">
+            📝 Faculty member <strong>${teacherName || 'Your Faculty'}</strong> has assigned you a new coursework assignment: <strong>"${taskTitle}"</strong>.
+          </div>
+          ${description ? `<p style="color: #475569; font-size: 13px; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;"><strong>Instructions:</strong><br>${description}</p>` : ''}
+          <div style="background-color: #f1f5f9; border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 13px;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="color: #64748b; padding: 4px 0;">Assigned By:</td>
+                <td style="font-weight: 600; color: #0f172a; text-align: right;">${teacherName || 'Faculty'}</td>
+              </tr>
+              <tr>
+                <td style="color: #64748b; padding: 4px 0;">Submission Deadline:</td>
+                <td style="font-weight: 700; color: #dc2626; text-align: right;">${formattedDeadline}</td>
+              </tr>
+            </table>
+          </div>
+          <p>Please sign in to your official college portal (<strong>@sbjit.edu.in</strong>) to review instructions and complete your submission on time.</p>
+        </div>
+        ${footerHtml}
+      </div>
+    </body>
+    </html>`,
+  }).catch((err) => logger.error('Failed to send task assignment email', { email, error: err.message }));
+};
+
+/**
+ * Sends email to student when teacher verifies their assignment submission.
+ */
+const sendSubmissionVerifiedEmail = async ({ email, studentName, taskTitle, grade, remarks }) => {
+  const transporter = createTransporter();
+  return transporter.sendMail({
+    from: EMAIL_FROM(),
+    to: email,
+    subject: `✅ Assignment Verified: ${taskTitle} — ClearMate`,
+    html: `<!DOCTYPE html>
+    <html>
+    <head><style>${baseStyle}</style></head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <div class="logo">CM</div>
+          <div class="title">Assignment Verified ✅</div>
+        </div>
+        <div class="content">
+          <p>Hello <strong>${studentName || 'Student'}</strong>,</p>
+          <div class="alert-green">
+            🎉 Your submission for <strong>"${taskTitle}"</strong> has been successfully reviewed and <strong>VERIFIED</strong>.
+          </div>
+          ${grade ? `<p style="font-size: 14px; font-weight: 600; color: #15803d; margin: 12px 0;">Grade / Score: ${grade}</p>` : ''}
+          ${remarks ? `<p style="color: #475569; font-size: 13px; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;"><strong>Teacher Remarks:</strong><br>${remarks}</p>` : ''}
+          <p>This requirement has been cleared toward your semester clearance record.</p>
+        </div>
+        ${footerHtml}
+      </div>
+    </body>
+    </html>`,
+  }).catch((err) => logger.error('Failed to send submission verified email', { email, error: err.message }));
+};
+
 module.exports = {
   sendPasswordResetEmail,
   sendClearanceRejectionEmail,
   sendClearanceCompletedEmail,
   sendReviewRequestEmail,
   sendHallTicketIssuedEmail,
+  sendTaskAssignedEmail,
+  sendSubmissionVerifiedEmail,
 };

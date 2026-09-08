@@ -4,12 +4,13 @@ const Notification = require('../models/Notification');
 const AppError = require('../utils/AppError');
 const logger = require('../config/logger');
 const notificationService = require('./notification.service');
+const emailService = require('./email.service');
 const { emitToUser } = require('../config/socket');
 
 const taskService = {
   /**
    * Teacher creates and assigns a task to multiple students.
-   * Automatically creates notifications and emits real-time WebSocket events.
+   * Automatically creates notifications, sends institutional emails, and emits real-time WebSocket events.
    */
   async createTask(teacherId, { title, description, deadline, assignedStudents }) {
     // 1. Validate teacher
@@ -75,9 +76,10 @@ const taskService = {
 
     const createdNotifications = await Notification.insertMany(notificationDocs);
 
-    // Emit real-time Socket.IO events to each student room
-    for (let i = 0; i < studentIds.length; i++) {
-      const sId = studentIds[i].toString();
+    // Emit real-time Socket.IO events to each student room and send institutional email
+    for (let i = 0; i < validStudents.length; i++) {
+      const student = validStudents[i];
+      const sId = student._id.toString();
       const notif = createdNotifications[i];
       try {
         const unreadCount = await Notification.countDocuments({ userId: sId, isRead: false });
@@ -93,12 +95,24 @@ const taskService = {
             email: teacher.email,
           },
         });
-      } catch (socketErr) {
-        logger.debug('Socket dispatch error in createTask', { error: socketErr.message });
+
+        // Fire-and-forget institutional email notification
+        if (student.email) {
+          emailService.sendTaskAssignedEmail({
+            email: student.email,
+            studentName: student.name,
+            teacherName: teacher.name,
+            taskTitle: task.title,
+            description: task.description,
+            deadline: task.deadline,
+          });
+        }
+      } catch (dispatchErr) {
+        logger.debug('Dispatch error in createTask', { error: dispatchErr.message });
       }
     }
 
-    logger.info('Task created and real-time notifications dispatched', {
+    logger.info('Task created, notifications & emails dispatched', {
       taskId: task._id,
       teacherId,
       studentsCount: studentIds.length,
