@@ -2,6 +2,7 @@ const express = require('express');
 const adminController = require('../controllers/admin.controller');
 const validate = require('../middleware/validate');
 const v = require('../validators/admin.validator');
+const { idParamSchema } = require('../validators/common.validator');
 const { protect, restrictTo } = require('../middleware/auth');
 
 const router = express.Router();
@@ -43,50 +44,50 @@ router.use(protect);
 // USERS (Admin & Super Admin: Full Control, HOD: Department Modify/Read, Teacher/CI: Read)
 // ──────────────────────────────────────────────
 router.get('/users', restrictTo('admin', 'super_admin', 'hod', 'teacher', 'class_incharge'), adminController.getUsers);
-router.get('/users/:id', restrictTo('admin', 'super_admin', 'hod', 'teacher', 'class_incharge'), adminController.getUserById);
-router.put('/users/:id', restrictTo('admin', 'super_admin', 'hod'), validate(v.updateUserSchema), adminController.updateUser);
+router.get('/users/:id', restrictTo('admin', 'super_admin', 'hod', 'teacher', 'class_incharge'), validate(idParamSchema, 'params'), adminController.getUserById);
+router.put('/users/:id', restrictTo('admin', 'super_admin', 'hod'), validate({ params: idParamSchema, body: v.updateUserSchema }), adminController.updateUser);
 
 // Admin / Super Admin creation, bulk upload, and deactivation
 router.post('/users', restrictTo('admin', 'super_admin'), validate(v.createUserSchema), adminController.createUser);
 router.post('/users/bulk', restrictTo('admin', 'super_admin'), validate(v.bulkCreateStudentsSchema), adminController.bulkCreateStudents);
 if (typeof adminController.bulkUploadStudentsCsv === 'function') {
-  router.post('/students/bulk-upload', restrictTo('admin', 'super_admin'), adminController.bulkUploadStudentsCsv);
+  router.post('/students/bulk-upload', restrictTo('admin', 'super_admin'), validate(v.bulkUploadStudentsCsvSchema), adminController.bulkUploadStudentsCsv);
 }
 if (typeof adminController.downloadSampleCsv === 'function') {
   router.get('/students/sample-csv', restrictTo('admin', 'super_admin', 'hod'), adminController.downloadSampleCsv);
 }
-router.patch('/users/:id/deactivate', restrictTo('admin', 'super_admin'), adminController.deactivateUser);
-router.delete('/users/:id', restrictTo('admin', 'super_admin'), adminController.deactivateUser);
+router.patch('/users/:id/deactivate', restrictTo('admin', 'super_admin'), validate(idParamSchema, 'params'), adminController.deactivateUser);
+router.delete('/users/:id', restrictTo('admin', 'super_admin'), validate(idParamSchema, 'params'), adminController.deactivateUser);
 
 // ──────────────────────────────────────────────
 // PROGRAMS
 // ──────────────────────────────────────────────
 router.post('/programs', restrictTo('admin', 'super_admin'), validate(v.createProgramSchema), adminController.createProgram);
 router.get('/programs', restrictTo('admin', 'super_admin', 'hod', 'teacher', 'class_incharge'), adminController.getPrograms);
-router.get('/programs/:id', restrictTo('admin', 'super_admin', 'hod', 'teacher', 'class_incharge'), adminController.getProgramById);
-router.put('/programs/:id', restrictTo('admin', 'super_admin'), validate(v.updateProgramSchema), adminController.updateProgram);
+router.get('/programs/:id', restrictTo('admin', 'super_admin', 'hod', 'teacher', 'class_incharge'), validate(idParamSchema, 'params'), adminController.getProgramById);
+router.put('/programs/:id', restrictTo('admin', 'super_admin'), validate({ params: idParamSchema, body: v.updateProgramSchema }), adminController.updateProgram);
 
 // ──────────────────────────────────────────────
 // SEMESTERS
 // ──────────────────────────────────────────────
 router.post('/semesters', restrictTo('admin', 'super_admin'), validate(v.createSemesterSchema), adminController.createSemester);
 router.get('/semesters', restrictTo('admin', 'super_admin', 'hod', 'teacher', 'class_incharge'), adminController.getSemesters);
-router.get('/semesters/:id', restrictTo('admin', 'super_admin', 'hod', 'teacher', 'class_incharge'), adminController.getSemesterById);
-router.put('/semesters/:id', restrictTo('admin', 'super_admin'), validate(v.updateSemesterSchema), adminController.updateSemester);
+router.get('/semesters/:id', restrictTo('admin', 'super_admin', 'hod', 'teacher', 'class_incharge'), validate(idParamSchema, 'params'), adminController.getSemesterById);
+router.put('/semesters/:id', restrictTo('admin', 'super_admin'), validate({ params: idParamSchema, body: v.updateSemesterSchema }), adminController.updateSemester);
 
 // ──────────────────────────────────────────────
 // BATCHES
 // ──────────────────────────────────────────────
 router.post('/batches', restrictTo('admin', 'super_admin'), validate(v.createBatchSchema), adminController.createBatch);
 router.get('/batches', restrictTo('admin', 'super_admin', 'hod', 'teacher', 'class_incharge'), adminController.getBatches);
-router.patch('/batches/:id/students', restrictTo('admin', 'super_admin'), validate(v.addStudentsToBatchSchema), adminController.addStudentsToBatch);
+router.patch('/batches/:id/students', restrictTo('admin', 'super_admin'), validate({ params: idParamSchema, body: v.addStudentsToBatchSchema }), adminController.addStudentsToBatch);
 
 // ──────────────────────────────────────────────
 // CLEARANCE ITEMS (Theory, Lab, Elective, Special)
 // ──────────────────────────────────────────────
 router.post('/clearance-items', restrictTo('admin', 'super_admin'), validate(v.createClearanceItemSchema), adminController.createClearanceItem);
-router.put('/clearance-items/:id', restrictTo('admin', 'super_admin'), validate(v.updateClearanceItemSchema), adminController.updateClearanceItem);
-router.delete('/clearance-items/:id', restrictTo('admin', 'super_admin'), adminController.deleteClearanceItem);
+router.put('/clearance-items/:id', restrictTo('admin', 'super_admin'), validate({ params: idParamSchema, body: v.updateClearanceItemSchema }), adminController.updateClearanceItem);
+router.delete('/clearance-items/:id', restrictTo('admin', 'super_admin'), validate(idParamSchema, 'params'), adminController.deleteClearanceItem);
 
 // ──────────────────────────────────────────────
 // AUDIT LOGS (Super Admin)
@@ -97,6 +98,6 @@ router.get('/audit-logs', restrictTo('admin', 'super_admin'), adminController.ge
 // CLASS INCHARGE ASSIGNMENT
 // ──────────────────────────────────────────────
 router.get('/class-incharges', restrictTo('admin', 'super_admin', 'hod'), adminController.getClassIncharges);
-router.put('/class-incharges/:id/assign', restrictTo('admin', 'super_admin', 'hod'), adminController.assignClassIncharge);
+router.put('/class-incharges/:id/assign', restrictTo('admin', 'super_admin', 'hod'), validate({ params: idParamSchema, body: v.assignClassInchargeSchema }), adminController.assignClassIncharge);
 
 module.exports = router;

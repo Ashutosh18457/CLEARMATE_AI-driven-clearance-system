@@ -1,11 +1,21 @@
 const express = require('express');
 const certificateController = require('../controllers/certificate.controller');
+const validate = require('../middleware/validate');
+const {
+  idParamSchema,
+  studentIdParamSchema,
+  certificateNumberParamSchema,
+} = require('../validators/common.validator');
 const { protect, restrictTo } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Public verification & preview endpoints
-router.get('/verify/:certificateNumber', certificateController.verifyCertificate);
+router.get(
+  '/verify/:certificateNumber',
+  validate(certificateNumberParamSchema, 'params'),
+  certificateController.verifyCertificate
+);
 router.get('/preview', certificateController.getPreviewCertificate);
 
 // Student: Get my certificate data
@@ -16,10 +26,17 @@ router.get(
   '/student/:studentId',
   protect,
   restrictTo('admin', 'super_admin', 'hod', 'class_incharge', 'teacher', 'section_head', 'account_section', 'bus_section'),
+  validate(studentIdParamSchema, 'params'),
   certificateController.getStudentCertificate
 );
 
 // Admin: Mark clearance as sent to exam cell
-router.patch('/:id/exam-cell', protect, restrictTo('admin'), certificateController.markSentToExamCell);
+router.patch(
+  '/:id/exam-cell',
+  protect,
+  restrictTo('admin'),
+  validate(idParamSchema, 'params'),
+  certificateController.markSentToExamCell
+);
 
 module.exports = router;

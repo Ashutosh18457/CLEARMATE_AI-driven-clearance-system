@@ -2,6 +2,7 @@ const express = require('express');
 const clearanceController = require('../controllers/clearance.controller');
 const validate = require('../middleware/validate');
 const v = require('../validators/clearance.validator');
+const { idParamSchema } = require('../validators/common.validator');
 const { protect, restrictTo } = require('../middleware/auth');
 
 const router = express.Router();
@@ -43,7 +44,7 @@ router.get(
 router.patch(
   '/items/:id/review',
   restrictTo('teacher', 'admin', 'super_admin'),
-  validate(v.reviewItemSchema),
+  validate({ params: idParamSchema, body: v.reviewItemSchema }),
   clearanceController.reviewItem
 );
 
@@ -59,7 +60,7 @@ router.get(
 router.patch(
   '/sections/:id/review',
   restrictTo('section_head', 'account_section', 'bus_section', 'admin', 'super_admin'),
-  validate(v.reviewSectionSchema),
+  validate({ params: idParamSchema, body: v.reviewSectionSchema }),
   clearanceController.reviewSection
 );
 
@@ -81,7 +82,7 @@ router.get(
 router.patch(
   '/ci/:id/review',
   restrictTo('class_incharge', 'admin', 'super_admin'),
-  validate(v.reviewCISchema),
+  validate({ params: idParamSchema, body: v.reviewCISchema }),
   clearanceController.reviewCI
 );
 
@@ -103,7 +104,7 @@ router.get(
 router.patch(
   '/hod/:id/review',
   restrictTo('hod', 'admin', 'super_admin'),
-  validate(v.reviewHODSchema),
+  validate({ params: idParamSchema, body: v.reviewHODSchema }),
   clearanceController.reviewHOD
 );
 
@@ -113,12 +114,14 @@ router.patch(
 router.get(
   '/hod/search-student',
   restrictTo('hod', 'admin', 'super_admin'),
+  validate(v.searchStudentClearanceQuerySchema, 'query'),
   clearanceController.searchStudentClearance
 );
 
 router.get(
   '/hod/class-list',
   restrictTo('hod', 'admin', 'super_admin'),
+  validate(v.classListClearanceQuerySchema, 'query'),
   clearanceController.getClassClearanceList
 );
 
@@ -128,18 +131,21 @@ router.get(
 router.get(
   '/hall-ticket/search',
   restrictTo('admin', 'super_admin', 'hod'),
+  validate(v.hallTicketSearchQuerySchema, 'query'),
   clearanceController.searchStudentForHallTicket
 );
 
 router.post(
   '/hall-ticket/issue',
   restrictTo('admin', 'super_admin', 'hod'),
+  validate(v.issueHallTicketSchema),
   clearanceController.issueHallTicket
 );
 
 router.get(
   '/hall-ticket/roster',
   restrictTo('admin', 'super_admin', 'hod'),
+  validate(v.hallTicketRosterQuerySchema, 'query'),
   clearanceController.getHallTicketRoster
 );
 

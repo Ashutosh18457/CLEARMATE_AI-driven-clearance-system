@@ -2,8 +2,8 @@ const express = require('express');
 const submissionController = require('../controllers/submission.controller');
 const validate = require('../middleware/validate');
 const v = require('../validators/submission.validator');
+const { idParamSchema } = require('../validators/common.validator');
 const { protect, restrictTo } = require('../middleware/auth');
-
 const auditLogger = require('../middleware/auditLogger');
 
 const router = express.Router();
@@ -30,13 +30,14 @@ router.post(
 router.patch(
   '/items/:id',
   restrictTo('teacher', 'admin', 'super_admin'),
-  validate(v.updateSubmissionItemSchema),
+  validate({ params: idParamSchema, body: v.updateSubmissionItemSchema }),
   submissionController.updateSubmissionItem
 );
 
 router.delete(
   '/items/:id',
   restrictTo('teacher', 'admin', 'super_admin'),
+  validate(idParamSchema, 'params'),
   submissionController.deleteSubmissionItem
 );
 
@@ -49,6 +50,7 @@ router.get(
 router.get(
   '/items/:id/students',
   restrictTo('teacher', 'admin', 'super_admin'),
+  validate(idParamSchema, 'params'),
   submissionController.getStudentSubmissions
 );
 
@@ -63,7 +65,7 @@ router.patch(
 router.patch(
   '/:id/verify',
   restrictTo('teacher', 'admin', 'super_admin'),
-  validate(v.verifySubmissionSchema),
+  validate({ params: idParamSchema, body: v.verifySubmissionSchema }),
   submissionController.verifySubmission
 );
 
