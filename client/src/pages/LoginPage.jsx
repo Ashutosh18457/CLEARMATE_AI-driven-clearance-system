@@ -258,6 +258,115 @@ export default function LoginPage() {
             </Button>
           </form>
 
+          {/* Quick Demo Login Chips */}
+          <div className="mt-6 pt-5 border-t border-border-subtle space-y-2.5">
+            <div className="text-xs font-semibold text-ink-muted uppercase tracking-wider text-center flex items-center justify-center gap-1.5">
+              <span>💡</span> QUICK DEMO LOGIN (@SBJIT.EDU.IN)
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('student@sbjit.edu.in');
+                  setPassword('Password123!');
+                }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>🎓</span> Student
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('teacher@sbjit.edu.in');
+                  setPassword('Password123!');
+                }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>👩‍🏫</span> Teacher
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('accounts@sbjit.edu.in');
+                  setPassword('Password123!');
+                }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>💳</span> Accounts Section
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('library@sbjit.edu.in');
+                  setPassword('Password123!');
+                }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>📚</span> Library
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('disciplinary@sbjit.edu.in');
+                  setPassword('Password123!');
+                }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>⚖️</span> Disciplinary
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('bus@sbjit.edu.in');
+                  setPassword('Password123!');
+                }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>🚌</span> Bus / Transport
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('ci@sbjit.edu.in');
+                  setPassword('Password123!');
+                }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>📋</span> Class Incharge
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('hod@sbjit.edu.in');
+                  setPassword('Password123!');
+                }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>👨‍💼</span> HOD
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('admin@sbjit.edu.in');
+                  setPassword('Admin@123456');
+                }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>👑</span> Super Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('deptadmin@sbjit.edu.in');
+                  setPassword('Password123!');
+                }}
+                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>⚙️</span> Dept Admin
+              </button>
+            </div>
+          </div>
+
           <div className="mt-6 text-center text-xs text-ink-muted border-t border-border-subtle pt-4">
             Official college portal: <strong>@sbjit.edu.in</strong>
           </div>
