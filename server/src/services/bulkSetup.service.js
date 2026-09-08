@@ -47,12 +47,30 @@ const bulkSetupService = {
       warnings: [],
     };
 
-    // ─── Step 1: Resolve Program ───
+    // ─── Step 1: Resolve Program & Enforce Department Scoping ───
     const program = await Program.findOne({ code: semesterConfig.programCode.toUpperCase() });
     if (!program) {
       throw AppError.badRequest(
         `Program with code "${semesterConfig.programCode}" not found. Please create the program first.`
       );
+    }
+
+    // Role-based Department Scoping:
+    // A Department Admin (role: 'admin') can ONLY upload data for their own department.
+    // Super Admin (role: 'super_admin') has institutional access to all departments.
+    if (adminUser && adminUser.role === 'admin') {
+      let userProgramId = adminUser.programId ? (adminUser.programId._id || adminUser.programId).toString() : null;
+      if (!userProgramId) {
+        const assignedProg = await Program.findOne({ departmentAdminId: adminUser.id || adminUser._id });
+        if (assignedProg) userProgramId = assignedProg._id.toString();
+      }
+
+      if (userProgramId && userProgramId !== program._id.toString()) {
+        const userProg = await Program.findById(userProgramId);
+        throw AppError.forbidden(
+          `Department Access Violation: You are authenticated as Department Admin for ${userProg ? `${userProg.code} (${userProg.name})` : 'your assigned department'}. You cannot upload or manage data for "${program.code}". Only the Super Admin or ${program.code} Department Admin can perform this operation.`
+        );
+      }
     }
 
     // ─── Step 2: Resolve or Create Semester ───

@@ -23,6 +23,7 @@ import {
 } from 'react-icons/hi2';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
@@ -90,6 +91,7 @@ export const extractStudentElectives = (st) => {
 export default function BulkSetup() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const { user } = useAuth();
 
   // Active Main Tab: 'upload' | 'clone'
   const [activeTab, setActiveTab] = useState('upload');
@@ -106,6 +108,30 @@ export default function BulkSetup() {
   const [validationErrors, setValidationErrors] = useState([]);
   const [showAllStudentsModal, setShowAllStudentsModal] = useState(false);
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
+
+  // Department Scoping:
+  // If the user is a Department Admin ('admin'), resolve their assigned program code
+  const userDeptCode =
+    user?.role === 'admin'
+      ? (
+          user?.programId?.code ||
+          programs.find((p) => p._id === (user?.programId?._id || user?.programId))?.code ||
+          ''
+        ).toUpperCase()
+      : null;
+
+  const fileProgramCode = (
+    parsedData?.semesterConfig?.program_code ||
+    parsedData?.semesterConfig?.programCode ||
+    ''
+  ).toUpperCase();
+
+  const isDeptMismatch = Boolean(
+    user?.role === 'admin' &&
+    userDeptCode &&
+    fileProgramCode &&
+    userDeptCode !== fileProgramCode
+  );
 
   // Execution State
   const [submitting, setSubmitting] = useState(false);
@@ -152,8 +178,8 @@ export default function BulkSetup() {
   const handleDownloadTemplate = () => {
     const wb = XLSX.utils.book_new();
 
-    // Sheet 1: Semester Config
-    const defaultProgCode = programs[0]?.code || 'CSE';
+    // Default to the admin's assigned program code if dept admin
+    const defaultProgCode = userDeptCode || programs[0]?.code || 'AIML';
     const semConfigData = [
       {
         program_code: defaultProgCode,
@@ -540,6 +566,11 @@ export default function BulkSetup() {
         students: normalizedStudents,
       };
 
+      if (isDeptMismatch) {
+        toast.error(`Cross-Department Access Denied: You are Department Admin for ${userDeptCode}. You cannot upload data for ${fileProgramCode}.`);
+        return;
+      }
+
       const res = await api.post('/admin/bulk-setup', payload, { timeout: 120000 });
       const data = res.data.data;
 
@@ -767,16 +798,43 @@ export default function BulkSetup() {
                   <Button
                     variant="primary"
                     size="sm"
-                    disabled={validationErrors.length > 0 && !parsedData.semesterConfig}
+                    disabled={isDeptMismatch || submitting || (validationErrors.length > 0 && !parsedData.semesterConfig)}
                     loading={submitting}
                     onClick={handleExecuteBulkSetup}
-                    className="!bg-brand hover:!bg-brand-600 font-bold"
+                    className={`font-bold ${isDeptMismatch ? '!bg-gray-400 !cursor-not-allowed' : '!bg-brand hover:!bg-brand-600'}`}
                     icon={<HiOutlineSparkles className="w-4 h-4" />}
                   >
                     Execute
                   </Button>
                 </div>
               </div>
+
+              {/* Department Access Violation Alert */}
+              {isDeptMismatch && (
+                <div className="p-4 bg-red-50 dark:bg-red-950/40 border-2 border-red-300 dark:border-red-800 rounded-2xl text-xs text-red-800 dark:text-red-300 flex items-start gap-3.5 shadow-sm">
+                  <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/60 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <HiOutlineExclamationTriangle className="w-5 h-5 text-red-600" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-sm text-red-900 dark:text-red-100">
+                        Cross-Department Upload Prohibited
+                      </p>
+                      <span className="text-3xs font-mono font-bold bg-red-200/80 dark:bg-red-900 text-red-800 dark:text-red-200 px-2 py-0.5 rounded uppercase">
+                        Department Scoped
+                      </span>
+                    </div>
+                    <p className="mt-1 leading-relaxed text-red-800 dark:text-red-200">
+                      You are logged in as <strong>Department Admin for {userDeptCode}</strong>.
+                      The uploaded file is configured for program <strong>{fileProgramCode}</strong>.
+                      Department Admins are strictly scoped to their own department and cannot create or modify data for other departments.
+                    </p>
+                    <p className="mt-2 text-2xs text-red-700 dark:text-red-300 font-medium">
+                      💡 To proceed, please upload an Excel file configured for <strong>{userDeptCode}</strong>, or sign in with a Super Admin account.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Validation Warnings Alert */}
               {validationErrors.length > 0 && (
@@ -796,11 +854,11 @@ export default function BulkSetup() {
               {/* 3 Preview Panels */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Panel 1: Semester Info */}
-                <div className="bg-surface border border-border-subtle rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                <div className={`bg-surface border rounded-2xl p-5 shadow-xs flex flex-col justify-between ${isDeptMismatch ? 'border-red-300 dark:border-red-800 ring-1 ring-red-200' : 'border-border-subtle'}`}>
                   <div>
                     <div className="flex items-center justify-between pb-3 border-b border-border-subtle/60 mb-3.5">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-brand flex items-center justify-center border border-blue-200/50 shrink-0">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center border shrink-0 ${isDeptMismatch ? 'bg-red-50 text-red-600 border-red-200' : 'bg-blue-50 text-brand border-blue-200/50'}`}>
                           <HiOutlineCalendarDays className="w-4 h-4" />
                         </div>
                         <div>
@@ -819,9 +877,20 @@ export default function BulkSetup() {
                       <div className="space-y-2.5 text-xs">
                         <div className="flex items-center justify-between py-1.5 border-b border-border-subtle/40">
                           <span className="text-ink-muted text-2xs font-medium">Program Code</span>
-                          <span className="font-mono text-xs font-bold text-ink-primary bg-canvas px-2 py-0.5 rounded-md border border-border-subtle">
-                            {parsedData.semesterConfig.program_code || parsedData.semesterConfig.programCode || 'N/A'}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded-md border ${
+                              isDeptMismatch
+                                ? 'bg-red-100 border-red-300 text-red-800 dark:bg-red-950 dark:border-red-800 dark:text-red-200'
+                                : 'bg-canvas text-ink-primary border-border-subtle'
+                            }`}>
+                              {fileProgramCode || 'N/A'}
+                            </span>
+                            {isDeptMismatch && (
+                              <Badge variant="danger" className="text-3xs">
+                                Required: {userDeptCode}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center justify-between py-1.5 border-b border-border-subtle/40">
                           <span className="text-ink-muted text-2xs font-medium">Academic Session</span>

@@ -44,7 +44,7 @@ const adminService = {
     return program;
   },
 
-  async getAllPrograms(filters = {}) {
+  async getAllPrograms(filters = {}, requester) {
     const query = {};
     if (filters.degree && filters.degree !== 'ALL') {
       query.degree = filters.degree;
@@ -59,6 +59,18 @@ const adminService = {
         { branch: { $regex: filters.search, $options: 'i' } },
         { department: { $regex: filters.search, $options: 'i' } },
       ];
+    }
+    // Department Admin scoping: restrict to their assigned department
+    if (requester && requester.role === 'admin') {
+      const adminUser = await User.findById(requester.id || requester._id);
+      let progId = adminUser?.programId;
+      if (!progId) {
+        const p = await Program.findOne({ departmentAdminId: requester.id || requester._id });
+        if (p) progId = p._id;
+      }
+      if (progId) {
+        query._id = progId;
+      }
     }
     return await Program.find(query)
       .populate('departmentAdminId', 'name email role')
@@ -120,7 +132,7 @@ const adminService = {
     return semester;
   },
 
-  async getSemesters(filters = {}) {
+  async getSemesters(filters = {}, requester) {
     const query = {};
     if (filters.programId) query.programId = filters.programId;
     if (filters.academicYear && filters.academicYear !== 'ALL') query.academicYear = filters.academicYear;
@@ -139,6 +151,19 @@ const adminService = {
         { name: { $regex: filters.search, $options: 'i' } },
         { academicYear: { $regex: filters.search, $options: 'i' } },
       ];
+    }
+
+    // Department Admin scoping: restrict semesters to their department
+    if (requester && requester.role === 'admin') {
+      const adminUser = await User.findById(requester.id || requester._id);
+      let progId = adminUser?.programId;
+      if (!progId) {
+        const p = await Program.findOne({ departmentAdminId: requester.id || requester._id });
+        if (p) progId = p._id;
+      }
+      if (progId) {
+        query.programId = progId;
+      }
     }
 
     return await Semester.find(query)

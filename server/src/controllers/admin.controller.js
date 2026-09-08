@@ -17,7 +17,7 @@ const adminController = {
   /** @route GET /api/admin/programs */
   async getPrograms(req, res, next) {
     try {
-      const programs = await adminService.getAllPrograms(req.query);
+      const programs = await adminService.getAllPrograms(req.query, req.user);
       sendSuccess(res, { data: programs, message: 'Programs retrieved' });
     } catch (error) { next(error); }
   },
@@ -53,7 +53,7 @@ const adminController = {
   /** @route GET /api/admin/semesters */
   async getSemesters(req, res, next) {
     try {
-      const semesters = await adminService.getSemesters(req.query);
+      const semesters = await adminService.getSemesters(req.query, req.user);
       sendSuccess(res, { data: semesters, message: 'Semesters retrieved' });
     } catch (error) { next(error); }
   },

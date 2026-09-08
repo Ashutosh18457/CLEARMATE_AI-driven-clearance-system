@@ -311,7 +311,9 @@ const authService = {
    * Fetches the current user's profile data.
    */
   async getMe(userId) {
-    const user = await User.findById(userId);
+    const user = await User.findById(userId)
+      .populate('programId')
+      .populate('assignedProgramId');
     if (!user) {
       throw AppError.notFound('User not found');
     }
