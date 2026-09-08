@@ -277,12 +277,33 @@ const bulkSetupService = {
       type: 'elective',
     });
 
-    const electiveOptionMap = {}; // optionName (lowercase) → option._id
-    for (const ci of electiveClearanceItems) {
-      for (const opt of ci.electiveOptions || []) {
-        electiveOptionMap[opt.name.toLowerCase().trim()] = opt._id;
+    // Helper to resolve an elective choice to an option _id
+    const resolveElectiveOptionId = (rawChoice) => {
+      if (!rawChoice) return null;
+      let val = String(rawChoice).trim();
+      if (!val) return null;
+      // Strip common prefixes like "PE-I:", "PE_1 - ", "Elective 1:", etc.
+      const strippedVal = val.replace(/^(pe[-_ ]?[i|v|x|0-9]+|elective[-_ ]?[0-9]+|group[-_ ]?[a-z0-9]+)\s*[:=-]\s*/i, '').trim();
+      const normRaw = val.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const normStripped = strippedVal.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      for (const ci of electiveClearanceItems) {
+        for (const opt of ci.electiveOptions || []) {
+          const optName = String(opt.name || '').trim();
+          const normOpt = optName.toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (
+            optName.toLowerCase() === val.toLowerCase() ||
+            optName.toLowerCase() === strippedVal.toLowerCase() ||
+            normOpt === normStripped ||
+            normOpt === normRaw ||
+            (normStripped.length >= 3 && (normOpt.includes(normStripped) || normStripped.includes(normOpt)))
+          ) {
+            return opt._id;
+          }
+        }
       }
-    }
+      return null;
+    };
 
     for (let i = 0; i < students.length; i++) {
       const row = students[i];
@@ -306,6 +327,31 @@ const bulkSetupService = {
           ],
         });
 
+        // Collect all possible elective choice values from row
+        const electiveChoices = [];
+        if (row.electiveChoice) electiveChoices.push(row.electiveChoice);
+        Object.keys(row).forEach((k) => {
+          const cleanKey = k.toLowerCase().replace(/[^a-z0-9_]/g, '');
+          if (
+            (cleanKey.startsWith('elective') ||
+              cleanKey.startsWith('pe') ||
+              cleanKey.startsWith('p') ||
+              cleanKey.startsWith('oe')) &&
+            k !== 'electiveChoice' &&
+            row[k]
+          ) {
+            electiveChoices.push(String(row[k]).trim());
+          }
+        });
+
+        const matchedElectiveIds = [];
+        for (const choice of electiveChoices) {
+          const optId = resolveElectiveOptionId(choice);
+          if (optId && !matchedElectiveIds.some((id) => id.toString() === optId.toString())) {
+            matchedElectiveIds.push(optId);
+          }
+        }
+
         let student;
         if (existingUser) {
           // Student already exists in the system — update their semester, batch, section, and elective
@@ -319,24 +365,6 @@ const bulkSetupService = {
 
           if (row.batch && batchMap[row.batch.trim()]) {
             updateFields.batchId = batchMap[row.batch.trim()]._id;
-          }
-
-          // Resolve all elective choices
-          const electiveNames = [];
-          if (row.electiveChoice) electiveNames.push(row.electiveChoice.trim());
-          Object.keys(row).forEach((k) => {
-            const cleanKey = k.toLowerCase().replace(/[^a-z0-9_]/g, '');
-            if ((cleanKey.startsWith('elective') || cleanKey.startsWith('pe') || cleanKey.startsWith('p') || cleanKey.startsWith('oe')) && k !== 'electiveChoice' && row[k]) {
-              electiveNames.push(String(row[k]).trim());
-            }
-          });
-
-          const matchedElectiveIds = [];
-          for (const elName of electiveNames) {
-            const optId = electiveOptionMap[elName.toLowerCase().trim()];
-            if (optId && !matchedElectiveIds.some((id) => id.toString() === optId.toString())) {
-              matchedElectiveIds.push(optId);
-            }
           }
 
           if (matchedElectiveIds.length > 0) {
@@ -379,24 +407,6 @@ const bulkSetupService = {
           // Assign batch
           if (row.batch && batchMap[row.batch.trim()]) {
             studentData.batchId = batchMap[row.batch.trim()]._id;
-          }
-
-          // Assign electives
-          const electiveNames = [];
-          if (row.electiveChoice) electiveNames.push(row.electiveChoice.trim());
-          Object.keys(row).forEach((k) => {
-            const cleanKey = k.toLowerCase().replace(/[^a-z0-9_]/g, '');
-            if ((cleanKey.startsWith('elective') || cleanKey.startsWith('pe') || cleanKey.startsWith('p') || cleanKey.startsWith('oe')) && k !== 'electiveChoice' && row[k]) {
-              electiveNames.push(String(row[k]).trim());
-            }
-          });
-
-          const matchedElectiveIds = [];
-          for (const elName of electiveNames) {
-            const optId = electiveOptionMap[elName.toLowerCase().trim()];
-            if (optId && !matchedElectiveIds.some((id) => id.toString() === optId.toString())) {
-              matchedElectiveIds.push(optId);
-            }
           }
 
           if (matchedElectiveIds.length > 0) {
@@ -604,13 +614,13 @@ const bulkSetupService = {
           'email',
           'section',
           'batch',
-          'elective_1',
-          'elective_2',
-          'elective_3',
+          'PE_I_Allotment',
+          'PE_II_Allotment',
+          'PE_III_Allotment',
         ],
         sampleRows: [
-          ['2024AIDS001', 'Rahul Sharma', 'rahul@college.edu', 'A', 'Batch A', 'Machine Learning', 'Deep Learning', 'Cyber Security'],
-          ['2024AIDS002', 'Priya Patel', 'priya@college.edu', 'A', 'Batch B', 'Cloud Computing', 'NLP', 'Internet of Things'],
+          ['2024AIDS001', 'Rahul Sharma', 'rahul@sbjit.edu.in', 'A', 'Batch A', 'Machine Learning', 'Deep Learning', 'Cyber Security'],
+          ['2024AIDS002', 'Priya Patel', 'priya@sbjit.edu.in', 'A', 'Batch B', 'Cloud Computing', 'NLP', 'Internet of Things'],
         ],
       },
     };

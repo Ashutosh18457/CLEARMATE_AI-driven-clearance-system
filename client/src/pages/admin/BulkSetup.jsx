@@ -27,6 +27,55 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 
+// Helper to extract structured Program Elective allotments from student rows
+export const extractStudentElectives = (st) => {
+  if (!st || typeof st !== 'object') return [];
+  const results = [];
+  const seenChoices = new Set();
+
+  const patterns = [
+    { track: 'PE-I', regex: /^(pe[-_ ]?i\b|pe[-_ ]?1\b|elective[-_ ]?1\b|pe[-_ ]?i[-_ ]?allotment|elective[-_ ]?i[-_ ]?allotment)/i },
+    { track: 'PE-II', regex: /^(pe[-_ ]?ii\b|pe[-_ ]?2\b|elective[-_ ]?2\b|pe[-_ ]?ii[-_ ]?allotment|elective[-_ ]?ii[-_ ]?allotment)/i },
+    { track: 'PE-III', regex: /^(pe[-_ ]?iii\b|pe[-_ ]?3\b|elective[-_ ]?3\b|pe[-_ ]?iii[-_ ]?allotment|elective[-_ ]?iii[-_ ]?allotment)/i },
+    { track: 'PE-IV', regex: /^(pe[-_ ]?iv\b|pe[-_ ]?4\b|elective[-_ ]?4\b|pe[-_ ]?iv[-_ ]?allotment|elective[-_ ]?iv[-_ ]?allotment)/i },
+    { track: 'OE', regex: /^(oe[-_ ]?[0-9i]*|open[-_ ]?elective)/i },
+  ];
+
+  const matchedKeys = new Set();
+
+  for (const { track, regex } of patterns) {
+    for (const key of Object.keys(st)) {
+      if (regex.test(key) && st[key] && String(st[key]).trim() !== '') {
+        const val = String(st[key]).trim();
+        if (!seenChoices.has(val.toLowerCase())) {
+          seenChoices.add(val.toLowerCase());
+          results.push({ track, choice: val, label: `${track}: ${val}` });
+          matchedKeys.add(key);
+        }
+      }
+    }
+  }
+
+  for (const key of Object.keys(st)) {
+    if (matchedKeys.has(key)) continue;
+    const lk = key.toLowerCase();
+    if (
+      (lk.includes('elective') || lk.startsWith('pe_') || lk.startsWith('pe-') || lk.startsWith('pe') || lk.startsWith('p_')) &&
+      st[key] &&
+      String(st[key]).trim() !== ''
+    ) {
+      const val = String(st[key]).trim();
+      if (!seenChoices.has(val.toLowerCase())) {
+        seenChoices.add(val.toLowerCase());
+        const cleanTrack = key.replace(/[_]/g, ' ').replace(/\ballotment\b/gi, '').trim().toUpperCase() || 'Elective';
+        results.push({ track: cleanTrack, choice: val, label: `${cleanTrack}: ${val}` });
+      }
+    }
+  }
+
+  return results;
+};
+
 export default function BulkSetup() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -171,9 +220,9 @@ export default function BulkSetup() {
         email: 'rahul.sharma@sbjit.edu.in',
         section: 'A',
         batch: 'Batch A',
-        elective_1: 'Machine Learning',
-        elective_2: 'Natural Language Processing',
-        elective_3: 'Cyber Security',
+        PE_I_Allotment: 'Machine Learning',
+        PE_II_Allotment: 'Natural Language Processing',
+        PE_III_Allotment: 'Cyber Security',
       },
       {
         enrollment_no: 'EN2024AIDS002',
@@ -181,9 +230,9 @@ export default function BulkSetup() {
         email: 'priya.patel@sbjit.edu.in',
         section: 'A',
         batch: 'Batch B',
-        elective_1: 'Cloud Computing',
-        elective_2: 'Computer Vision',
-        elective_3: 'Internet of Things',
+        PE_I_Allotment: 'Cloud Computing',
+        PE_II_Allotment: 'Computer Vision',
+        PE_III_Allotment: 'Internet of Things',
       },
       {
         enrollment_no: 'EN2024AIDS003',
@@ -191,9 +240,9 @@ export default function BulkSetup() {
         email: 'amit.verma@sbjit.edu.in',
         section: 'A',
         batch: 'Batch C',
-        elective_1: 'Machine Learning',
-        elective_2: 'Natural Language Processing',
-        elective_3: 'Cyber Security',
+        PE_I_Allotment: 'Machine Learning',
+        PE_II_Allotment: 'Natural Language Processing',
+        PE_III_Allotment: 'Cyber Security',
       },
     ];
     const ws3 = XLSX.utils.json_to_sheet(studentsData);
@@ -753,18 +802,36 @@ export default function BulkSetup() {
                         </button>
                       )}
                     </div>
-                    <div className="max-h-48 overflow-y-auto divide-y divide-border-subtle/50 text-xs custom-scrollbar">
-                      {parsedData.students.slice(0, 10).map((st, idx) => (
-                        <div key={idx} className="py-2 flex items-center justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="font-semibold text-ink-primary truncate">{st.full_name || st.name || st.email}</p>
-                            <p className="text-2xs text-ink-muted font-mono">{st.enrollment_no || st.enrollmentNo || 'N/A'}</p>
+                    <div className="max-h-56 overflow-y-auto divide-y divide-border-subtle/50 text-xs custom-scrollbar">
+                      {parsedData.students.slice(0, 10).map((st, idx) => {
+                        const electives = extractStudentElectives(st);
+                        return (
+                          <div key={idx} className="py-2 flex items-center justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-ink-primary truncate">{st.full_name || st.name || st.email}</p>
+                              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                <span className="text-2xs text-ink-muted font-mono">{st.enrollment_no || st.enrollmentNo || 'N/A'}</span>
+                                {electives.slice(0, 2).map((el, i) => (
+                                  <span
+                                    key={i}
+                                    className="inline-flex items-center gap-1 text-3xs px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-200 font-medium"
+                                  >
+                                    <strong className="font-bold">{el.track}:</strong> {el.choice}
+                                  </span>
+                                ))}
+                                {electives.length > 2 && (
+                                  <span className="text-3xs text-ink-muted bg-canvas px-1 rounded border border-border-subtle">
+                                    +{electives.length - 2} more
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <span className="text-2xs px-1.5 py-0.5 bg-canvas border border-border-subtle rounded font-mono text-ink-secondary shrink-0">
+                              {st.batch || 'Batch A'}
+                            </span>
                           </div>
-                          <span className="text-2xs px-1.5 py-0.5 bg-canvas border border-border-subtle rounded font-mono text-ink-secondary shrink-0">
-                            {st.batch || 'Batch A'}
-                          </span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                   {parsedData.students.length > 10 && (
@@ -774,7 +841,7 @@ export default function BulkSetup() {
                       className="w-full mt-2 py-2 px-3 bg-brand/5 hover:bg-brand/10 border border-brand/20 rounded-lg text-2xs font-bold text-brand hover:text-brand-dark transition-all text-center flex items-center justify-center gap-1.5 shadow-2xs group cursor-pointer"
                     >
                       <HiOutlineUsers className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
-                      <span>+ {parsedData.students.length - 10} more students in roster (Click to view full list)</span>
+                      <span>+ {parsedData.students.length - 10} more students in roster (Click to view full list & electives)</span>
                     </button>
                   )}
                 </div>
@@ -909,7 +976,7 @@ export default function BulkSetup() {
                 )}
               </div>
               <p className="text-2xs text-ink-muted mb-3">
-                Upload student CSV/Excel with columns: <span className="font-mono">enrollment_no, full_name, email, batch, elective_choice</span>
+                Upload student CSV/Excel with columns: <span className="font-mono">enrollment_no, full_name, email, batch, PE_I_Allotment, PE_II_Allotment, PE_III_Allotment</span>
               </p>
               <input
                 type="file"
@@ -966,7 +1033,7 @@ export default function BulkSetup() {
                     </Badge>
                   </h2>
                   <p className="text-xs text-ink-muted">
-                    Previewing all students parsed from the template before importing into database
+                    Previewing all students parsed from the template with specific Program Elective allotments
                   </p>
                 </div>
               </div>
@@ -1005,13 +1072,16 @@ export default function BulkSetup() {
                         const email = (st.email || '').toLowerCase();
                         const roll = (st.enrollment_no || st.enrollmentNo || st.roll_no || st.rollNo || '').toLowerCase();
                         const batch = (st.batch || '').toLowerCase();
-                        const elective = (st.electiveChoice || st.elective_choice || '').toLowerCase();
+                        const electives = extractStudentElectives(st);
+                        const electiveMatch = electives.some(
+                          (e) => e.choice.toLowerCase().includes(q) || e.track.toLowerCase().includes(q)
+                        );
                         return (
                           name.includes(q) ||
                           email.includes(q) ||
                           roll.includes(q) ||
                           batch.includes(q) ||
-                          elective.includes(q)
+                          electiveMatch
                         );
                       }).length
                     }
@@ -1031,13 +1101,16 @@ export default function BulkSetup() {
                   const email = (st.email || '').toLowerCase();
                   const roll = (st.enrollment_no || st.enrollmentNo || st.roll_no || st.rollNo || '').toLowerCase();
                   const batch = (st.batch || '').toLowerCase();
-                  const elective = (st.electiveChoice || st.elective_choice || '').toLowerCase();
+                  const electives = extractStudentElectives(st);
+                  const electiveMatch = electives.some(
+                    (e) => e.choice.toLowerCase().includes(q) || e.track.toLowerCase().includes(q)
+                  );
                   return (
                     name.includes(q) ||
                     email.includes(q) ||
                     roll.includes(q) ||
                     batch.includes(q) ||
-                    elective.includes(q)
+                    electiveMatch
                   );
                 });
 
@@ -1069,27 +1142,12 @@ export default function BulkSetup() {
                           <th className="py-2.5 px-3">Email Address</th>
                           <th className="py-2.5 px-3 text-center">Sec</th>
                           <th className="py-2.5 px-3 text-center">Batch</th>
-                          <th className="py-2.5 px-3">Elective Preference</th>
+                          <th className="py-2.5 px-3">Program Elective Allotment</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border-subtle text-ink-primary">
                         {filtered.map((st, idx) => {
-                          // Extract any elective values
-                          const electiveKeys = Object.keys(st).filter((k) => {
-                            const lk = k.toLowerCase();
-                            return (
-                              lk.includes('elective') ||
-                              lk.startsWith('pe_') ||
-                              lk.startsWith('pe-') ||
-                              lk.startsWith('p_')
-                            );
-                          });
-                          const electiveText =
-                            electiveKeys.length > 0
-                              ? electiveKeys
-                                  .map((k) => `${k.replace(/_/g, ' ')}: ${st[k]}`)
-                                  .join(' | ')
-                              : st.electiveChoice || st.elective_choice || '—';
+                          const electives = extractStudentElectives(st);
 
                           return (
                             <tr key={idx} className="hover:bg-surface-hover/60 transition-colors">
@@ -1115,8 +1173,38 @@ export default function BulkSetup() {
                                   {st.batch || 'Batch A'}
                                 </Badge>
                               </td>
-                              <td className="py-2.5 px-3 text-ink-secondary text-2xs">
-                                {electiveText}
+                              <td className="py-2.5 px-3">
+                                {electives.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1.5 items-center">
+                                    {electives.map((el, i) => {
+                                      let colorClasses = "bg-purple-50 text-purple-700 border-purple-200";
+                                      let trackBadgeColor = "bg-purple-200/80 text-purple-900";
+                                      if (el.track.includes('II') || el.track.includes('2')) {
+                                        colorClasses = "bg-indigo-50 text-indigo-700 border-indigo-200";
+                                        trackBadgeColor = "bg-indigo-200/80 text-indigo-900";
+                                      } else if (el.track.includes('III') || el.track.includes('3')) {
+                                        colorClasses = "bg-teal-50 text-teal-700 border-teal-200";
+                                        trackBadgeColor = "bg-teal-200/80 text-teal-900";
+                                      } else if (el.track.includes('IV') || el.track.includes('4')) {
+                                        colorClasses = "bg-amber-50 text-amber-700 border-amber-200";
+                                        trackBadgeColor = "bg-amber-200/80 text-amber-900";
+                                      }
+                                      return (
+                                        <span
+                                          key={i}
+                                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-2xs font-medium shadow-2xs ${colorClasses}`}
+                                        >
+                                          <span className={`px-1 py-0.2 rounded font-bold uppercase tracking-wider text-3xs ${trackBadgeColor}`}>
+                                            {el.track}
+                                          </span>
+                                          <span className="font-semibold">{el.choice}</span>
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <span className="text-ink-muted italic text-2xs">None specified</span>
+                                )}
                               </td>
                             </tr>
                           );
