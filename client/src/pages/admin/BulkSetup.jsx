@@ -18,6 +18,8 @@ import {
   HiOutlineSparkles,
   HiOutlineShieldCheck,
   HiOutlineTrash,
+  HiOutlineXMark,
+  HiOutlineMagnifyingGlass,
 } from 'react-icons/hi2';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -42,6 +44,8 @@ export default function BulkSetup() {
   const [parsing, setParsing] = useState(false);
   const [parsedData, setParsedData] = useState(null);
   const [validationErrors, setValidationErrors] = useState([]);
+  const [showAllStudentsModal, setShowAllStudentsModal] = useState(false);
+  const [studentSearchQuery, setStudentSearchQuery] = useState('');
 
   // Execution State
   const [submitting, setSubmitting] = useState(false);
@@ -731,29 +735,48 @@ export default function BulkSetup() {
                 </div>
 
                 {/* Panel 3: Students Preview */}
-                <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-xs">
-                  <h3 className="text-xs font-bold text-ink-muted uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                    <HiOutlineUsers className="w-4 h-4 text-green-600" />
-                    3. Students ({parsedData.students.length})
-                  </h3>
-                  <div className="max-h-48 overflow-y-auto divide-y divide-border-subtle/50 text-xs custom-scrollbar">
-                    {parsedData.students.slice(0, 10).map((st, idx) => (
-                      <div key={idx} className="py-2 flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-semibold text-ink-primary truncate">{st.full_name || st.name || st.email}</p>
-                          <p className="text-2xs text-ink-muted font-mono">{st.enrollment_no || st.enrollmentNo || 'N/A'}</p>
+                <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-xs flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-xs font-bold text-ink-muted uppercase tracking-wider flex items-center gap-1.5">
+                        <HiOutlineUsers className="w-4 h-4 text-green-600" />
+                        3. Students ({parsedData.students.length})
+                      </h3>
+                      {parsedData.students.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => { setStudentSearchQuery(''); setShowAllStudentsModal(true); }}
+                          className="text-2xs font-semibold text-brand hover:underline flex items-center gap-1 px-2 py-0.5 rounded bg-brand/5 hover:bg-brand/10 transition-colors cursor-pointer"
+                        >
+                          <HiOutlineMagnifyingGlass className="w-3 h-3" />
+                          View All
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-48 overflow-y-auto divide-y divide-border-subtle/50 text-xs custom-scrollbar">
+                      {parsedData.students.slice(0, 10).map((st, idx) => (
+                        <div key={idx} className="py-2 flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-ink-primary truncate">{st.full_name || st.name || st.email}</p>
+                            <p className="text-2xs text-ink-muted font-mono">{st.enrollment_no || st.enrollmentNo || 'N/A'}</p>
+                          </div>
+                          <span className="text-2xs px-1.5 py-0.5 bg-canvas border border-border-subtle rounded font-mono text-ink-secondary shrink-0">
+                            {st.batch || 'Batch A'}
+                          </span>
                         </div>
-                        <span className="text-2xs px-1.5 py-0.5 bg-canvas border border-border-subtle rounded font-mono text-ink-secondary shrink-0">
-                          {st.batch || 'Batch A'}
-                        </span>
-                      </div>
-                    ))}
-                    {parsedData.students.length > 10 && (
-                      <p className="text-2xs text-ink-muted pt-2 text-center">
-                        + {parsedData.students.length - 10} more students in roster
-                      </p>
-                    )}
+                      ))}
+                    </div>
                   </div>
+                  {parsedData.students.length > 10 && (
+                    <button
+                      type="button"
+                      onClick={() => { setStudentSearchQuery(''); setShowAllStudentsModal(true); }}
+                      className="w-full mt-2 py-2 px-3 bg-brand/5 hover:bg-brand/10 border border-brand/20 rounded-lg text-2xs font-bold text-brand hover:text-brand-dark transition-all text-center flex items-center justify-center gap-1.5 shadow-2xs group cursor-pointer"
+                    >
+                      <HiOutlineUsers className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
+                      <span>+ {parsedData.students.length - 10} more students in roster (Click to view full list)</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -922,6 +945,204 @@ export default function BulkSetup() {
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Complete Student Roster Modal */}
+      {showAllStudentsModal && parsedData?.students && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
+          <div className="bg-surface border border-border-subtle rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-border-subtle flex items-center justify-between bg-canvas/60">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-green-50 text-green-700 flex items-center justify-center border border-green-200 shrink-0">
+                  <HiOutlineUsers className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-ink-primary flex items-center gap-2">
+                    Complete Student Roster
+                    <Badge variant="success" className="text-2xs">
+                      {parsedData.students.length} Students
+                    </Badge>
+                  </h2>
+                  <p className="text-xs text-ink-muted">
+                    Previewing all students parsed from the template before importing into database
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAllStudentsModal(false)}
+                className="p-1.5 rounded-lg text-ink-muted hover:text-ink-primary hover:bg-surface-hover transition-colors cursor-pointer"
+                aria-label="Close modal"
+              >
+                <HiOutlineXMark className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Search & Filter Bar */}
+            <div className="px-6 py-3 border-b border-border-subtle bg-surface flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="relative w-full sm:w-96">
+                <HiOutlineMagnifyingGlass className="w-4 h-4 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search by name, email, roll no, batch, elective..."
+                  value={studentSearchQuery}
+                  onChange={(e) => setStudentSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-canvas border border-border-subtle rounded-lg text-xs text-ink-primary placeholder:text-ink-muted focus:outline-none focus:ring-1 focus:ring-brand focus:border-brand"
+                  autoFocus
+                />
+              </div>
+              <div className="flex items-center gap-2 text-2xs text-ink-muted">
+                <span>
+                  Showing{' '}
+                  <strong className="text-ink-primary">
+                    {
+                      parsedData.students.filter((st) => {
+                        if (!studentSearchQuery.trim()) return true;
+                        const q = studentSearchQuery.toLowerCase();
+                        const name = (st.full_name || st.name || '').toLowerCase();
+                        const email = (st.email || '').toLowerCase();
+                        const roll = (st.enrollment_no || st.enrollmentNo || st.roll_no || st.rollNo || '').toLowerCase();
+                        const batch = (st.batch || '').toLowerCase();
+                        const elective = (st.electiveChoice || st.elective_choice || '').toLowerCase();
+                        return (
+                          name.includes(q) ||
+                          email.includes(q) ||
+                          roll.includes(q) ||
+                          batch.includes(q) ||
+                          elective.includes(q)
+                        );
+                      }).length
+                    }
+                  </strong>{' '}
+                  of {parsedData.students.length} students
+                </span>
+              </div>
+            </div>
+
+            {/* Table Content */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+              {(() => {
+                const filtered = parsedData.students.filter((st) => {
+                  if (!studentSearchQuery.trim()) return true;
+                  const q = studentSearchQuery.toLowerCase();
+                  const name = (st.full_name || st.name || '').toLowerCase();
+                  const email = (st.email || '').toLowerCase();
+                  const roll = (st.enrollment_no || st.enrollmentNo || st.roll_no || st.rollNo || '').toLowerCase();
+                  const batch = (st.batch || '').toLowerCase();
+                  const elective = (st.electiveChoice || st.elective_choice || '').toLowerCase();
+                  return (
+                    name.includes(q) ||
+                    email.includes(q) ||
+                    roll.includes(q) ||
+                    batch.includes(q) ||
+                    elective.includes(q)
+                  );
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="py-12 text-center text-ink-muted text-xs">
+                      <p className="font-semibold text-ink-secondary">
+                        No students match your search query "{studentSearchQuery}"
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setStudentSearchQuery('')}
+                        className="mt-2 text-brand hover:underline font-medium cursor-pointer"
+                      >
+                        Clear search query
+                      </button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="border border-border-subtle rounded-xl overflow-hidden shadow-2xs">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-canvas border-b border-border-subtle text-ink-muted text-2xs font-semibold uppercase tracking-wider">
+                        <tr>
+                          <th className="py-2.5 px-3 w-12 text-center">#</th>
+                          <th className="py-2.5 px-3">Student Name</th>
+                          <th className="py-2.5 px-3">Enrollment / Roll No</th>
+                          <th className="py-2.5 px-3">Email Address</th>
+                          <th className="py-2.5 px-3 text-center">Sec</th>
+                          <th className="py-2.5 px-3 text-center">Batch</th>
+                          <th className="py-2.5 px-3">Elective Preference</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border-subtle text-ink-primary">
+                        {filtered.map((st, idx) => {
+                          // Extract any elective values
+                          const electiveKeys = Object.keys(st).filter((k) => {
+                            const lk = k.toLowerCase();
+                            return (
+                              lk.includes('elective') ||
+                              lk.startsWith('pe_') ||
+                              lk.startsWith('pe-') ||
+                              lk.startsWith('p_')
+                            );
+                          });
+                          const electiveText =
+                            electiveKeys.length > 0
+                              ? electiveKeys
+                                  .map((k) => `${k.replace(/_/g, ' ')}: ${st[k]}`)
+                                  .join(' | ')
+                              : st.electiveChoice || st.elective_choice || '—';
+
+                          return (
+                            <tr key={idx} className="hover:bg-surface-hover/60 transition-colors">
+                              <td className="py-2.5 px-3 text-center text-ink-muted font-mono text-2xs">
+                                {idx + 1}
+                              </td>
+                              <td className="py-2.5 px-3 font-semibold text-ink-primary">
+                                {st.full_name || st.name || 'Unnamed Student'}
+                              </td>
+                              <td className="py-2.5 px-3 font-mono text-2xs text-ink-secondary">
+                                {st.enrollment_no || st.enrollmentNo || st.roll_no || st.rollNo || '—'}
+                              </td>
+                              <td className="py-2.5 px-3 text-ink-muted font-mono text-2xs">
+                                {st.email || '—'}
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                <span className="px-1.5 py-0.5 bg-canvas border border-border-subtle rounded text-2xs font-mono">
+                                  {st.section || 'A'}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                <Badge variant="info" className="text-2xs font-mono">
+                                  {st.batch || 'Batch A'}
+                                </Badge>
+                              </td>
+                              <td className="py-2.5 px-3 text-ink-secondary text-2xs">
+                                {electiveText}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3.5 border-t border-border-subtle bg-canvas/40 flex items-center justify-between">
+              <span className="text-2xs text-ink-muted flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+                All {parsedData.students.length} student records validated and ready for provisioning.
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAllStudentsModal(false)}
+              >
+                Close Preview
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </DashboardLayout>
