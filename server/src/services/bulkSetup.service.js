@@ -7,6 +7,24 @@ const AppError = require('../utils/AppError');
 const logger = require('../config/logger');
 const bcrypt = require('bcryptjs');
 
+const parseToDate = (val, fallback) => {
+  if (!val) return fallback;
+  if (val instanceof Date && !isNaN(val.getTime())) return val;
+  if (typeof val === 'number') {
+    if (val > 20000 && val < 60000) {
+      const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+      if (!isNaN(d.getTime())) return d;
+    }
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d;
+  }
+  if (typeof val === 'string' && val.trim()) {
+    const d = new Date(val.trim());
+    if (!isNaN(d.getTime())) return d;
+  }
+  return fallback;
+};
+
 const bulkSetupService = {
   /**
    * Orchestrates the full bulk semester setup from parsed data.
@@ -63,11 +81,12 @@ const bulkSetupService = {
         semNumber: semesterConfig.semNumber,
         academicYear: semesterConfig.academicYear,
         type: semesterConfig.type || semType,
-        startDate: semesterConfig.startDate || new Date(),
-        endDate: semesterConfig.endDate || new Date(Date.now() + 150 * 24 * 60 * 60 * 1000),
-        clearanceDeadline:
-          semesterConfig.clearanceDeadline ||
-          new Date(Date.now() + 140 * 24 * 60 * 60 * 1000),
+        startDate: parseToDate(semesterConfig.startDate || semesterConfig.start_date, new Date()),
+        endDate: parseToDate(semesterConfig.endDate || semesterConfig.end_date, new Date(Date.now() + 150 * 24 * 60 * 60 * 1000)),
+        clearanceDeadline: parseToDate(
+          semesterConfig.clearanceDeadline || semesterConfig.clearance_deadline || semesterConfig.deadline,
+          new Date(Date.now() + 140 * 24 * 60 * 60 * 1000)
+        ),
         isActive: true,
       });
     }
@@ -359,6 +378,27 @@ const bulkSetupService = {
       return matchedIds;
     };
 
+    // ─── Step 6: Create Students + Assign to Batches ───
+    // Batch pre-fetch existing users to avoid N round trips to MongoDB
+    const studentEmails = students.map((s) => s.email?.toLowerCase()?.trim()).filter(Boolean);
+    const studentEnrollments = students.map((s) => s.enrollmentNo?.trim()).filter(Boolean);
+
+    const existingUsersList = await User.find({
+      $or: [
+        { email: { $in: studentEmails } },
+        { enrollmentNo: { $in: studentEnrollments } },
+      ],
+    });
+
+    const existingUserMap = new Map();
+    for (const u of existingUsersList) {
+      if (u.email) existingUserMap.set(u.email.toLowerCase().trim(), u);
+      if (u.enrollmentNo) existingUserMap.set(u.enrollmentNo.trim(), u);
+    }
+
+    // Track batch memberships to flush in 1 operation per batch
+    const batchStudentAdditions = {}; // batchId -> array of studentIds
+
     for (let i = 0; i < students.length; i++) {
       const row = students[i];
       const rowIndex = i + 2; // Excel is 1-indexed + header row
@@ -373,13 +413,9 @@ const bulkSetupService = {
           continue;
         }
 
-        // Check for existing user
-        const existingUser = await User.findOne({
-          $or: [
-            { email: row.email.toLowerCase().trim() },
-            { enrollmentNo: row.enrollmentNo.trim() },
-          ],
-        });
+        const emailClean = row.email.toLowerCase().trim();
+        const enrollClean = row.enrollmentNo.trim();
+        const existingUser = existingUserMap.get(emailClean) || existingUserMap.get(enrollClean);
 
         // Collect all possible elective & MDM choice values from row
         const electiveChoices = [];
@@ -438,11 +474,10 @@ const bulkSetupService = {
 
           student = await User.findByIdAndUpdate(existingUser._id, updateFields, { new: true });
 
-          // Add student to the batch's studentIds array
+          // Track for batch update
           if (updateFields.batchId) {
-            await Batch.findByIdAndUpdate(updateFields.batchId, {
-              $addToSet: { studentIds: student._id },
-            });
+            if (!batchStudentAdditions[updateFields.batchId]) batchStudentAdditions[updateFields.batchId] = [];
+            batchStudentAdditions[updateFields.batchId].push(student._id);
           }
 
           result.studentsCreated.push({
@@ -454,15 +489,15 @@ const bulkSetupService = {
           });
         } else {
           // Generate default password satisfying strength requirements (min 8 chars, upper, lower, number, special)
-          const defaultPassword = 'Pass@' + row.enrollmentNo.trim() + '1';
+          const defaultPassword = 'Pass@' + enrollClean + '1';
 
           const studentData = {
             name: row.name.trim(),
-            email: row.email.toLowerCase().trim(),
+            email: emailClean,
             password: defaultPassword,
             role: 'student',
             programId: program._id,
-            enrollmentNo: row.enrollmentNo.trim(),
+            enrollmentNo: enrollClean,
             currentSemester: semesterConfig.semNumber,
             section: row.section || 'A',
             isActive: true,
@@ -480,11 +515,10 @@ const bulkSetupService = {
 
           student = await User.create(studentData);
 
-          // Add student to the batch's studentIds array
+          // Track for batch update
           if (studentData.batchId) {
-            await Batch.findByIdAndUpdate(studentData.batchId, {
-              $addToSet: { studentIds: student._id },
-            });
+            if (!batchStudentAdditions[studentData.batchId]) batchStudentAdditions[studentData.batchId] = [];
+            batchStudentAdditions[studentData.batchId].push(student._id);
           }
 
           result.studentsCreated.push({
@@ -501,6 +535,14 @@ const bulkSetupService = {
           reason: err.message,
         });
       }
+    }
+
+    // Flush batch student additions in parallel
+    const batchUpdateOps = Object.entries(batchStudentAdditions).map(([bId, sIds]) =>
+      Batch.findByIdAndUpdate(bId, { $addToSet: { studentIds: { $each: sIds } } })
+    );
+    if (batchUpdateOps.length > 0) {
+      await Promise.all(batchUpdateOps);
     }
 
     logger.info('Bulk setup complete', {

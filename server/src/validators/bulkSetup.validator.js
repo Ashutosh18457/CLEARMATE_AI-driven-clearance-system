@@ -18,14 +18,14 @@ const bulkSetupValidator = {
       academicYear: Joi.string().trim().max(20).optional(),
       academic_year: Joi.string().trim().max(20).optional(),
       type: Joi.string().valid('ODD', 'EVEN', 'odd', 'even', '').optional().allow('', null),
-      startDate: Joi.alternatives().try(Joi.date().iso(), Joi.string().max(40).allow('', null)).optional(),
-      start_date: Joi.alternatives().try(Joi.date().iso(), Joi.string().max(40).allow('', null)).optional(),
-      endDate: Joi.alternatives().try(Joi.date().iso(), Joi.string().max(40).allow('', null)).optional(),
-      end_date: Joi.alternatives().try(Joi.date().iso(), Joi.string().max(40).allow('', null)).optional(),
-      clearanceDeadline: Joi.alternatives().try(Joi.date().iso(), Joi.string().max(40).allow('', null)).optional(),
-      clearance_deadline: Joi.alternatives().try(Joi.date().iso(), Joi.string().max(40).allow('', null)).optional(),
-      deadline: Joi.alternatives().try(Joi.date().iso(), Joi.string().max(40).allow('', null)).optional(),
-    }).required(),
+      startDate: Joi.alternatives().try(Joi.date(), Joi.string().allow('', null), Joi.number().allow(null)).optional(),
+      start_date: Joi.alternatives().try(Joi.date(), Joi.string().allow('', null), Joi.number().allow(null)).optional(),
+      endDate: Joi.alternatives().try(Joi.date(), Joi.string().allow('', null), Joi.number().allow(null)).optional(),
+      end_date: Joi.alternatives().try(Joi.date(), Joi.string().allow('', null), Joi.number().allow(null)).optional(),
+      clearanceDeadline: Joi.alternatives().try(Joi.date(), Joi.string().allow('', null), Joi.number().allow(null)).optional(),
+      clearance_deadline: Joi.alternatives().try(Joi.date(), Joi.string().allow('', null), Joi.number().allow(null)).optional(),
+      deadline: Joi.alternatives().try(Joi.date(), Joi.string().allow('', null), Joi.number().allow(null)).optional(),
+    }).unknown(true).required(),
 
     clearanceItems: Joi.array()
       .items(

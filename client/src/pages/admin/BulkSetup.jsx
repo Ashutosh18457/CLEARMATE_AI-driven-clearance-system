@@ -326,7 +326,7 @@ export default function BulkSetup() {
 
     try {
       const buffer = await file.arrayBuffer();
-      const wb = XLSX.read(buffer, { type: 'array' });
+      const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
 
       // Look for expected sheets or parse single sheet
       const sheetNames = wb.SheetNames;
@@ -443,6 +443,30 @@ export default function BulkSetup() {
         return '';
       };
 
+      // Date normalizer handling Excel numeric serials, Date objects, and strings
+      const formatExcelDate = (val) => {
+        if (!val && val !== 0) return undefined;
+        if (val instanceof Date && !isNaN(val.getTime())) {
+          return val.toISOString().split('T')[0];
+        }
+        if (typeof val === 'number') {
+          if (val > 20000 && val < 60000) {
+            const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+            if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+          }
+          const d = new Date(val);
+          if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+        }
+        if (typeof val === 'string') {
+          const trimmed = val.trim();
+          if (!trimmed) return undefined;
+          const d = new Date(trimmed);
+          if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+          return trimmed;
+        }
+        return undefined;
+      };
+
       // Normalize semesterConfig
       const raw = parsedData.semesterConfig;
       const normalizedSemesterConfig = {
@@ -450,9 +474,9 @@ export default function BulkSetup() {
         semNumber: parseInt(getVal(raw, 'semNumber', 'sem_number', 'semester', 'sem', 'semester_number') || 5, 10),
         academicYear: String(getVal(raw, 'academicYear', 'academic_year', 'session', 'year') || '2025-26').trim(),
         type: String(getVal(raw, 'type', 'term_type', 'semester_type') || '').toUpperCase() || undefined,
-        startDate: getVal(raw, 'startDate', 'start_date') || undefined,
-        endDate: getVal(raw, 'endDate', 'end_date') || undefined,
-        clearanceDeadline: getVal(raw, 'clearanceDeadline', 'clearance_deadline', 'deadline') || undefined,
+        startDate: formatExcelDate(getVal(raw, 'startDate', 'start_date')),
+        endDate: formatExcelDate(getVal(raw, 'endDate', 'end_date')),
+        clearanceDeadline: formatExcelDate(getVal(raw, 'clearanceDeadline', 'clearance_deadline', 'deadline')),
       };
 
       const isValidEmail = (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
@@ -516,7 +540,7 @@ export default function BulkSetup() {
         students: normalizedStudents,
       };
 
-      const res = await api.post('/admin/bulk-setup', payload);
+      const res = await api.post('/admin/bulk-setup', payload, { timeout: 120000 });
       const data = res.data.data;
 
       setExecutionResult(data);
@@ -553,7 +577,7 @@ export default function BulkSetup() {
         students: cloneStudents,
       };
 
-      const res = await api.post('/admin/clone-semester', payload);
+      const res = await api.post('/admin/clone-semester', payload, { timeout: 120000 });
       const data = res.data.data;
 
       setExecutionResult(data);

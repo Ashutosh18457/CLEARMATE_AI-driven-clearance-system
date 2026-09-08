@@ -199,10 +199,22 @@ export default function Users() {
         delete payload.assignedSemester;
         delete payload.assignedSection;
       }
-      if (payload.currentSemester) {
+
+      // Convert empty string relations to null so ObjectId/Number validations never fail
+      if (payload.programId === '' || payload.programId === undefined) {
+        payload.programId = null;
+      }
+      if (payload.assignedProgramId === '' || payload.assignedProgramId === undefined) {
+        payload.assignedProgramId = null;
+      }
+      if (!payload.currentSemester || payload.currentSemester === '') {
+        payload.currentSemester = null;
+      } else {
         payload.currentSemester = Number(payload.currentSemester);
       }
-      if (payload.assignedSemester) {
+      if (!payload.assignedSemester || payload.assignedSemester === '') {
+        payload.assignedSemester = null;
+      } else {
         payload.assignedSemester = Number(payload.assignedSemester);
       }
 

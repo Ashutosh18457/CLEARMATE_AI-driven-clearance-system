@@ -5,7 +5,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000,
+  timeout: 60000,
 });
 
 // ─── Request Interceptor: Attach JWT ───
@@ -42,12 +42,17 @@ api.interceptors.response.use(
     }
 
     const rawData = error.response?.data;
-    if (typeof rawData === 'string' && (rawData.includes('ECONNREFUSED') || rawData.includes('500 Internal Server Error'))) {
+    const errDetails = error.response?.data?.error?.details;
+    if (errDetails && Array.isArray(errDetails) && errDetails.length > 0) {
+      message = errDetails.join(', ');
+    } else if (typeof rawData === 'string' && (rawData.includes('ECONNREFUSED') || rawData.includes('500 Internal Server Error'))) {
       message = 'Backend server is offline on port 5000. Please ensure backend server is running.';
     }
 
     if (!message) {
-      if (status === 429) {
+      if (error.code === 'ECONNABORTED' || error.message?.toLowerCase().includes('timeout')) {
+        message = 'Request timed out: Server took too long to respond. The operation may still be processing.';
+      } else if (status === 429) {
         message = 'Too many requests. Please wait a moment before trying again.';
       } else if (status === 500) {
         message = 'Backend server encountered an unexpected error. Please ensure backend server is running.';

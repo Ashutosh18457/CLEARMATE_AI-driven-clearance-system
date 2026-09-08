@@ -6,6 +6,28 @@ const ClearanceItem = require('../models/ClearanceItem');
 const AppError = require('../utils/AppError');
 const logger = require('../config/logger');
 
+const cleanEmptyValues = (obj, idFields = [], numFields = []) => {
+  if (!obj || typeof obj !== 'object') return obj;
+  const cleaned = { ...obj };
+
+  for (const field of idFields) {
+    if (cleaned[field] === '' || cleaned[field] === 'null' || cleaned[field] === undefined) {
+      cleaned[field] = null;
+    }
+  }
+
+  for (const field of numFields) {
+    if (cleaned[field] === '' || cleaned[field] === null || cleaned[field] === undefined) {
+      cleaned[field] = null;
+    } else if (cleaned[field] !== undefined) {
+      const num = Number(cleaned[field]);
+      cleaned[field] = isNaN(num) ? null : num;
+    }
+  }
+
+  return cleaned;
+};
+
 const adminService = {
   // ══════════════════════════════════════════════
   // PROGRAMS
@@ -16,7 +38,8 @@ const adminService = {
     if (existing) {
       throw AppError.conflict(`Program with code "${data.code}" already exists`);
     }
-    const program = await Program.create(data);
+    const cleaned = cleanEmptyValues(data, ['departmentAdminId', 'hodId'], ['totalSemesters']);
+    const program = await Program.create(cleaned);
     logger.info('Program created', { programId: program._id, code: program.code });
     return program;
   },
@@ -52,7 +75,8 @@ const adminService = {
   },
 
   async updateProgram(id, data) {
-    const program = await Program.findByIdAndUpdate(id, data, {
+    const cleaned = cleanEmptyValues(data, ['departmentAdminId', 'hodId'], ['totalSemesters']);
+    const program = await Program.findByIdAndUpdate(id, cleaned, {
       new: true,
       runValidators: true,
     })
@@ -198,7 +222,11 @@ const adminService = {
       throw AppError.conflict(`User with email "${data.email}" already exists`);
     }
 
-    const payload = { ...data };
+    const payload = cleanEmptyValues(
+      data,
+      ['programId', 'assignedProgramId', 'batchId', 'selectedElective', 'departmentAdminId', 'hodId'],
+      ['currentSemester', 'assignedSemester']
+    );
     payload.password = payload.password || 'Pass@123';
 
     if (payload.role === 'student') {
@@ -767,13 +795,19 @@ const adminService = {
       delete data.role;
     }
 
-    if (data.password && typeof data.password === 'string' && data.password.trim().length > 0) {
-      targetUser.password = data.password.trim();
-    }
-    delete data.password;
+    const cleanedData = cleanEmptyValues(
+      data,
+      ['programId', 'assignedProgramId', 'batchId', 'selectedElective', 'departmentAdminId', 'hodId'],
+      ['currentSemester', 'assignedSemester']
+    );
 
-    Object.keys(data).forEach((key) => {
-      targetUser[key] = data[key];
+    if (cleanedData.password && typeof cleanedData.password === 'string' && cleanedData.password.trim().length > 0) {
+      targetUser.password = cleanedData.password.trim();
+    }
+    delete cleanedData.password;
+
+    Object.keys(cleanedData).forEach((key) => {
+      targetUser[key] = cleanedData[key];
     });
 
     await targetUser.save();
