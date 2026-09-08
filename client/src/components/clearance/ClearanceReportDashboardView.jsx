@@ -42,23 +42,23 @@ export default function ClearanceReportDashboardView({
   const [downloading, setDownloading] = useState(false);
 
   // Dynamic Downstream Controls State
-  const [activeBranch, setActiveBranch] = useState(reportData?.program?.code || 'CSE');
-  const [activeSem, setActiveSem] = useState(reportData?.semester?.number || reportData?.student?.currentSemester || 5);
-  const [activeSection, setActiveSection] = useState(reportData?.student?.section || 'A');
+  const [activeBranch, setActiveBranch] = useState(reportData?.program?.code || '');
+  const [activeSem, setActiveSem] = useState(reportData?.semester?.number || reportData?.student?.currentSemester || '');
+  const [activeSection, setActiveSection] = useState(reportData?.student?.section || '');
   const [hasReRun, setHasReRun] = useState(false);
   const [forceClearAll, setForceClearAll] = useState(false);
-  const [studentName, setStudentName] = useState(reportData?.student?.name || 'Rohan Iyer');
-  const [rollNo, setRollNo] = useState(reportData?.student?.enrollmentNo || 'EN2024CSE002');
+  const [studentName, setStudentName] = useState(reportData?.student?.name || '');
+  const [rollNo, setRollNo] = useState(reportData?.student?.enrollmentNo || '');
   const [showControls, setShowControls] = useState(!isStudent);
 
   // Synchronize initial data
   useEffect(() => {
     if (reportData) {
-      setActiveBranch(reportData.program?.code || 'CSE');
-      setActiveSem(reportData.semester?.number || reportData.student?.currentSemester || 5);
-      setActiveSection(reportData.student?.section || 'A');
-      setStudentName(reportData.student?.name || 'Rohan Iyer');
-      setRollNo(reportData.student?.enrollmentNo || 'EN2024CSE002');
+      setActiveBranch(reportData.program?.code || '');
+      setActiveSem(reportData.semester?.number || reportData.student?.currentSemester || '');
+      setActiveSection(reportData.student?.section || '');
+      setStudentName(reportData.student?.name || '');
+      setRollNo(reportData.student?.enrollmentNo || '');
     }
   }, [reportData]);
 
@@ -108,13 +108,13 @@ export default function ClearanceReportDashboardView({
     classIncharge = {},
     hod = {},
     workflow = {},
-    certificateNumber = 'CM-2026-CSE002',
-    issuedAt = new Date().toISOString(),
-    status = 'FINAL APPROVED',
+    certificateNumber = reportData.certificateNumber || 'PENDING',
+    issuedAt = reportData.issuedAt || new Date().toISOString(),
+    status = reportData.status || 'PENDING APPROVAL',
   } = reportData;
 
-  const deptCode = program.code || activeBranch || 'CSE';
-  const deptName = program.department || program.name || 'Department of Computer Science & Engineering';
+  const deptCode = program.code || activeBranch || '';
+  const deptName = program.department || program.name || '';
 
   // Determine Approval status
   const allSectionsCleared = sections.length > 0 && sections.every((s) => s.status?.toLowerCase() === 'approved');
@@ -279,7 +279,7 @@ export default function ClearanceReportDashboardView({
           <div className="flex items-center justify-center gap-3 pt-0.5">
             <div className="h-[1px] w-12 sm:w-16 bg-[#BFDBFE]" />
             <div className="text-sm sm:text-[15px] font-bold text-[#2563EB]">
-              {deptCode} — ({semester.session || `Session 2024-25 (EVEN)`})
+              {deptCode} — ({semester.session || (semester.academicYear ? `Session ${semester.academicYear} (${semester.type || 'ODD'})` : 'Session 2025-26 (ODD)')})
             </div>
             <div className="h-[1px] w-12 sm:w-16 bg-[#BFDBFE]" />
           </div>
@@ -320,13 +320,19 @@ export default function ClearanceReportDashboardView({
               <div>
                 <div className="text-xs font-medium text-[#64748B]">Year / Sem</div>
                 <div className="text-sm sm:text-base font-extrabold text-[#0F172A]">
-                  {student.year || 'III'} / {student.currentSemester || activeSem} (Sem {student.currentSemester || activeSem} {deptCode})
+                  {(() => {
+                    const semVal = parseInt(student.currentSemester || activeSem) || 0;
+                    const romanYears = ['', 'I', 'II', 'III', 'IV', 'V'];
+                    const yearStr = student.year || (semVal > 0 ? (romanYears[Math.ceil(semVal / 2)] || Math.ceil(semVal / 2)) : '—');
+                    const semStr = student.currentSemester || activeSem || '—';
+                    return `${yearStr} / ${semStr}${semStr !== '—' && deptCode ? ` (Sem ${semStr} ${deptCode})` : ''}`;
+                  })()}
                 </div>
               </div>
               <div>
                 <div className="text-xs font-medium text-[#64748B]">Section</div>
                 <div className="text-sm sm:text-base font-extrabold text-[#0F172A]">
-                  Section {student.section || activeSection}
+                  {student.section || activeSection ? `Section ${student.section || activeSection}` : '—'}
                 </div>
               </div>
             </div>
@@ -336,7 +342,7 @@ export default function ClearanceReportDashboardView({
               <div className="w-20 h-20 rounded-full border-2 border-dashed border-[#BFDBFE] flex flex-col items-center justify-center text-[#93C5FD] p-1 bg-[#F8FAFC]">
                 <FaGraduationCap className="w-7 h-7 text-[#93C5FD] mb-0.5" />
                 <div className="text-[7px] font-black uppercase tracking-tighter text-[#60A5FA]">
-                  ★ S.B. JAIN ★
+                  ★ SBJIT ★
                 </div>
                 <div className="text-[6px] font-semibold text-[#94A3B8]">
                   OFFICIAL
@@ -602,10 +608,10 @@ export default function ClearanceReportDashboardView({
                   CLASS IN-CHARGE ({deptCode} — SEC {activeSection})
                 </div>
                 <div className="text-sm font-black text-[#0F172A] mt-0.5">
-                  {classIncharge.name || `Prof. Class Incharge (Sec ${activeSection})`}
+                  {classIncharge.name || `Class Incharge (Sec ${activeSection})`}
                 </div>
                 <div className="text-[10px] text-slate-500">
-                  {classIncharge.email || `ci.${activeSection.toLowerCase()}.${deptCode.toLowerCase()}@clearmate.edu`}
+                  {classIncharge.email || `incharge.${activeSection.toLowerCase()}.${deptCode.toLowerCase()}@sbjit.edu.in`}
                 </div>
               </div>
             </div>
@@ -629,7 +635,7 @@ export default function ClearanceReportDashboardView({
                     {isFinalApproved ? '★ FINAL STAGE: HOD VERIFIED & SEALED' : 'PENDING FINAL HOD SIGN-OFF'}
                   </div>
                   <div className="text-xs text-[#64748B]">
-                    {hod.name || 'Dr. Kulkarni'} (Head of Dept)
+                    {hod.name || 'Head of Department'} (Head of Dept)
                   </div>
                 </div>
               </div>
@@ -637,7 +643,7 @@ export default function ClearanceReportDashboardView({
               {/* Dynamic Circular University Stamp */}
               {isFinalApproved && (
                 <div className="w-20 h-20 rounded-full border-2 border-dashed border-[#7C3AED] bg-purple-100/40 flex flex-col items-center justify-center text-center p-1 transform rotate-[-8deg] shrink-0">
-                  <div className="text-[6.5px] font-black uppercase text-[#6D28D9]">S.B. JAIN TECH</div>
+                  <div className="text-[6.5px] font-black uppercase text-[#6D28D9]">SBJIT NAGPUR</div>
                   <div className="text-[7.5px] font-black text-[#7C3AED] leading-none my-0.5">DEPT. OF {deptCode}</div>
                   <span className="bg-[#7C3AED] text-white text-[6px] font-extrabold px-1.5 py-0.5 rounded leading-none">
                     SEALED
@@ -654,7 +660,7 @@ export default function ClearanceReportDashboardView({
                   HEAD OF DEPARTMENT ({deptCode})
                 </div>
                 <div className="text-sm font-black text-[#0F172A] mt-0.5">
-                  {hod.name || 'Dr. Kulkarni'}
+                  {hod.name || 'Head of Department'}
                 </div>
                 <div className="text-[10px] text-slate-500">
                   {deptName}

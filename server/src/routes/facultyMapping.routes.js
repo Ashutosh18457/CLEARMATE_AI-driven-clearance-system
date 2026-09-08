@@ -49,4 +49,12 @@ router.post(
   facultyMappingController.seedDefaults
 );
 
+router.post(
+  '/sync/:branchCode',
+  protect,
+  restrictTo('admin', 'super_admin'),
+  validate(branchCodeParamSchema, 'params'),
+  facultyMappingController.syncWithClearanceItems
+);
+
 module.exports = router;

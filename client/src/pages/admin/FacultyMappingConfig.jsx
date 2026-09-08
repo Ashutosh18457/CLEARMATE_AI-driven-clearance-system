@@ -82,16 +82,34 @@ export default function FacultyMappingConfig() {
     }
   };
 
-  const handleResetDefaults = async () => {
-    if (!window.confirm('Reset all faculty and subject mappings to university defaults?')) return;
+  const handleSyncPrograms = async () => {
+    if (!window.confirm('Synchronize faculty & subject mappings with registered institutional programs and clearance items?')) return;
     setSaving(true);
     try {
       await api.post('/faculty-mappings/seed-defaults');
-      toast.success('Restored university default mappings (CSE, IT, AIML, Civil, Mechanical)!');
+      toast.success('Synchronized with registered programs and clearance items!');
       fetchMappings();
     } catch (err) {
       console.error(err);
-      toast.error('Failed to reset defaults');
+      toast.error('Failed to synchronize with programs');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSyncLiveSubjects = async () => {
+    if (!currentMapping?.branchCode) return;
+    setSaving(true);
+    try {
+      const res = await api.post(`/faculty-mappings/sync/${currentMapping.branchCode}`);
+      if (res.data.success && res.data.data) {
+        setCurrentMapping(JSON.parse(JSON.stringify(res.data.data)));
+        toast.success(`Synced live subjects for ${currentMapping.branchCode} from Clearance Items!`);
+        fetchMappings();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to sync live subjects');
     } finally {
       setSaving(false);
     }
@@ -133,7 +151,7 @@ export default function FacultyMappingConfig() {
     const newSubject = {
       code: `${selectedBranch}${selectedSem}0${subjects.length + 1}`,
       title: 'New Course Title',
-      teacherName: currentMapping?.sections?.[0]?.classIncharge?.name || 'Prof. Assigned Faculty',
+      teacherName: currentMapping?.sections?.[0]?.classIncharge?.name || 'Assigned Faculty',
       type: 'theory',
       isReRun: false,
       remarks: 'Assignments & practicals cleared',
@@ -162,10 +180,10 @@ export default function FacultyMappingConfig() {
     const newSec = {
       sectionName: nextChar,
       classIncharge: {
-        name: `Prof. Class Incharge (Sec ${nextChar})`,
-        email: `ci.${nextChar.toLowerCase()}.${selectedBranch.toLowerCase()}@clearmate.edu`,
+        name: `Class Incharge (Sec ${nextChar})`,
+        email: `incharge.${nextChar.toLowerCase()}.${selectedBranch.toLowerCase()}@sbjit.edu.in`,
         designation: `Assistant Professor & Class Incharge (Sec ${nextChar})`,
-        phone: '+91 98000 00000',
+        phone: '',
       },
     };
     setCurrentMapping({
@@ -205,12 +223,13 @@ export default function FacultyMappingConfig() {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={handleResetDefaults}
+              onClick={handleSyncPrograms}
               disabled={saving}
               className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition border border-slate-300"
+              title="Sync with registered Academic Programs in MongoDB"
             >
               <HiOutlineArrowPath className="w-4 h-4" />
-              Reset University Defaults
+              Sync Academic Programs
             </button>
             <button
               type="button"
@@ -311,7 +330,7 @@ export default function FacultyMappingConfig() {
                           hod: { ...currentMapping.hod, name: e.target.value },
                         })
                       }
-                      placeholder="e.g. Dr. Kulkarni"
+                      placeholder="Enter Head of Department Name"
                       className="w-full px-3 py-2 bg-purple-50/50 border border-purple-200 rounded-xl text-xs font-black text-purple-900"
                     />
                   </div>
@@ -445,13 +464,24 @@ export default function FacultyMappingConfig() {
                     <span className="text-xs font-bold text-slate-600">
                       Subjects for {currentMapping.branchCode} — Semester {selectedSem}
                     </span>
-                    <button
-                      type="button"
-                      onClick={handleAddSubject}
-                      className="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl text-xs font-bold transition inline-flex items-center gap-1.5 border border-blue-200"
-                    >
-                      <HiOutlinePlus className="w-3.5 h-3.5" /> Add Subject
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSyncLiveSubjects}
+                        disabled={saving}
+                        className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl text-xs font-bold transition inline-flex items-center gap-1.5 border border-emerald-200"
+                        title="Pull real clearance items and assigned teachers from database"
+                      >
+                        <HiOutlineArrowPath className="w-3.5 h-3.5" /> Sync from Clearance Items
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddSubject}
+                        className="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl text-xs font-bold transition inline-flex items-center gap-1.5 border border-blue-200"
+                      >
+                        <HiOutlinePlus className="w-3.5 h-3.5" /> Add Subject
+                      </button>
+                    </div>
                   </div>
 
                   <div className="border border-slate-200 rounded-xl overflow-hidden">
@@ -486,7 +516,7 @@ export default function FacultyMappingConfig() {
                                   onChange={(e) =>
                                     handleSubjectChange(idx, 'code', e.target.value.toUpperCase())
                                   }
-                                  placeholder="CS501"
+                                  placeholder="e.g. CSE601"
                                   className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs font-mono font-bold"
                                 />
                               </td>
@@ -510,7 +540,7 @@ export default function FacultyMappingConfig() {
                                   onChange={(e) =>
                                     handleSubjectChange(idx, 'teacherName', e.target.value)
                                   }
-                                  placeholder="Prof. Name"
+                                  placeholder="Teacher Name"
                                   className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs font-semibold text-slate-900"
                                 />
                               </td>

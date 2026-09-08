@@ -66,8 +66,8 @@ export function printClearanceReport(data) {
   const printWindow = window.open('', '_blank');
   if (!printWindow) return;
 
-  const deptCode = data.program?.code || 'CSE';
-  const deptName = data.program?.name || data.program?.department || 'Computer Science & Engineering';
+  const deptCode = data.program?.code || '';
+  const deptName = data.program?.name || data.program?.department || '';
   const student = data.student || {};
   const semester = data.semester || {};
   const sections = data.sections || [];
@@ -150,9 +150,9 @@ export function printClearanceReport(data) {
         <div class="header-box">
           <div class="inst-title">S. B. JAIN INSTITUTE OF TECHNOLOGY, MANAGEMENT & RESEARCH, NAGPUR</div>
           <div class="inst-sub">(An Autonomous Institute Affiliated to R.T.M. Nagpur University)</div>
-          <div class="dept-title">DEPARTMENT OF ${deptName.toUpperCase()}</div>
+          <div class="dept-title">${deptName ? `DEPARTMENT OF ${deptName.toUpperCase()}` : ''}</div>
           <div class="doc-heading">STUDENT NO-DUES & CLEARANCE CERTIFICATE</div>
-          <div class="session-info">Session: ${semester.session || '2024-2025 (EVEN)'} • Semester: ${student.currentSemester || '5'} (${deptCode})</div>
+          <div class="session-info">Session: ${semester.session || semester.name || '—'} • Semester: ${student.currentSemester || '—'}${deptCode ? ` (${deptCode})` : ''}</div>
         </div>
 
         <table class="meta-table">
@@ -164,9 +164,13 @@ export function printClearanceReport(data) {
           </tr>
           <tr>
             <td class="meta-label">Program / Branch:</td>
-            <td class="meta-val">${data.program?.name || deptName} (${deptCode})</td>
+            <td class="meta-val">${data.program?.name || deptName || '—'}${deptCode ? ` (${deptCode})` : ''}</td>
             <td class="meta-label">Year / Section:</td>
-            <td class="meta-val">Year ${student.year || 'III'} • Section ${student.section || 'A'}</td>
+            <td class="meta-val">Year ${(() => {
+              const semVal = parseInt(student.currentSemester) || 0;
+              const romanYears = ['', 'I', 'II', 'III', 'IV', 'V'];
+              return student.year || (semVal > 0 ? (romanYears[Math.ceil(semVal / 2)] || Math.ceil(semVal / 2)) : '—');
+            })()} • Section ${student.section || '—'}</td>
           </tr>
         </table>
 
@@ -201,18 +205,18 @@ export function printClearanceReport(data) {
         <div class="sign-grid">
           <div class="sign-block">
             <div class="sign-line">Class In-Charge Signature</div>
-            <div>${classIncharge.name || `Prof. Class Incharge (Sec ${student.section || 'A'})`}</div>
-            <div class="sign-sub">Department of ${deptCode}</div>
+            <div>${classIncharge.name || (student.section ? `Class Incharge (Sec ${student.section})` : 'Class Incharge')}</div>
+            <div class="sign-sub">${deptCode ? `Department of ${deptCode}` : ''}</div>
           </div>
           <div class="sign-block">
             <div class="sign-line">Head of Department (HOD) Signature</div>
-            <div>${hod.name || 'Dr. Kulkarni (HOD)'}</div>
-            <div class="sign-sub">Department of ${deptName}</div>
+            <div>${hod.name || 'Head of Department (HOD)'}</div>
+            <div class="sign-sub">${deptName ? `Department of ${deptName}` : ''}</div>
           </div>
         </div>
 
         <div class="footer-note">
-          <div>ClearMate Official ERP Reference: <strong>${data.certificateNumber || 'CM-2026-CSE002'}</strong></div>
+          <div>ClearMate Official ERP Reference: <strong>${data.certificateNumber || 'PENDING-ISSUANCE'}</strong></div>
           <div>Issue Date: <strong>${new Date(data.issuedAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</strong></div>
           <div>Clearance Status: <strong>${isFinalApproved ? 'APPROVED & ISSUED' : 'IN REVIEW / PENDING'}</strong></div>
         </div>

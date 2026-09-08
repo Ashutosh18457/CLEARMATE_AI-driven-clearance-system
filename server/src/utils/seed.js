@@ -62,13 +62,13 @@ const seedDatabase = async () => {
         role: 'admin',
       },
       {
-        name: 'Prof. Sharma (Teacher)',
+        name: 'Faculty Member (Teacher)',
         email: 'teacher@sbjit.edu.in',
         password: 'Password123!',
         role: 'teacher',
       },
       {
-        name: 'Rahul Verma (Student)',
+        name: 'Student',
         email: 'student@sbjit.edu.in',
         password: 'Password123!',
         role: 'student',
@@ -91,7 +91,7 @@ const seedDatabase = async () => {
         role: 'class_incharge',
       },
       {
-        name: 'Dr. Kulkarni (HOD)',
+        name: 'Head of Department (HOD)',
         email: 'hod@sbjit.edu.in',
         password: 'Password123!',
         role: 'hod',

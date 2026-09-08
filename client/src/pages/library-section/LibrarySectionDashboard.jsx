@@ -26,82 +26,7 @@ import {
   HiOutlineArrowUpTray,
 } from 'react-icons/hi2';
 
-// Initial Mock Students for fallback / mock mode
-const MOCK_LIBRARY_STUDENTS = [
-  {
-    student: {
-      id: 'mock-1',
-      _id: 'mock-1',
-      name: 'Aarav Singh',
-      enrollmentNo: 'EN_BULK_101',
-      email: 'aarav_bulk101@sbjain.edu.in',
-      program: 'CSE',
-      currentSemester: 6,
-      section: 'A',
-    },
-    library_status: 'not_paid',
-    fees_status: 'not_paid',
-    reason: 'books_pending',
-    remark_text: '2 books pending: Data Structures & OS',
-    updated_by: { name: 'Library Section Head' },
-    updated_at: '2026-08-19T14:37:09.000Z',
-    auditTrail: [
-      {
-        status: 'not_paid',
-        reason: 'books_pending',
-        remark_text: '2 books pending: Data Structures & OS',
-        changed_by_name: 'Library Section Head',
-        changed_at: '2026-08-19T14:37:09.000Z',
-      },
-    ],
-  },
-  {
-    student: {
-      id: 'mock-2',
-      _id: 'mock-2',
-      name: 'Aditya',
-      enrollmentNo: 'CM23054',
-      email: 'aditya@sbjit.edu.in',
-      program: 'CSE',
-      currentSemester: 7,
-      section: 'A',
-    },
-    library_status: 'not_paid',
-    fees_status: 'not_paid',
-    reason: 'fine_pending',
-    remark_text: 'Late fine Rs 150 pending',
-    updated_by: { name: 'Library Section Head' },
-    updated_at: null,
-    auditTrail: [],
-  },
-  {
-    student: {
-      id: 'mock-3',
-      _id: 'mock-3',
-      name: 'Aditya Joshi',
-      enrollmentNo: 'EN2024AIML001',
-      email: 'aditya.joshi@sbjain.edu.in',
-      program: 'CSE',
-      currentSemester: 8,
-      section: 'A',
-    },
-    library_status: 'paid',
-    fees_status: 'paid',
-    reason: null,
-    remark_text: 'All books returned. Library clearance approved.',
-    updated_by: { name: 'Library Section Head' },
-    updated_at: '2026-08-19T14:37:10.000Z',
-    auditTrail: [
-      {
-        status: 'paid',
-        reason: null,
-        remark_text: 'All books returned. Library clearance approved.',
-        changed_by_name: 'Library Section Head',
-        changed_at: '2026-08-19T14:37:10.000Z',
-      },
-    ],
-  },
-];
+
 
 export default function LibrarySectionDashboard() {
   const [students, setStudents] = useState([]);
@@ -259,9 +184,9 @@ export default function LibrarySectionDashboard() {
   const handleDownloadSample = () => {
     const sampleHeaders = 'student_id,full_name,email,department,semester,section\n';
     const sampleData =
-      'EN_BULK_101,Aarav Singh,aarav_bulk101@sbjain.edu.in,CSE,6,A\n' +
-      'CM23054,Aditya,aditya@sbjit.edu.in,CSE,7,A\n' +
-      'EN2024AIML001,Aditya Joshi,aditya.joshi@sbjain.edu.in,CSE,8,A\n';
+      'EN_BULK_101,Student One,student1@sbjit.edu.in,CSE,6,A\n' +
+      'CM23054,Student Two,student2@sbjit.edu.in,CSE,6,A\n' +
+      'EN2024AIML001,Student Three,student3@sbjit.edu.in,CSE,8,A\n';
     const blob = new Blob([sampleHeaders + sampleData], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -363,34 +288,7 @@ export default function LibrarySectionDashboard() {
       setParsedRows([]);
       fetchStudents();
     } catch (err) {
-      console.warn('Backend bulk upload failed, performing inline update:', err.message);
-      const cleanIdentifiers = identifiers.map((id) => id.toLowerCase());
-      setStudents((prev) =>
-        prev.map((s) => {
-          const sId = (s.student.id || s.student._id || '').toLowerCase();
-          const sEnroll = (s.student.enrollmentNo || '').toLowerCase();
-          const sEmail = (s.student.email || '').toLowerCase();
-          if (
-            cleanIdentifiers.includes(sId) ||
-            cleanIdentifiers.includes(sEnroll) ||
-            cleanIdentifiers.includes(sEmail)
-          ) {
-            return {
-              ...s,
-              library_status: 'paid',
-              fees_status: 'paid',
-              reason: null,
-              remark_text: 'All books returned & library clearance granted via bulk upload',
-              updated_at: new Date().toISOString(),
-            };
-          }
-          return s;
-        })
-      );
-      toast.success(`Bulk Upload Complete! ${parsedRows.length} students updated to Paid / Cleared.`);
-      setIsBulkModalOpen(false);
-      setUploadedFileName('');
-      setParsedRows([]);
+      toast.error(err.response?.data?.message || err.message || 'Bulk upload failed');
     } finally {
       setBulkLoading(false);
     }
@@ -406,12 +304,8 @@ export default function LibrarySectionDashboard() {
           setBranches(res.data.data.programs);
         }
       } catch (err) {
-        setBranches([
-          { _id: 'cse', code: 'CSE', name: 'Computer Science & Engineering' },
-          { _id: 'aids', code: 'AI&DS', name: 'Artificial Intelligence & Data Science' },
-          { _id: 'me', code: 'ME', name: 'Mechanical Engineering' },
-          { _id: 'ce', code: 'CE', name: 'Civil Engineering' },
-        ]);
+        setBranches([]);
+        toast.error('Failed to load branches');
       }
     }
     fetchMetadata();
@@ -431,11 +325,11 @@ export default function LibrarySectionDashboard() {
       if (res.data?.success && Array.isArray(res.data?.data)) {
         setStudents(res.data.data);
       } else {
-        setStudents(MOCK_LIBRARY_STUDENTS);
+        setStudents([]);
       }
     } catch (err) {
-      console.warn('API error fetching library students, using fallback:', err.message);
-      setStudents(MOCK_LIBRARY_STUDENTS);
+      console.error('API error fetching library students:', err.message);
+      setStudents([]);
     } finally {
       setLoading(false);
     }
@@ -531,43 +425,7 @@ export default function LibrarySectionDashboard() {
         throw new Error(res.data?.message || 'Failed to update library status');
       }
     } catch (err) {
-      // Optimistic update in state if offline/mock fallback
-      toast.success(
-        libraryStatus === 'paid'
-          ? 'Library clearance updated (Local Mode)'
-          : 'Library pending remark updated (Local Mode)'
-      );
-
-      setStudents((prev) =>
-        prev.map((item) => {
-          const sId = item.student.id || item.student._id;
-          const targetId = selectedStudent.student.id || selectedStudent.student._id;
-          if (sId === targetId) {
-            const newAudit = [
-              ...(item.auditTrail || []),
-              {
-                status: libraryStatus,
-                reason: libraryStatus === 'not_paid' ? reason : null,
-                remark_text: remarkText || (libraryStatus === 'paid' ? 'Library cleared' : 'Books pending'),
-                changed_by_name: 'Library Section Head',
-                changed_at: new Date().toISOString(),
-              },
-            ];
-            return {
-              ...item,
-              library_status: libraryStatus,
-              fees_status: libraryStatus,
-              reason: libraryStatus === 'not_paid' ? reason : null,
-              remark_text: remarkText || (libraryStatus === 'paid' ? 'Library cleared' : 'Books pending'),
-              updated_by: { name: 'Library Section Head' },
-              updated_at: new Date().toISOString(),
-              auditTrail: newAudit,
-            };
-          }
-          return item;
-        })
-      );
-      handleCloseModal();
+      toast.error(err.response?.data?.message || err.message || 'Failed to update library status');
     } finally {
       setSaving(false);
     }

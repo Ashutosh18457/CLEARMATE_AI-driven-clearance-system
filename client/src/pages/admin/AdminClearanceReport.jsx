@@ -333,13 +333,16 @@ export default function AdminClearanceReport() {
                   onChange={(e) => handleInspectStudent(e.target.value)}
                   className="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none min-w-[280px]"
                 >
-                  {students.map((s) => (
-                    <option key={s._id} value={s._id}>
-                      {s.name} ({s.enrollmentNo || 'No Roll'}) — {s.programId?.code || 'CSE'} Sec {s.section || 'A'}
-                    </option>
-                  ))}
+                  {students.map((s) => {
+                    const cleanName = (s.name || 'Student').replace(/\s*\((Legacy|Student)\)/gi, '').trim();
+                    return (
+                      <option key={s._id} value={s._id}>
+                        {cleanName} ({s.enrollmentNo || 'No Roll'}) — {s.programId?.code || 'CSE'} Sec {s.section || 'A'}
+                      </option>
+                    );
+                  })}
                   {students.length === 0 && (
-                    <option value="demo-student">Rohan Iyer (EN2024CSE002) — CSE Sec A</option>
+                    <option value="">No registered students found</option>
                   )}
                 </select>
               </div>

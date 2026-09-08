@@ -485,11 +485,15 @@ const submissionService = {
           (lbt) => lbt.batchId?.toString() === student.batchId?.toString()
         );
       }
-      if (item.type === 'elective') {
-        // Student must have selected this elective
-        if (!student.selectedElective) return false;
+      if (item.type === 'elective' || item.type === 'elective_lab') {
+        const selectedIds = [];
+        if (student.selectedElective) selectedIds.push(student.selectedElective.toString());
+        if (Array.isArray(student.selectedElectives)) {
+          student.selectedElectives.forEach((id) => selectedIds.push(id.toString()));
+        }
+        if (selectedIds.length === 0) return false;
         return item.electiveOptions?.some(
-          (opt) => opt._id?.toString() === student.selectedElective?.toString()
+          (opt) => selectedIds.includes(opt._id?.toString())
         );
       }
       return true;
@@ -655,15 +659,41 @@ const submissionService = {
       });
     }
 
-    if (clearanceItem.type === 'elective') {
-      return (clearanceItem.electiveOptions || []).some((opt) => {
+    if (clearanceItem.type === 'elective' || clearanceItem.type === 'elective_lab') {
+      const inOptions = (clearanceItem.electiveOptions || []).some((opt) => {
         const optId = opt.teacherId?._id
           ? opt.teacherId._id.toString()
           : opt.teacherId
           ? opt.teacherId.toString()
           : null;
-        return optId === tid;
+        if (optId === tid) return true;
+
+        if (Array.isArray(opt.labBatchTeachers)) {
+          return opt.labBatchTeachers.some((lbt) => {
+            const lbtId = lbt.teacherId?._id
+              ? lbt.teacherId._id.toString()
+              : lbt.teacherId
+              ? lbt.teacherId.toString()
+              : null;
+            return lbtId === tid;
+          });
+        }
+        return false;
       });
+      if (inOptions) return true;
+
+      if (Array.isArray(clearanceItem.labBatchTeachers)) {
+        return clearanceItem.labBatchTeachers.some((lbt) => {
+          const lbtId = lbt.teacherId?._id
+            ? lbt.teacherId._id.toString()
+            : lbt.teacherId
+            ? lbt.teacherId.toString()
+            : null;
+          return lbtId === tid;
+        });
+      }
+
+      return false;
     }
 
     return false;
@@ -673,7 +703,7 @@ const submissionService = {
    * Resolves which students are relevant for a given ClearanceItem.
    * - Theory/Special: All students in the semester's program + semester number.
    * - Lab: Only students in the specific batches.
-   * - Elective: Only students who selected this elective.
+   * - Elective / Elective Lab: Only students who selected this elective.
    */
   async _getRelevantStudentIds(clearanceItem) {
     if (clearanceItem.type === 'theory' || clearanceItem.type === 'special') {
@@ -699,16 +729,24 @@ const submissionService = {
       return studentIds;
     }
 
-    if (clearanceItem.type === 'elective') {
-      const optionIds = clearanceItem.electiveOptions.map((opt) => opt._id);
-      const students = await User.find({
+    if (clearanceItem.type === 'elective' || clearanceItem.type === 'elective_lab') {
+      const optionIds = (clearanceItem.electiveOptions || []).map((opt) => opt._id);
+      const query = {
         role: 'student',
-        $or: [
+        isActive: true,
+      };
+      if (optionIds.length > 0) {
+        query.$or = [
           { selectedElective: { $in: optionIds } },
           { selectedElectives: { $in: optionIds } },
-        ],
-        isActive: true,
-      }).select('_id');
+        ];
+      } else if (clearanceItem.type === 'elective_lab') {
+        query.$or = [
+          { selectedElective: clearanceItem._id },
+          { selectedElectives: clearanceItem._id },
+        ];
+      }
+      const students = await User.find(query).select('_id');
       return students.map((s) => s._id);
     }
 

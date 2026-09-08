@@ -147,8 +147,8 @@ export default function AdminDashboard() {
           ? semestersRes.data.data.length
           : semestersRes.data.data?.total || 0,
         users: usersData?.total || usersData?.pagination?.total || usersList.length || 0,
-        students: studentsCount || (usersData?.total ? Math.round(usersData.total * 0.8) : 0),
-        faculty: facultyCount || (usersData?.total ? Math.round(usersData.total * 0.15) : 0),
+        students: studentsCount || 0,
+        faculty: facultyCount || 0,
         clearanceRequests: usersData?.activeClearanceRequests || 0,
       });
     } catch (err) {
@@ -162,26 +162,17 @@ export default function AdminDashboard() {
     fetchStats();
   }, [fetchStats]);
 
-  // Automated 1-Click Reminder Broadcast
+  // Automated 1-Click Reminder Broadcast (FLAGGED: MISSING BACKEND SOURCE)
   const handleSendReminders = async () => {
-    setSendingReminders(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      toast.success('Automated deadline reminders broadcasted to all students with pending submissions!');
-    } catch {
-      toast.error('Failed to broadcast reminders');
-    } finally {
-      setSendingReminders(false);
-    }
+    toast.error('Automated reminder broadcast is not available: backend broadcast endpoint is not yet implemented (MISSING BACKEND SOURCE).');
   };
 
-  // Automated Prerequisite Sync
+  // Prerequisite & Dashboard Stats Sync
   const handleSyncPrerequisites = async () => {
     setRefreshingPrereq(true);
     try {
       await fetchStats();
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      toast.success('Prerequisites & clearance pipeline data synchronized successfully!');
+      toast.success('Dashboard statistics & clearance data refreshed from server!');
     } catch {
       toast.error('Sync failed');
     } finally {

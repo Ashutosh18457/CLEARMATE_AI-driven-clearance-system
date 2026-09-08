@@ -274,17 +274,19 @@ export default function Programs() {
   const columns = [
     {
       key: 'name',
-      label: 'Program & Branch',
+      label: 'Program & Department',
       render: (val, row) => (
         <div>
-          <div className="text-sm font-semibold text-ink-primary flex items-center gap-1.5">
-            <span>{val}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono font-bold bg-brand-50 text-brand px-2 py-0.5 rounded border border-brand/20">
+              {row.code}
+            </span>
+            <span className="text-sm font-bold text-ink-primary">{val}</span>
           </div>
-          {row.branch && (
-            <div className="text-xs text-ink-muted mt-0.5">
-              Specialization: <span className="font-medium text-ink-secondary">{row.branch}</span>
-            </div>
-          )}
+          <div className="text-xs text-ink-muted mt-1 flex items-center gap-1">
+            <HiOutlineBuildingLibrary className="w-3.5 h-3.5 text-ink-muted shrink-0" />
+            <span>{row.department || row.branch || 'General'}</span>
+          </div>
         </div>
       ),
     },
@@ -305,87 +307,68 @@ export default function Programs() {
       },
     },
     {
-      key: 'code',
-      label: 'Program Code',
-      render: (val) => (
-        <span className="text-xs font-mono font-semibold bg-canvas px-2 py-1 rounded border border-border-subtle text-ink-primary">
-          {val}
-        </span>
-      ),
-    },
-    {
-      key: 'department',
-      label: 'Department',
-      render: (val) => (
-        <span className="text-xs text-ink-secondary flex items-center gap-1">
-          <HiOutlineBuildingLibrary className="w-3.5 h-3.5 text-ink-muted shrink-0" />
-          {val}
-        </span>
-      ),
-    },
-    {
       key: 'totalSemesters',
       label: 'Duration',
       render: (val) => {
         const sems = val || 8;
         const years = Math.round((sems / 2) * 10) / 10;
         return (
-          <span className="text-xs text-ink-secondary flex items-center gap-1 font-medium">
-            <HiOutlineClock className="w-3.5 h-3.5 text-ink-muted shrink-0" />
+          <span className="text-xs text-ink-secondary font-medium whitespace-nowrap">
             {sems} Sem ({years} Yrs)
           </span>
         );
       },
     },
     {
-      key: 'departmentAdminId',
-      label: 'Dept Admin (Manager)',
-      render: (val, row) => {
-        if (val && val.name) {
+      key: 'leadership',
+      label: 'Department Leadership',
+      render: (_, row) => {
+        const admin = row.departmentAdminId;
+        const hod = row.hodId;
+
+        if (!admin?.name && !hod?.name) {
           return (
-            <div>
-              <p className="text-xs font-semibold text-ink-primary flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-purple-600"></span>
-                {val.name}
-              </p>
-              <p className="text-2xs text-ink-muted">{val.email}</p>
-            </div>
+            <button
+              type="button"
+              onClick={() => openEdit(row)}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted hover:text-brand bg-canvas hover:bg-brand-50/50 px-2.5 py-1 rounded-md border border-dashed border-border-subtle hover:border-brand/40 transition-colors"
+            >
+              <span>Unassigned</span>
+              <span className="text-2xs text-brand font-semibold">Assign →</span>
+            </button>
           );
         }
+
         return (
-          <button
-            type="button"
-            onClick={() => openEdit(row)}
-            className="text-2xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded border border-amber-200 transition-colors"
-          >
-            + Assign Admin (Optional)
-          </button>
-        );
-      },
-    },
-    {
-      key: 'hodId',
-      label: 'Head of Dept (HOD)',
-      render: (val, row) => {
-        if (val && val.name) {
-          return (
-            <div>
-              <p className="text-xs font-semibold text-ink-primary flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-                {val.name}
-              </p>
-              <p className="text-2xs text-ink-muted">{val.email}</p>
-            </div>
-          );
-        }
-        return (
-          <button
-            type="button"
-            onClick={() => openEdit(row)}
-            className="text-2xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded border border-blue-200 transition-colors"
-          >
-            + Assign HOD (Optional)
-          </button>
+          <div className="space-y-1">
+            {admin?.name && (
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-200 shrink-0">
+                  Admin
+                </span>
+                <span className="font-semibold text-ink-primary truncate max-w-[140px]">{admin.name}</span>
+                <span className="text-2xs text-ink-muted font-mono truncate max-w-[160px]">({admin.email})</span>
+              </div>
+            )}
+            {hod?.name && (
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
+                  HOD
+                </span>
+                <span className="font-semibold text-ink-primary truncate max-w-[140px]">{hod.name}</span>
+                <span className="text-2xs text-ink-muted font-mono truncate max-w-[160px]">({hod.email})</span>
+              </div>
+            )}
+            {(!admin?.name || !hod?.name) && (
+              <button
+                type="button"
+                onClick={() => openEdit(row)}
+                className="text-2xs text-brand hover:underline block"
+              >
+                + Assign {!admin?.name ? 'Dept Admin' : 'HOD'}
+              </button>
+            )}
+          </div>
         );
       },
     },
@@ -393,7 +376,7 @@ export default function Programs() {
       key: 'isActive',
       label: 'Status',
       render: (val) => (
-        <Badge variant={val !== false ? 'success' : 'default'}>
+        <Badge variant={val !== false ? 'success' : 'default'} size="sm">
           {val !== false ? 'Active' : 'Inactive'}
         </Badge>
       ),
@@ -403,8 +386,14 @@ export default function Programs() {
       label: '',
       align: 'right',
       render: (_, row) => (
-        <Button variant="ghost" size="sm" onClick={() => openEdit(row)} aria-label="Edit program">
-          <HiOutlinePencilSquare className="w-4 h-4" />
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => openEdit(row)}
+          className="text-xs !py-1 !px-2.5"
+          icon={<HiOutlinePencilSquare className="w-3.5 h-3.5" />}
+        >
+          Edit
         </Button>
       ),
     },
@@ -433,9 +422,9 @@ export default function Programs() {
         </Button>
       </div>
 
-      {/* Degree Category Filter Tabs */}
+      {/* Degree Category Filter Tabs (Smart: Only shows All + categories with > 0 configured programs) */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-4 border-b border-border-subtle scrollbar-none">
-        {DEGREE_CATEGORIES.map((cat) => {
+        {DEGREE_CATEGORIES.filter((cat) => cat === 'ALL' || (categoryCounts[cat] && categoryCounts[cat] > 0)).map((cat) => {
           const isSelected = selectedCategory === cat;
           const count = categoryCounts[cat] || 0;
           return (
@@ -463,14 +452,14 @@ export default function Programs() {
 
       {/* Search & Filter Bar */}
       <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
-        <div className="relative w-full sm:w-80">
+        <div className="relative w-full sm:w-96">
           <HiOutlineMagnifyingGlass className="w-4 h-4 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             id="search-programs"
             name="searchPrograms"
             type="search"
             className="input-base pl-9 text-xs"
-            placeholder="Search by branch, degree, code, or department..."
+            placeholder="Search by program name, code, or department..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

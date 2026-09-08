@@ -52,14 +52,17 @@ const clearanceService = {
           (lbt) => lbt.batchId?.toString() === student.batchId?.toString()
         );
       }
-      if (item.type === 'elective') {
+      if (item.type === 'elective' || item.type === 'elective_lab') {
         const selectedIds = [];
         if (student.selectedElective) selectedIds.push(student.selectedElective.toString());
         if (Array.isArray(student.selectedElectives)) {
           student.selectedElectives.forEach((id) => selectedIds.push(id.toString()));
         }
         if (selectedIds.length === 0) return true;
-        return item.electiveOptions?.some((opt) => selectedIds.includes(opt._id?.toString()));
+        if (item.electiveOptions?.length > 0) {
+          return item.electiveOptions.some((opt) => selectedIds.includes(opt._id?.toString()));
+        }
+        return selectedIds.includes(item._id?.toString());
       }
       return false;
     });
@@ -248,12 +251,25 @@ const clearanceService = {
         isItemVerified = verifiedCount >= requiredSubItems.length;
       }
 
+      let resolvedTitle = item.title;
+      if ((item.type === 'elective' || item.type === 'elective_lab') && item.electiveOptions?.length > 0) {
+        const selectedIds = [];
+        if (student.selectedElective) selectedIds.push(student.selectedElective.toString());
+        if (Array.isArray(student.selectedElectives)) {
+          student.selectedElectives.forEach((id) => selectedIds.push(id.toString()));
+        }
+        const option = item.electiveOptions.find((opt) => selectedIds.includes(opt._id?.toString()));
+        if (option && option.name) {
+          resolvedTitle = `${item.title} (${option.name})`;
+        }
+      }
+
       itemClearances.push({
         clearanceRequestId: clearanceRequest._id,
         clearanceItemId: item._id,
         studentId,
         teacherId: resolvedTeacherId,
-        itemTitle: item.title,
+        itemTitle: resolvedTitle,
         itemType: item.type,
         status: isItemVerified ? 'approved' : 'pending',
         remarks: isItemVerified ? 'Verified via coursework submissions' : '',
@@ -402,13 +418,34 @@ const clearanceService = {
       .populate('theoryTeacherId', 'name email')
       .populate('labBatchTeachers.teacherId', 'name email')
       .populate('electiveOptions.teacherId', 'name email')
-      .sort({ srNo: 1, title: 1 });
+    const relevantClearanceItems = dynamicClearanceItems.filter((item) => {
+      if (item.type === 'theory' || item.type === 'special') return true;
+      if (item.type === 'lab') {
+        if (!student.batchId) return false;
+        return item.labBatchTeachers?.some(
+          (lbt) => lbt.batchId?.toString() === student.batchId?.toString()
+        );
+      }
+      if (item.type === 'elective' || item.type === 'elective_lab') {
+        const selectedIds = [];
+        if (student.selectedElective) selectedIds.push(student.selectedElective.toString());
+        if (Array.isArray(student.selectedElectives)) {
+          student.selectedElectives.forEach((id) => selectedIds.push(id.toString()));
+        }
+        if (selectedIds.length === 0) return true;
+        if (item.electiveOptions?.length > 0) {
+          return item.electiveOptions.some((opt) => selectedIds.includes(opt._id?.toString()));
+        }
+        return selectedIds.includes(item._id?.toString());
+      }
+      return false;
+    });
 
     if (!clearanceRequest) {
       return {
         clearanceRequest: null,
         itemClearances: [],
-        clearanceItems: dynamicClearanceItems,
+        clearanceItems: relevantClearanceItems,
         sectionClearances,
         classIncharge: ciUser ? { name: ciUser.name, email: ciUser.email } : null,
         hod: hodUser ? { name: hodUser.name, email: hodUser.email } : null,
@@ -455,7 +492,7 @@ const clearanceService = {
     return {
       clearanceRequest,
       itemClearances,
-      clearanceItems: dynamicClearanceItems,
+      clearanceItems: relevantClearanceItems,
       sectionClearances,
       classIncharge: ciUser ? { name: ciUser.name, email: ciUser.email } : null,
       hod: hodUser ? { name: hodUser.name, email: hodUser.email } : null,
@@ -1523,22 +1560,73 @@ const clearanceService = {
       return clearanceItem.theoryTeacherId || null;
     }
 
-    if (clearanceItem.type === 'elective') {
+    if (clearanceItem.type === 'elective' || clearanceItem.type === 'elective_lab') {
       if (clearanceItem.electiveOptions?.length > 0) {
         const selectedIds = [];
         if (student.selectedElective) selectedIds.push(student.selectedElective.toString());
         if (Array.isArray(student.selectedElectives)) {
           student.selectedElectives.forEach((id) => selectedIds.push(id.toString()));
         }
+
+        let option = null;
         if (selectedIds.length > 0) {
-          const option = clearanceItem.electiveOptions.find(
+          option = clearanceItem.electiveOptions.find(
             (opt) => selectedIds.includes(opt._id?.toString())
           );
-          if (option && option.teacherId) return option.teacherId;
+          // If the student has selected an elective, but this item has no matching option
+          // (e.g. Course A has only theory, so MDM Lab has no option for Course A),
+          // THIS ITEM DOES NOT APPLY TO THIS STUDENT!
+          if (!option) {
+            return null;
+          }
+        } else {
+          // Student hasn't selected any electives yet
+          return null;
         }
-        return clearanceItem.electiveOptions[0].teacherId;
+
+        if (option) {
+          // If elective_lab and student belongs to a batch, check batch-specific lab teacher first
+          if (clearanceItem.type === 'elective_lab' && student.batchId) {
+            if (Array.isArray(option.labBatchTeachers) && option.labBatchTeachers.length > 0) {
+              const batchMapping = option.labBatchTeachers.find(
+                (lbt) => lbt.batchId?.toString() === student.batchId.toString()
+              );
+              if (batchMapping && batchMapping.teacherId) return batchMapping.teacherId;
+            }
+            if (Array.isArray(clearanceItem.labBatchTeachers) && clearanceItem.labBatchTeachers.length > 0) {
+              const itemBatchMapping = clearanceItem.labBatchTeachers.find(
+                (lbt) => lbt.batchId?.toString() === student.batchId.toString()
+              );
+              if (itemBatchMapping && itemBatchMapping.teacherId) return itemBatchMapping.teacherId;
+            }
+          }
+
+          if (option.teacherId) return option.teacherId;
+          if (option.labBatchTeachers?.length > 0 && option.labBatchTeachers[0].teacherId) {
+            return option.labBatchTeachers[0].teacherId;
+          }
+        }
+      } else {
+        // Dedicated elective item (without electiveOptions array)
+        const selectedIds = [];
+        if (student.selectedElective) selectedIds.push(student.selectedElective.toString());
+        if (Array.isArray(student.selectedElectives)) {
+          student.selectedElectives.forEach((id) => selectedIds.push(id.toString()));
+        }
+        if (selectedIds.length > 0 && !selectedIds.includes(clearanceItem._id.toString())) {
+          return null;
+        }
       }
-      return clearanceItem.theoryTeacherId || null;
+
+      // Check item-level labBatchTeachers for elective_lab
+      if (clearanceItem.type === 'elective_lab' && student.batchId && clearanceItem.labBatchTeachers?.length > 0) {
+        const itemBatchMapping = clearanceItem.labBatchTeachers.find(
+          (lbt) => lbt.batchId?.toString() === student.batchId.toString()
+        );
+        if (itemBatchMapping && itemBatchMapping.teacherId) return itemBatchMapping.teacherId;
+      }
+
+      return null;
     }
 
     return clearanceItem.theoryTeacherId || null;

@@ -5,7 +5,6 @@ const User = require('../models/User');
 const Semester = require('../models/Semester');
 const Program = require('../models/Program');
 const FacultyMapping = require('../models/FacultyMapping');
-const { DEFAULT_UNIVERSITY_MAPPINGS } = require('../controllers/facultyMapping.controller');
 const AppError = require('../utils/AppError');
 const logger = require('../config/logger');
 
@@ -17,18 +16,29 @@ const certificateService = {
     const code = (branchCode || 'CSE').toUpperCase();
     let mapping = await FacultyMapping.findOne({ branchCode: code });
     if (!mapping) {
-      const fallback = DEFAULT_UNIVERSITY_MAPPINGS.find(
-        (m) => m.branchCode.toUpperCase() === code
-      );
-      if (fallback) {
-        try {
-          mapping = await FacultyMapping.create(fallback);
-        } catch (e) {
-          mapping = fallback;
-        }
-      } else {
-        mapping = DEFAULT_UNIVERSITY_MAPPINGS[0]; // fallback to CSE
-      }
+      const program = await Program.findOne({ code });
+      mapping = {
+        branchCode: code,
+        branchName: program ? program.name : `${code} Engineering`,
+        department: program ? program.department : `Department of ${code}`,
+        hod: {
+          name: 'Head of Department',
+          email: `hod.${code.toLowerCase()}@sbjit.edu.in`,
+          designation: 'Professor & Head of Department',
+          department: program ? program.department : `Department of ${code}`,
+        },
+        sections: [
+          {
+            sectionName: 'A',
+            classIncharge: {
+              name: 'Class Incharge (Sec A)',
+              email: `ci.${code.toLowerCase()}@sbjit.edu.in`,
+              designation: 'Assistant Professor & Class Incharge (Sec A)',
+            },
+          },
+        ],
+        semesters: [],
+      };
     }
     return mapping;
   },
@@ -70,9 +80,9 @@ const certificateService = {
     if (!student) {
       student = {
         _id: 'demo-student-id',
-        name: nameOverride || 'Rohan Iyer',
-        enrollmentNo: rollNoOverride || 'EN2024CSE002',
-        email: 'student@clearmate.dev',
+        name: nameOverride || 'Student',
+        enrollmentNo: rollNoOverride || 'EN2025CSE001',
+        email: 'student@sbjit.edu.in',
         section: sectionOverride || 'A',
         currentSemester: semOverride ? Number(semOverride) : 5,
         programId: {
@@ -123,7 +133,7 @@ const certificateService = {
 
     const resolvedCI = {
       name: dbCI?.name || matchedSection?.classIncharge?.name || `Prof. Class Incharge (Sec ${effectiveSection})`,
-      email: dbCI?.email || matchedSection?.classIncharge?.email || `ci.${effectiveBranchCode.toLowerCase()}@clearmate.edu`,
+      email: dbCI?.email || matchedSection?.classIncharge?.email || `ci.${effectiveBranchCode.toLowerCase()}@sbjit.edu.in`,
       designation: dbCI ? `Assistant Professor & Class Incharge (Sec ${effectiveSection})` : (matchedSection?.classIncharge?.designation || `Assistant Professor & Class Incharge (Sec ${effectiveSection})`),
     };
 
@@ -140,8 +150,8 @@ const certificateService = {
     } catch (e) {}
 
     const resolvedHOD = {
-      name: dbHOD?.name || branchMapping.hod?.name || 'Dr. Kulkarni',
-      email: dbHOD?.email || branchMapping.hod?.email || `hod.${effectiveBranchCode.toLowerCase()}@clearmate.edu`,
+      name: dbHOD?.name || branchMapping.hod?.name || 'Head of Department',
+      email: dbHOD?.email || branchMapping.hod?.email || `hod.${effectiveBranchCode.toLowerCase()}@sbjit.edu.in`,
       title: `HOD - ${effectiveBranchCode}`,
       designation: dbHOD ? 'Professor & Head of Department' : (branchMapping.hod?.designation || 'Professor & Head of Department'),
       department: branchMapping.department || `Department of ${branchMapping.branchName}`,
@@ -180,43 +190,23 @@ const certificateService = {
         };
       });
     } else {
-      // Resolve from Semester / Faculty Mapping in DB
+      // Resolve from Semester Clearance Items or Faculty Mapping in DB
       let semesterSubjects = [];
       const semMap = (branchMapping.semesters || []).find((s) => s.semNumber === effectiveSem);
       if (semMap && semMap.subjects && semMap.subjects.length > 0) {
         semesterSubjects = semMap.subjects;
-      } else {
-        if (effectiveBranchCode === 'AIML') {
-          semesterSubjects = [
-            { code: 'AI501', title: 'Machine Learning (ML)', teacherName: 'Prof. Verma', type: 'theory', remarks: 'Model implementations verified' },
-            { code: 'AI502', title: 'Deep Learning Architectures (DL)', teacherName: 'Prof. P. Gupta', type: 'theory', remarks: 'Neural network projects signed off' },
-            { code: 'AI503', title: 'Natural Language Processing (NLP)', teacherName: 'Dr. Singh', type: 'theory', remarks: 'Transformer labs cleared' },
-          ];
-        } else if (effectiveBranchCode === 'IT') {
-          semesterSubjects = [
-            { code: 'IT501', title: 'Web Technologies & Frameworks', teacherName: 'Prof. Patil', type: 'theory', remarks: 'Assignments & practical cleared' },
-            { code: 'IT502', title: 'Cloud Computing & DevOps', teacherName: 'Prof. S. Joshi', type: 'theory', remarks: 'Cloud lab tasks verified' },
-            { code: 'IT503', title: 'Information & Cyber Security', teacherName: 'Prof. N. Deshmukh', type: 'theory', remarks: 'Audit assignment submitted' },
-          ];
-        } else if (effectiveBranchCode === 'CIVIL') {
-          semesterSubjects = [
-            { code: 'CE501', title: 'Structural Analysis-II', teacherName: 'Prof. Joshi', type: 'theory', remarks: 'Calculation sheets verified' },
-            { code: 'CE502', title: 'Geotechnical Engineering', teacherName: 'Prof. R. Dave', type: 'theory', remarks: 'Soil sample tests evaluated' },
-            { code: 'CE503', title: 'Surveying & GIS', teacherName: 'Dr. A. Verma', type: 'theory', remarks: 'Field survey maps submitted' },
-          ];
-        } else if (effectiveBranchCode === 'MECHANICAL') {
-          semesterSubjects = [
-            { code: 'ME501', title: 'Heat Transfer & Thermodynamics', teacherName: 'Prof. Rao', type: 'theory', remarks: 'Assignments & term tests cleared' },
-            { code: 'ME502', title: 'Design of Machine Elements', teacherName: 'Prof. S. R. Patil', type: 'theory', remarks: 'CAD sheets submitted' },
-            { code: 'ME503', title: 'Fluid Mechanics & Machinery', teacherName: 'Prof. M. Shinde', type: 'theory', remarks: 'Practical journals verified' },
-          ];
-        } else {
-          semesterSubjects = [
-            { code: 'CS501', title: 'Database Management Systems (DBMS)', teacherName: 'Prof. Sharma', type: 'theory', remarks: 'Theory records & assignments verified' },
-            { code: 'CS502', title: 'Computer Networks (CN)', teacherName: 'Prof. K. Verma', type: 'theory', remarks: 'Assignments & viva cleared' },
-            { code: 'CS503', title: 'Theory of Computation (TOC)', teacherName: 'Prof. S. Mehta', type: 'theory', remarks: 'Tutorials & mini assignment cleared' },
-          ];
-        }
+      } else if (effectiveSemesterId) {
+        const ClearanceItem = require('../models/ClearanceItem');
+        const dbItems = await ClearanceItem.find({ semesterId: effectiveSemesterId })
+          .populate('theoryTeacherId', 'name')
+          .sort({ srNo: 1 });
+        semesterSubjects = dbItems.map((item) => ({
+          code: item.subjectCode || '',
+          title: item.title,
+          teacherName: item.theoryTeacherId?.name || 'Faculty Incharge',
+          type: item.type,
+          remarks: 'Coursework pending',
+        }));
       }
 
       finalSubjectRows = semesterSubjects.map((sub, idx) => ({
@@ -224,7 +214,7 @@ const certificateService = {
         title: sub.title,
         subjectCode: sub.code || '',
         type: sub.type || 'theory',
-        teacherName: sub.teacherName || 'Faculty In-charge',
+        teacherName: sub.teacherName || 'Faculty Incharge',
         status: forceAllCleared ? 'Approved' : (sub.status === 'approved' ? 'Approved' : 'Pending'),
         remarks: forceAllCleared
           ? (sub.remarks || 'Assignments & Theory records cleared')

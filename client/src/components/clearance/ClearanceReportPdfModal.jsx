@@ -24,13 +24,13 @@ export default function ClearanceReportPdfModal({ isOpen, onClose, reportData })
     items = [],
     classIncharge = {},
     hod = {},
-    certificateNumber = 'CM-2026-CSE002',
-    issuedAt = new Date().toISOString(),
-    status = 'FINAL APPROVED',
+    certificateNumber = reportData.certificateNumber || 'PENDING',
+    issuedAt = reportData.issuedAt || new Date().toISOString(),
+    status = reportData.status || 'PENDING APPROVAL',
   } = reportData;
 
-  const deptCode = program.code || 'CSE';
-  const deptName = program.name || program.department || 'Computer Science & Engineering';
+  const deptCode = program.code || '';
+  const deptName = program.name || program.department || '';
   const isFinalApproved = (status || '').toUpperCase() === 'FINAL APPROVED' || (status || '').toUpperCase() === 'CLEARED';
 
   const handleDownload = async () => {
@@ -150,13 +150,13 @@ export default function ClearanceReportPdfModal({ isOpen, onClose, reportData })
                   (An Autonomous Institute Affiliated to R.T.M. Nagpur University)
                 </p>
                 <h2 className="text-[13.5px] font-bold uppercase text-black mt-1">
-                  DEPARTMENT OF {deptName.toUpperCase()}
+                  {deptName ? `DEPARTMENT OF ${deptName.toUpperCase()}` : ''}
                 </h2>
                 <div className="text-[15px] font-bold uppercase tracking-wider text-black mt-2 underline">
                   STUDENT NO-DUES & ACADEMIC CLEARANCE CERTIFICATE
                 </div>
                 <div className="text-xs font-bold text-slate-800 mt-1">
-                  Session: {semester.session || '2024-2025 (EVEN)'} • Semester: {student.currentSemester || '5'} ({deptCode})
+                  Session: {semester.session || semester.name || '—'} • Semester: {student.currentSemester || '—'}{deptCode ? ` (${deptCode})` : ''}
                 </div>
               </div>
 
@@ -171,9 +171,15 @@ export default function ClearanceReportPdfModal({ isOpen, onClose, reportData })
                   </tr>
                   <tr>
                     <td className="bg-slate-100 font-bold p-1.5 border-r border-slate-700">Program / Branch:</td>
-                    <td className="p-1.5 font-semibold text-slate-900 border-r border-slate-700">{program.name || deptName} ({deptCode})</td>
+                    <td className="p-1.5 font-semibold text-slate-900 border-r border-slate-700">{program.name || deptName || '—'}{deptCode ? ` (${deptCode})` : ''}</td>
                     <td className="bg-slate-100 font-bold p-1.5 border-r border-slate-700">Year / Section:</td>
-                    <td className="p-1.5 font-semibold text-slate-900">Year {student.year || 'III'} • Section {student.section || 'A'}</td>
+                    <td className="p-1.5 font-semibold text-slate-900">
+                      Year {(() => {
+                        const semVal = parseInt(student.currentSemester) || 0;
+                        const romanYears = ['', 'I', 'II', 'III', 'IV', 'V'];
+                        return student.year || (semVal > 0 ? (romanYears[Math.ceil(semVal / 2)] || Math.ceil(semVal / 2)) : '—');
+                      })()} • Section {student.section || '—'}
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -215,7 +221,7 @@ export default function ClearanceReportPdfModal({ isOpen, onClose, reportData })
               {/* 2. Faculty & Subject Clearance Table */}
               <div className="mb-6">
                 <div className="text-xs font-bold uppercase text-black mb-1 tracking-wide">
-                  2. Academic Coursework & Subject Clearances ({deptCode})
+                  2. Academic Coursework & Subject Clearances{deptCode ? ` (${deptCode})` : ''}
                 </div>
                 <table className="w-full border-collapse border border-slate-700 text-[11px]">
                   <thead>
@@ -256,10 +262,10 @@ export default function ClearanceReportPdfModal({ isOpen, onClose, reportData })
                     Class In-Charge Signature
                   </div>
                   <div className="text-xs font-semibold text-slate-900 mt-0.5">
-                    {classIncharge.name || `Prof. Class Incharge (Sec ${student.section || 'A'})`}
+                    {classIncharge.name || (student.section ? `Class Incharge (Sec ${student.section})` : 'Class Incharge')}
                   </div>
                   <div className="text-[10px] text-slate-600">
-                    Department of {deptCode}
+                    {deptCode ? `Department of ${deptCode}` : ''}
                   </div>
                 </div>
 
@@ -268,10 +274,10 @@ export default function ClearanceReportPdfModal({ isOpen, onClose, reportData })
                     Head of Department (HOD) Signature & Seal
                   </div>
                   <div className="text-xs font-semibold text-slate-900 mt-0.5">
-                    {hod.name || 'Dr. Kulkarni (HOD)'}
+                    {hod.name || 'Head of Department (HOD)'}
                   </div>
                   <div className="text-[10px] text-slate-600">
-                    Department of {deptName}
+                    {deptName ? `Department of ${deptName}` : ''}
                   </div>
                 </div>
               </div>

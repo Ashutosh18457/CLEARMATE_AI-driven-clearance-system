@@ -449,7 +449,7 @@ SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=your_email@domain.com
 SMTP_PASS=your_email_app_password
-EMAIL_FROM=ClearMate System <noreply@clearmate.edu>
+EMAIL_FROM=ClearMate System <noreply@sbjit.edu.in>
 ```
 
 ---

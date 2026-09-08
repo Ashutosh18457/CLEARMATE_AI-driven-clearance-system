@@ -26,90 +26,7 @@ import {
   HiOutlineTrash,
 } from 'react-icons/hi2';
 
-// ─── Initial Mock Students for fallback / mock mode ───
-const MOCK_BUS_STUDENTS = [
-  {
-    student: {
-      id: 'mock-1',
-      _id: 'mock-1',
-      name: 'Aarav Singh',
-      enrollmentNo: 'EN_BULK_101',
-      email: 'aarav_bulk101@sbjain.edu.in',
-      program: 'CSE',
-      currentSemester: 6,
-      section: 'A',
-    },
-    bus_fees_status: 'not_paid',
-    fees_status: 'not_paid',
-    reason: 'fees_pending',
-    remark_text: 'Bus fees pending',
-    updated_by: { name: 'Bus Section Head' },
-    updated_at: '2026-08-19T14:37:09.000Z',
-    auditTrail: [
-      {
-        status: 'not_paid',
-        reason: 'fees_pending',
-        remark_text: 'Bus fees pending',
-        changed_by_name: 'Bus Section Head',
-        changed_at: '2026-08-19T14:37:09.000Z',
-      },
-    ],
-  },
-  {
-    student: {
-      id: 'mock-2',
-      _id: 'mock-2',
-      name: 'Aditya Joshi',
-      enrollmentNo: 'EN2024AIML001',
-      email: 'aditya.joshi@sbjain.edu.in',
-      program: 'CSE',
-      currentSemester: 8,
-      section: 'A',
-    },
-    bus_fees_status: 'paid',
-    fees_status: 'paid',
-    reason: null,
-    remark_text: 'Bus fees cleared',
-    updated_by: { name: 'Bus Section Head' },
-    updated_at: '2026-08-19T14:37:10.000Z',
-    auditTrail: [
-      {
-        status: 'paid',
-        reason: null,
-        remark_text: 'Bus fees cleared',
-        changed_by_name: 'Bus Section Head',
-        changed_at: '2026-08-19T14:37:10.000Z',
-      },
-    ],
-  },
-  {
-    student: {
-      id: 'mock-3',
-      _id: 'mock-3',
-      name: 'Ananya Patel',
-      enrollmentNo: 'EN2024CSE002',
-      email: 'ananya.patel@sbjain.edu.in',
-      program: 'CSE',
-      currentSemester: 6,
-      section: 'A',
-    },
-    bus_fees_status: 'paid',
-    fees_status: 'paid',
-    reason: null,
-    remark_text: 'Bus fees cleared',
-    updated_by: { name: 'Bus Section Head' },
-    updated_at: '2026-08-19T14:37:10.000Z',
-    auditTrail: [
-      {
-        status: 'paid',
-        reason: null,
-        remark_text: 'Bus fees cleared',
-        changed_by_name: 'Bus Section Head',
-        changed_at: '2026-08-19T14:37:10.000Z',
-      },
-    ],
-  },
-];
+
 
 export default function BusSectionDashboard() {
   const [students, setStudents] = useState([]);
@@ -274,9 +191,9 @@ export default function BusSectionDashboard() {
   const handleDownloadSample = () => {
     const sampleHeaders = 'student_id,full_name,email,department,semester,section\n';
     const sampleData =
-      'EN_BULK_101,Aarav Singh,aarav_bulk101@sbjain.edu.in,CSE,6,A\n' +
-      'EN2024AIML001,Aditya Joshi,aditya.joshi@sbjain.edu.in,CSE,8,A\n' +
-      'EN2024CSE002,Ananya Patel,ananya.patel@sbjain.edu.in,CSE,6,A\n';
+      'EN_BULK_101,Student One,student1@sbjit.edu.in,CSE,6,A\n' +
+      'EN2024AIML001,Student Two,student2@sbjit.edu.in,CSE,8,A\n' +
+      'EN2024CSE002,Student Three,student3@sbjit.edu.in,CSE,6,A\n';
     const blob = new Blob([sampleHeaders + sampleData], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -443,34 +360,7 @@ export default function BusSectionDashboard() {
       setParsedRows([]);
       fetchStudents();
     } catch (err) {
-      console.warn('Backend bulk upload failed, performing inline update:', err.message);
-      const cleanIdentifiers = identifiers.map((id) => id.toLowerCase());
-      setStudents((prev) =>
-        prev.map((s) => {
-          const sId = (s.student.id || s.student._id || '').toLowerCase();
-          const sEnroll = (s.student.enrollmentNo || '').toLowerCase();
-          const sEmail = (s.student.email || '').toLowerCase();
-          if (
-            cleanIdentifiers.includes(sId) ||
-            cleanIdentifiers.includes(sEnroll) ||
-            cleanIdentifiers.includes(sEmail)
-          ) {
-            return {
-              ...s,
-              bus_fees_status: 'paid',
-              fees_status: 'paid',
-              reason: null,
-              remark_text: 'Bus fees cleared via bulk CSV upload',
-              updated_at: new Date().toISOString(),
-            };
-          }
-          return s;
-        })
-      );
-      toast.success(`Bulk Upload Complete! ${parsedRows.length} student records updated to Paid / Cleared.`);
-      setIsBulkModalOpen(false);
-      setUploadedFileName('');
-      setParsedRows([]);
+      toast.error(err.response?.data?.message || err.message || 'Bulk upload failed');
     } finally {
       setBulkLoading(false);
     }
@@ -486,12 +376,8 @@ export default function BusSectionDashboard() {
           setBranches(res.data.data.programs);
         }
       } catch (err) {
-        setBranches([
-          { _id: 'cse', code: 'CSE', name: 'Computer Science & Engineering' },
-          { _id: 'aids', code: 'AI&DS', name: 'Artificial Intelligence & Data Science' },
-          { _id: 'me', code: 'ME', name: 'Mechanical Engineering' },
-          { _id: 'ce', code: 'CE', name: 'Civil Engineering' },
-        ]);
+        setBranches([]);
+        toast.error('Failed to load branches');
       }
     }
     fetchMetadata();
@@ -511,11 +397,11 @@ export default function BusSectionDashboard() {
       if (res.data?.success && Array.isArray(res.data?.data)) {
         setStudents(res.data.data);
       } else {
-        setStudents(MOCK_BUS_STUDENTS);
+        setStudents([]);
       }
     } catch (err) {
-      console.warn('API error fetching bus students, using fallback:', err.message);
-      setStudents(MOCK_BUS_STUDENTS);
+      console.error('API error fetching bus students:', err.message);
+      setStudents([]);
     } finally {
       setLoading(false);
     }
@@ -631,41 +517,7 @@ export default function BusSectionDashboard() {
         throw new Error(res.data?.message || 'Update failed');
       }
     } catch (err) {
-      console.warn('Backend update failed, updating inline for demo:', err.message);
-      setStudents((prev) =>
-        prev.map((s) => {
-          const targetId = s.student.id || s.student._id;
-          if (targetId === sId) {
-            const updatedAudit = [
-              {
-                status: feesStatus,
-                reason: feesStatus === 'paid' ? (paidOption === 'add_clearance' ? 'add_clearance' : null) : reason,
-                remark_text: finalRemarkText,
-                changed_by_name: 'Bus Section Head',
-                changed_at: new Date().toISOString(),
-              },
-              ...(s.auditTrail || []),
-            ];
-            return {
-              ...s,
-              bus_fees_status: feesStatus,
-              fees_status: feesStatus,
-              reason: feesStatus === 'paid' ? (paidOption === 'add_clearance' ? 'add_clearance' : null) : reason,
-              remark_text: finalRemarkText,
-              updated_at: new Date().toISOString(),
-              auditTrail: updatedAudit,
-            };
-          }
-          return s;
-        })
-      );
-
-      if (feesStatus === 'not_paid') {
-        toast.success('Remark added & student notified successfully!');
-      } else {
-        toast.success('Bus fee clearance status saved & student notified successfully!');
-      }
-      setIsModalOpen(false);
+      toast.error(err.response?.data?.message || err.message || 'Failed to update bus fee clearance');
     } finally {
       setSaving(false);
     }

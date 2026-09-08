@@ -280,7 +280,7 @@ export default function Users() {
       link.click();
       link.remove();
     } catch {
-      const csvStr = 'student_id,full_name,email,department,semester,section,elective_1,elective_2,elective_3\nEN2024CSE001,Aarav Sharma,aarav.sharma@sbjain.edu.in,CSE,6,A,Cloud Computing,Natural Language Processing,Cyber Security\nEN2024CSE002,Ananya Patel,ananya.patel@sbjain.edu.in,CSE,6,A,Data Mining,Computer Vision,Internet of Things\nEN2024ECE001,Rohan Verma,rohan.verma@sbjain.edu.in,ECE,4,B,VLSI Design,Embedded Systems,Wireless Sensor Networks\n';
+      const csvStr = 'student_id,full_name,email,department,semester,section,elective_1,elective_2,elective_3\nEN2024CSE001,Student One,student1@sbjit.edu.in,CSE,6,A,Cloud Computing,Natural Language Processing,Cyber Security\nEN2024CSE002,Student Two,student2@sbjit.edu.in,CSE,6,A,Data Mining,Computer Vision,Internet of Things\nEN2024ECE001,Student Three,student3@sbjit.edu.in,ECE,4,B,VLSI Design,Embedded Systems,Wireless Sensor Networks\n';
       const blob = new Blob([csvStr], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -905,26 +905,16 @@ export default function Users() {
         {/* Dynamic Action Buttons */}
         <div className="flex items-center gap-2">
           {activeTab === 'student' && (
-            <>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleExportStudents}
-                loading={exporting}
-                icon={<HiOutlineArrowDownTray className="w-4 h-4" />}
-                title="Export students list to Excel-compatible CSV file"
-              >
-                Export to Excel
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => { setBulkResults(null); setCsvData(''); setBulkOpen(true); }}
-                icon={<HiOutlineArrowUpTray className="w-4 h-4" />}
-              >
-                Bulk Upload Students
-              </Button>
-            </>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleExportStudents}
+              loading={exporting}
+              icon={<HiOutlineArrowDownTray className="w-4 h-4" />}
+              title="Export students list to Excel-compatible CSV file"
+            >
+              Export to Excel
+            </Button>
           )}
           <Button
             variant="primary"
@@ -979,7 +969,7 @@ export default function Users() {
           <div>
             <label htmlFor="user-form-email" className="label-base">Email Address</label>
             <input id="user-form-email" name="email" className="input-base" type="email" value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="name@sbjain.edu.in" />
+              onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="name@sbjit.edu.in" />
           </div>
           <div>
             <label htmlFor="user-form-password" className="label-base">

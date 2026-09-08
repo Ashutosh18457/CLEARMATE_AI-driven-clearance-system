@@ -343,8 +343,8 @@ const adminService = {
     const existingEmailSet = new Set(existingDbUsers.map((u) => u.email.toLowerCase()));
     const existingEnrollmentSet = new Set(existingDbUsers.map((u) => (u.enrollmentNo ? u.enrollmentNo.trim() : '')));
 
-    // Pre-fetch elective items, semesters & batches for resolving student assignments
-    const electiveItems = await ClearanceItem.find({ type: 'elective' }).lean();
+    // Pre-fetch elective items (both theory and lab), semesters & batches for resolving student assignments
+    const electiveItems = await ClearanceItem.find({ type: { $in: ['elective', 'elective_lab'] } }).lean();
     const electiveMapBySem = {}; // `${semesterId}_${optionNameLower}` -> opt._id
     const electiveMapByName = {}; // `${optionNameLower}` -> opt._id
     for (const item of electiveItems) {
@@ -434,10 +434,10 @@ const adminService = {
       seenEmailsInFile.add(email);
       seenEnrollmentsInFile.add(enrollmentNo);
 
-      // 7. Resolve elective choices (supports elective_1, elective_2, pe1, pe2, or comma-separated electives)
+      // 7. Resolve elective choices (supports elective_1, elective_2, mdm_1, mdm, pe1, pe2, or comma-separated electives)
       const electiveNames = [];
       Object.keys(r).forEach((k) => {
-        if (k.startsWith('elective_') && r[k]) {
+        if ((k.startsWith('elective_') || k.startsWith('mdm') || k.startsWith('minor') || k.startsWith('multi')) && r[k]) {
           electiveNames.push(r[k].trim());
         }
       });
@@ -453,9 +453,25 @@ const adminService = {
       for (const elName of electiveNames) {
         const cleanName = elName.toLowerCase().trim();
         if (!cleanName) continue;
-        const optId = (studentSemIdStr && electiveMapBySem[`${studentSemIdStr}_${cleanName}`]) || electiveMapByName[cleanName];
-        if (optId && !matchedElectiveIds.some((id) => id.toString() === optId.toString())) {
-          matchedElectiveIds.push(optId);
+        const baseName = cleanName.replace(/\s+(lab|laboratory)$/i, '').trim();
+
+        for (const item of electiveItems) {
+          if (studentSemIdStr && item.semesterId?.toString() !== studentSemIdStr) continue;
+          for (const opt of item.electiveOptions || []) {
+            const optName = (opt.name || '').toLowerCase().trim();
+            const optBase = optName.replace(/\s+(lab|laboratory)$/i, '').trim();
+            if (
+              optName === cleanName ||
+              optBase === baseName ||
+              optName === baseName ||
+              optBase === cleanName
+            ) {
+              if (!matchedElectiveIds.some((id) => id.toString() === opt._id.toString())) {
+                matchedElectiveIds.push(opt._id);
+              }
+              break; // Matched this clearance item, advance to next
+            }
+          }
         }
       }
 
@@ -529,9 +545,9 @@ const adminService = {
 
   getSampleCsvTemplate() {
     return 'student_id,full_name,email,department,semester,section,elective_1,elective_2,elective_3\n' +
-      'EN2024CSE001,Aarav Sharma,aarav.sharma@sbjain.edu.in,CSE,6,A,Cloud Computing,Natural Language Processing,Cyber Security\n' +
-      'EN2024CSE002,Ananya Patel,ananya.patel@sbjain.edu.in,CSE,6,A,Data Mining,Computer Vision,Internet of Things\n' +
-      'EN2024ECE001,Rohan Verma,rohan.verma@sbjain.edu.in,ECE,4,B,VLSI Design,Embedded Systems,Wireless Sensor Networks\n';
+      'EN2024CSE001,Student One,student1@sbjit.edu.in,CSE,6,A,Cloud Computing,Natural Language Processing,Cyber Security\n' +
+      'EN2024CSE002,Student Two,student2@sbjit.edu.in,CSE,6,A,Data Mining,Computer Vision,Internet of Things\n' +
+      'EN2024ECE001,Student Three,student3@sbjit.edu.in,ECE,4,B,VLSI Design,Embedded Systems,Wireless Sensor Networks\n';
   },
 
   /**
@@ -830,10 +846,22 @@ const adminService = {
       }
     }
 
-    if (data.type === 'elective' && data.electiveOptions) {
+    if ((data.type === 'elective' || data.type === 'elective_lab') && data.electiveOptions) {
       for (const option of data.electiveOptions) {
-        const teacher = await User.findOne({ _id: option.teacherId, role: 'teacher' });
-        if (!teacher) throw AppError.badRequest(`Invalid teacher ID for elective option "${option.name}"`);
+        if (option.teacherId) {
+          const teacher = await User.findOne({ _id: option.teacherId, role: 'teacher' });
+          if (!teacher) throw AppError.badRequest(`Invalid teacher ID for elective option "${option.name}"`);
+        }
+        if (Array.isArray(option.labBatchTeachers)) {
+          for (const mapping of option.labBatchTeachers) {
+            const [batch, teacher] = await Promise.all([
+              Batch.findById(mapping.batchId),
+              User.findOne({ _id: mapping.teacherId, role: 'teacher' }),
+            ]);
+            if (!batch) throw AppError.badRequest(`Invalid batch ID: ${mapping.batchId}`);
+            if (!teacher) throw AppError.badRequest(`Invalid teacher ID: ${mapping.teacherId}`);
+          }
+        }
       }
     }
 
@@ -852,6 +880,8 @@ const adminService = {
       .populate('labBatchTeachers.batchId', 'name')
       .populate('labBatchTeachers.teacherId', 'name email')
       .populate('electiveOptions.teacherId', 'name email')
+      .populate('electiveOptions.labBatchTeachers.batchId', 'name')
+      .populate('electiveOptions.labBatchTeachers.teacherId', 'name email')
       .sort({ srNo: 1 });
   },
 

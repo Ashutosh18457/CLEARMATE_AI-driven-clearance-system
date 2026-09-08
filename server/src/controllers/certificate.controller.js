@@ -47,8 +47,8 @@ const certificateController = {
         branchOverride: req.query.branch || req.query.branchCode || 'CSE',
         sectionOverride: req.query.section || 'A',
         semOverride: req.query.semester || req.query.sem || 5,
-        rollNoOverride: req.query.rollNo || req.query.enrollmentNo || 'EN2024CSE002',
-        nameOverride: req.query.name || 'Rohan Iyer',
+        rollNoOverride: req.query.rollNo || req.query.enrollmentNo || 'EN2025CSE001',
+        nameOverride: req.query.name || 'Student',
         includeReRun: req.query.includeReRun,
         forceAllCleared: req.query.forceAllCleared === 'true',
       };

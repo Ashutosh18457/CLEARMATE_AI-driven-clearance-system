@@ -8,8 +8,9 @@ import {
   HiOutlineBuildingLibrary,
   HiOutlineArrowRight,
   HiOutlineExclamationTriangle,
-  HiOutlineChartBar,
-  HiOutlineClock,
+  HiOutlineCalendarDays,
+  HiOutlinePlus,
+  HiOutlineCheckCircle,
 } from 'react-icons/hi2';
 import api from '../../api/axios';
 import DashboardLayout from '../../components/layout/DashboardLayout';
@@ -25,7 +26,7 @@ function StatCard({ icon, label, value, loading, color, subtext }) {
   };
 
   return (
-    <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-xs hover:shadow-md transition-shadow">
       <div className="flex items-center gap-3.5">
         <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-xl shrink-0 ${colorMap[color] || colorMap.brand}`}>
           {icon}
@@ -44,37 +45,15 @@ function StatCard({ icon, label, value, loading, color, subtext }) {
   );
 }
 
-const superAdminActions = [
-  {
-    label: 'Manage College Programs',
-    description: 'Create & configure branches (CSE, AIML, Mechanical, ECE)',
-    to: '/admin/programs',
-    icon: <HiOutlineAcademicCap className="w-6 h-6 text-brand" />,
-    badge: 'College-wide',
-  },
-  {
-    label: 'Manage Admins & Staff',
-    description: 'Create Department Admins, HODs, and Central Section Heads',
-    to: '/admin/users',
-    icon: <HiOutlineShieldCheck className="w-6 h-6 text-blue-600" />,
-    badge: 'Access Control',
-  },
-  {
-    label: 'System Audit Logs',
-    description: 'Live security trail, logins, approval logs, and role changes',
-    to: '/super-admin/audit',
-    icon: <HiOutlineClipboardDocumentList className="w-6 h-6 text-purple-600" />,
-    badge: 'Security',
-  },
-];
-
 export default function SuperAdminDashboard() {
   const [stats, setStats] = useState({
     programs: 0,
     deptAdmins: 0,
-    totalUsers: 0,
-    activeClearances: 0,
+    students: 0,
+    activeSemesters: 0,
   });
+  const [programsList, setProgramsList] = useState([]);
+  const [semestersList, setSemestersList] = useState([]);
   const [recentLogs, setRecentLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -84,11 +63,16 @@ export default function SuperAdminDashboard() {
       setLoading(true);
       setError(null);
       try {
-        const [programsRes, usersRes, auditRes] = await Promise.all([
+        const [programsRes, usersRes, semestersRes, auditRes] = await Promise.all([
           api.get('/admin/programs'),
-          api.get('/admin/users', { params: { limit: 100 } }),
+          api.get('/admin/users', { params: { limit: 500 } }),
+          api.get('/admin/semesters'),
           api.get('/admin/audit-logs', { params: { limit: 5 } }),
         ]);
+
+        const rawPrograms = Array.isArray(programsRes.data.data)
+          ? programsRes.data.data
+          : programsRes.data.data?.programs || [];
 
         const usersList = Array.isArray(usersRes.data.data?.users)
           ? usersRes.data.data.users
@@ -96,17 +80,29 @@ export default function SuperAdminDashboard() {
           ? usersRes.data.data
           : [];
 
-        const deptAdminsCount = usersList.filter((u) => u.role === 'admin').length;
+        const rawSemesters = Array.isArray(semestersRes.data.data)
+          ? semestersRes.data.data
+          : semestersRes.data.data?.semesters || [];
+
+        const deptAdminsCount = usersList.filter(
+          (u) => u.role === 'admin' || u.role === 'hod'
+        ).length;
+
+        const studentsCount = usersList.filter((u) => u.role === 'student').length;
+
+        const activeSemestersCount = rawSemesters.filter(
+          (s) => s.status === 'active' || s.isActive
+        ).length || rawSemesters.length;
 
         setStats({
-          programs: Array.isArray(programsRes.data.data)
-            ? programsRes.data.data.length
-            : programsRes.data.data?.total || 0,
+          programs: rawPrograms.length,
           deptAdmins: deptAdminsCount,
-          totalUsers: usersRes.data.data?.pagination?.total || usersList.length,
-          activeClearances: usersRes.data.data?.activeClearanceRequests || 0,
+          students: studentsCount,
+          activeSemesters: activeSemestersCount,
         });
 
+        setProgramsList(rawPrograms);
+        setSemestersList(rawSemesters);
         setRecentLogs(auditRes.data.data?.logs || []);
       } catch (err) {
         setError(err.message || 'Failed to load Super Admin dashboard');
@@ -131,21 +127,23 @@ export default function SuperAdminDashboard() {
               College Executive & IT Control Center
             </h1>
             <p className="text-sm text-indigo-100/90 mt-1 max-w-xl">
-              Manage all department scopes, assign Department Admins, oversee institution-wide clearance pipelines, and monitor live audit trails.
+              Centralized oversight across academic departments, branch leadership assignments, and college-wide clearance pipelines.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Link
               to="/admin/programs"
-              className="px-4 py-2.5 bg-white text-indigo-900 font-semibold text-xs rounded-lg shadow-sm hover:bg-indigo-50 transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white text-indigo-900 font-semibold text-xs rounded-lg shadow-sm hover:bg-indigo-50 transition-colors"
             >
-              + New Program
+              <HiOutlinePlus className="w-4 h-4" />
+              <span>New Program</span>
             </Link>
             <Link
               to="/admin/users"
-              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs rounded-lg transition-colors border border-white/20"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs rounded-lg transition-colors border border-white/20"
             >
-              + Create Admin
+              <HiOutlineShieldCheck className="w-4 h-4" />
+              <span>Manage Admins</span>
             </Link>
           </div>
         </div>
@@ -158,129 +156,222 @@ export default function SuperAdminDashboard() {
         </div>
       )}
 
-      {/* Stats Grid */}
+      {/* Meaningful Executive Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard
           icon={<HiOutlineAcademicCap className="w-6 h-6" />}
-          label="College Programs"
+          label="Academic Programs"
           value={stats.programs}
           loading={loading}
           color="brand"
-          subtext="Branches (B.Tech, M.Tech)"
+          subtext="Configured degree branches"
         />
         <StatCard
           icon={<HiOutlineShieldCheck className="w-6 h-6" />}
-          label="Department Admins"
+          label="Dept Admins & HODs"
           value={stats.deptAdmins}
           loading={loading}
           color="purple"
-          subtext="Scoped branch managers"
+          subtext="Branch academic coordinators"
         />
         <StatCard
           icon={<HiOutlineUsers className="w-6 h-6" />}
-          label="Total Institutional Users"
-          value={stats.totalUsers}
+          label="Enrolled Students"
+          value={stats.students}
           loading={loading}
           color="info"
-          subtext="Students, Faculty & Heads"
+          subtext="Registered across departments"
         />
         <StatCard
-          icon={<HiOutlineClipboardDocumentList className="w-6 h-6" />}
-          label="Audit Log Entries"
-          value={recentLogs.length > 0 ? 'Active' : 'Standby'}
+          icon={<HiOutlineCalendarDays className="w-6 h-6" />}
+          label="Active Semesters"
+          value={stats.activeSemesters}
           loading={loading}
           color="success"
-          subtext="Real-time security trail"
+          subtext="Ongoing academic terms"
         />
       </div>
 
-      {/* Quick Actions Grid */}
-      <div className="mb-8">
-        <h2 className="text-base font-bold text-ink-primary mb-4 flex items-center gap-2">
-          <HiOutlineShieldCheck className="w-5 h-5 text-brand" />
-          Super Admin Controls
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {superAdminActions.map((action) => (
-            <Link
-              key={action.to}
-              to={action.to}
-              className="bg-surface border border-border-subtle hover:border-brand/50 rounded-xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-canvas flex items-center justify-center">
-                    {action.icon}
-                  </div>
-                  <span className="text-2xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-canvas text-ink-muted border border-border-subtle">
-                    {action.badge}
-                  </span>
-                </div>
-                <h3 className="text-sm font-bold text-ink-primary group-hover:text-brand transition-colors">
-                  {action.label}
-                </h3>
-                <p className="text-xs text-ink-muted mt-1">{action.description}</p>
-              </div>
-              <div className="flex items-center gap-1 text-xs font-semibold text-brand mt-4 pt-3 border-t border-border-subtle/50">
-                <span>Configure</span>
-                <HiOutlineArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      {/* Recent System Audit Logs Widget */}
-      <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-xs">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <HiOutlineClock className="w-5 h-5 text-ink-muted" />
-            <h2 className="text-sm font-bold text-ink-primary uppercase tracking-wide">
-              Live System Activity & Audit Trail
+      {/* College Programs & Department Governance Table */}
+      <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-xs mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-border-subtle">
+          <div>
+            <h2 className="text-base font-bold text-ink-primary flex items-center gap-2">
+              <HiOutlineAcademicCap className="w-5 h-5 text-brand" />
+              College Programs & Department Leadership
             </h2>
+            <p className="text-xs text-ink-muted mt-0.5">
+              Academic departments, degrees, and their designated Department Administrators
+            </p>
           </div>
           <Link
-            to="/super-admin/audit"
-            className="text-xs font-semibold text-brand hover:underline flex items-center gap-1"
+            to="/admin/programs"
+            className="text-xs font-semibold text-brand hover:underline flex items-center gap-1 self-start sm:self-auto"
           >
-            <span>View All Logs</span>
+            <span>Manage All Programs</span>
             <HiOutlineArrowRight className="w-3 h-3" />
           </Link>
         </div>
 
         {loading ? (
-          <div className="space-y-2">
+          <div className="space-y-3 py-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-10 bg-canvas rounded animate-pulse" />
+              <div key={i} className="h-12 bg-canvas rounded-lg animate-pulse" />
             ))}
           </div>
-        ) : recentLogs.length === 0 ? (
-          <p className="text-xs text-ink-muted py-4 text-center">
-            No recent audit logs recorded. Actions like clearances, logins, and approvals will appear here.
-          </p>
+        ) : programsList.length === 0 ? (
+          <div className="py-8 text-center">
+            <p className="text-sm font-semibold text-ink-primary">No academic programs configured yet</p>
+            <p className="text-xs text-ink-muted mt-1">Get started by adding your institution&apos;s degree programs.</p>
+            <Link
+              to="/admin/programs"
+              className="inline-flex items-center gap-1.5 px-4 py-2 mt-4 text-xs font-semibold text-white bg-brand rounded-lg hover:bg-brand/90"
+            >
+              <HiOutlinePlus className="w-4 h-4" />
+              Add First Program
+            </Link>
+          </div>
         ) : (
-          <div className="divide-y divide-border-subtle">
-            {recentLogs.map((log) => (
-              <div key={log._id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="w-2 h-2 rounded-full bg-brand shrink-0" />
-                  <span className="font-semibold text-ink-primary truncate">
-                    {log.userId?.name || 'System'}
-                  </span>
-                  <span className="text-ink-muted truncate">
-                    ({log.userId?.email || 'N/A'})
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-canvas border border-border-subtle font-mono text-2xs text-ink-secondary">
-                    {log.action}
-                  </span>
-                </div>
-                <span className="text-ink-muted shrink-0 text-2xs font-mono">
-                  {new Date(log.createdAt).toLocaleTimeString()}
-                </span>
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-border-subtle text-ink-muted uppercase font-semibold text-2xs tracking-wider">
+                  <th className="py-2.5 px-3">Program Code</th>
+                  <th className="py-2.5 px-3">Degree & Title</th>
+                  <th className="py-2.5 px-3">Department Admin</th>
+                  <th className="py-2.5 px-3">Head of Department (HOD)</th>
+                  <th className="py-2.5 px-3 text-center">Status</th>
+                  <th className="py-2.5 px-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-subtle">
+                {programsList.map((prog) => {
+                  const deptAdmin = prog.departmentAdminId;
+                  const hod = prog.hodId;
+
+                  return (
+                    <tr key={prog._id} className="hover:bg-canvas/50 transition-colors">
+                      <td className="py-3 px-3">
+                        <span className="font-mono font-bold text-ink-primary bg-brand-50 text-brand px-2 py-1 rounded border border-brand/20">
+                          {prog.code}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3">
+                        <p className="font-bold text-ink-primary">{prog.name}</p>
+                        <p className="text-2xs text-ink-muted mt-0.5">
+                          {prog.degree || 'B.Tech'} • {prog.totalSemesters || 8} Semesters
+                        </p>
+                      </td>
+                      <td className="py-3 px-3">
+                        {deptAdmin ? (
+                          <div>
+                            <p className="font-semibold text-ink-primary">{deptAdmin.name}</p>
+                            <p className="text-2xs text-ink-muted font-mono">{deptAdmin.email}</p>
+                          </div>
+                        ) : (
+                          <span className="text-2xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                            Unassigned
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3">
+                        {hod ? (
+                          <div>
+                            <p className="font-semibold text-ink-primary">{hod.name}</p>
+                            <p className="text-2xs text-ink-muted font-mono">{hod.email}</p>
+                          </div>
+                        ) : (
+                          <span className="text-2xs text-ink-muted bg-canvas px-2 py-0.5 rounded border border-border-subtle">
+                            Institutional Default
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        <Badge variant={prog.isActive !== false ? 'success' : 'neutral'} size="sm">
+                          {prog.isActive !== false ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <Link
+                          to="/admin/programs"
+                          className="text-2xs font-semibold text-brand hover:underline"
+                        >
+                          Configure →
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
+      </div>
+
+      {/* Two-Column Quick Access & Security Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Quick Executive Links */}
+        <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-ink-primary mb-1 flex items-center gap-2">
+              <HiOutlineBuildingLibrary className="w-4 h-4 text-brand" />
+              Institutional Clearance Oversight
+            </h3>
+            <p className="text-xs text-ink-muted mb-4">
+              Inspect student clearance certificates, department completion ratios, and physical report records.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 pt-3 border-t border-border-subtle">
+            <Link
+              to="/admin/clearance-report"
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-brand text-white text-xs font-semibold rounded-lg hover:bg-brand/90 transition-colors"
+            >
+              <span>Open Clearance Reports</span>
+              <HiOutlineArrowRight className="w-3.5 h-3.5" />
+            </Link>
+            <Link
+              to="/admin/users"
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-canvas text-ink-secondary hover:text-ink-primary text-xs font-semibold rounded-lg border border-border-subtle transition-colors"
+            >
+              <span>Manage Admins & Staff</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* Security & System Activity Status */}
+        <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-sm font-bold text-ink-primary flex items-center gap-2">
+                <HiOutlineShieldCheck className="w-4 h-4 text-purple-600" />
+                Security & Audit Status
+              </h3>
+              <span className="inline-flex items-center gap-1 text-2xs font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+                <HiOutlineCheckCircle className="w-3 h-3" />
+                Audit Trail Active
+              </span>
+            </div>
+            <p className="text-xs text-ink-muted mb-3">
+              All logins, role changes, clearance approvals, and certificate generations are immutably logged.
+            </p>
+            {recentLogs.length > 0 && (
+              <div className="p-2.5 bg-canvas rounded-lg border border-border-subtle text-2xs text-ink-secondary font-mono flex items-center justify-between">
+                <span className="truncate">Latest: {recentLogs[0]?.action} ({recentLogs[0]?.userId?.email || 'System'})</span>
+                <span className="text-ink-muted shrink-0 ml-2">{new Date(recentLogs[0]?.createdAt).toLocaleTimeString()}</span>
+              </div>
+            )}
+          </div>
+          <div className="pt-3 border-t border-border-subtle flex items-center justify-between">
+            <span className="text-2xs text-ink-muted">Tamper-proof server audit log</span>
+            <Link
+              to="/super-admin/audit"
+              className="text-xs font-semibold text-purple-600 hover:underline flex items-center gap-1"
+            >
+              <span>View Full Audit Logs</span>
+              <HiOutlineArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   );

@@ -182,9 +182,9 @@ export default function AccountSectionDashboard() {
   const handleDownloadSample = () => {
     const sampleHeaders = 'student_id,full_name,email,department,semester,section\n';
     const sampleData =
-      'EN2021CSE042,Rahul Sharma,rahul.sharma@sbjain.edu.in,CSE,6,A\n' +
-      'EN2022AIDS015,Priya Gupta,priya.gupta@sbjain.edu.in,AI&DS,4,B\n' +
-      'EN2023ME008,Amit Kumar,amit.kumar@sbjain.edu.in,ME,2,A\n';
+      'EN2021CSE042,Student One,student1@sbjit.edu.in,CSE,6,A\n' +
+      'EN2022AIDS015,Student Two,student2@sbjit.edu.in,CSE,6,B\n' +
+      'EN2023ME008,Student Three,student3@sbjit.edu.in,CSE,6,A\n';
     const blob = new Blob([sampleHeaders + sampleData], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -285,120 +285,12 @@ export default function AccountSectionDashboard() {
       setParsedRows([]);
       fetchStudents();
     } catch (err) {
-      console.warn('Backend bulk upload failed, performing inline update:', err.message);
-      const cleanIdentifiers = identifiers.map((id) => id.toLowerCase());
-      setStudents((prev) =>
-        prev.map((s) => {
-          const sId = (s.student.id || s.student._id || '').toLowerCase();
-          const sEnroll = (s.student.enrollmentNo || '').toLowerCase();
-          const sEmail = (s.student.email || '').toLowerCase();
-          if (
-            cleanIdentifiers.includes(sId) ||
-            cleanIdentifiers.includes(sEnroll) ||
-            cleanIdentifiers.includes(sEmail)
-          ) {
-            return {
-              ...s,
-              fees_status: 'paid',
-              reason: null,
-              remark_text: 'Tuition fees cleared via bulk CSV upload',
-              updated_at: new Date().toISOString(),
-            };
-          }
-          return s;
-        })
-      );
-      toast.success(`Bulk Upload Complete! ${parsedRows.length} student records updated to Paid / Cleared.`);
-      setIsBulkModalOpen(false);
-      setUploadedFileName('');
-      setParsedRows([]);
+      toast.error(err.response?.data?.message || err.message || 'Bulk upload failed');
     } finally {
       setBulkLoading(false);
     }
   };
 
-
-  // Mock data fallback handler
-  const mockStudents = [
-    {
-      student: {
-        id: 'mock1',
-        _id: 'mock1',
-        name: 'Rahul Verma',
-        email: 'student@sbjit.edu.in',
-        enrollmentNo: 'EN2021CSE042',
-        section: 'A',
-        currentSemester: 6,
-        program: 'CSE',
-      },
-      fees_status: 'not_paid',
-      reason: 'fees_pending',
-      remark_text: 'Fees pending for Sem 6',
-      updated_by: { name: 'Account Section Admin' },
-      updated_at: new Date().toISOString(),
-      auditTrail: [
-        {
-          status: 'not_paid',
-          reason: 'fees_pending',
-          remark_text: 'Fees pending for Sem 6',
-          changed_by_name: 'Account Section Admin',
-          changed_at: new Date().toISOString(),
-        },
-      ],
-    },
-    {
-      student: {
-        id: 'mock2',
-        _id: 'mock2',
-        name: 'Priya Sharma',
-        email: 'priya@sbjit.edu.in',
-        enrollmentNo: 'EN2021CSE088',
-        section: 'B',
-        currentSemester: 6,
-        program: 'CSE',
-      },
-      fees_status: 'paid',
-      reason: null,
-      remark_text: 'Fees cleared',
-      updated_by: { name: 'Account Section Admin' },
-      updated_at: new Date().toISOString(),
-      auditTrail: [
-        {
-          status: 'paid',
-          reason: null,
-          remark_text: 'Fees cleared',
-          changed_by_name: 'Account Section Admin',
-          changed_at: new Date().toISOString(),
-        },
-      ],
-    },
-    {
-      student: {
-        id: 'mock3',
-        _id: 'mock3',
-        name: 'Amit Patel',
-        email: 'amit@sbjit.edu.in',
-        enrollmentNo: 'EN2022AIDS015',
-        section: 'A',
-        currentSemester: 4,
-        program: 'AI&DS',
-      },
-      fees_status: 'not_paid',
-      reason: 'remark',
-      remark_text: 'Pending Bus Fee Rs 5000',
-      updated_by: { name: 'Account Section Admin' },
-      updated_at: new Date().toISOString(),
-      auditTrail: [
-        {
-          status: 'not_paid',
-          reason: 'remark',
-          remark_text: 'Pending Bus Fee Rs 5000',
-          changed_by_name: 'Account Section Admin',
-          changed_at: new Date().toISOString(),
-        },
-      ],
-    },
-  ];
 
   // Fetch branches metadata
   const fetchMetadata = useCallback(async () => {
@@ -408,13 +300,8 @@ export default function AccountSectionDashboard() {
         setBranches(res.data.data.programs || []);
       }
     } catch (err) {
-      console.warn('Metadata fetch fallback:', err.message);
-      setBranches([
-        { _id: 'cse', code: 'CSE', name: 'Computer Science & Engineering' },
-        { _id: 'aids', code: 'AI&DS', name: 'Artificial Intelligence & Data Science' },
-        { _id: 'ece', code: 'ECE', name: 'Electronics & Communication' },
-        { _id: 'me', code: 'ME', name: 'Mechanical Engineering' },
-      ]);
+      console.error('Metadata fetch error:', err.message);
+      setBranches([]);
     }
   }, []);
 
@@ -438,32 +325,8 @@ export default function AccountSectionDashboard() {
         setStudents([]);
       }
     } catch (err) {
-      console.warn('API call failed, fallback to mock state:', err.message);
-      // Filter mock students
-      let filtered = [...mockStudents];
-      if (search.trim()) {
-        const q = search.toLowerCase();
-        filtered = filtered.filter(
-          (s) =>
-            s.student.name.toLowerCase().includes(q) ||
-            s.student.enrollmentNo.toLowerCase().includes(q) ||
-            s.student.email.toLowerCase().includes(q)
-        );
-      }
-      if (statusFilter !== 'all') {
-        filtered = filtered.filter((s) => s.fees_status === statusFilter);
-      }
-      if (selectedBranch !== 'all') {
-        filtered = filtered.filter(
-          (s) => s.student.program === selectedBranch || s.student.programId === selectedBranch
-        );
-      }
-      if (selectedSem !== 'all') {
-        filtered = filtered.filter(
-          (s) => String(s.student.currentSemester) === String(selectedSem)
-        );
-      }
-      setStudents(filtered);
+      console.error('API call failed fetching account students:', err.message);
+      setStudents([]);
     } finally {
       setLoading(false);
     }

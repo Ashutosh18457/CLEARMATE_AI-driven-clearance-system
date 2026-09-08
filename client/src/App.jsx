@@ -342,7 +342,7 @@ export default function App() {
           <Route
             path="/admin/bulk-setup"
             element={
-              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
                 <BulkSetup />
               </ProtectedRoute>
             }
@@ -350,7 +350,7 @@ export default function App() {
           <Route
             path="/admin/faculty-config"
             element={
-              <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]}>
+              <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
                 <FacultyMappingConfig />
               </ProtectedRoute>
             }

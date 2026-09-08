@@ -89,7 +89,7 @@ async function seedWorkflowDemo() {
     });
 
     const teacher1 = await User.create({
-      name: 'Prof. Sharma',
+      name: 'Faculty Member',
       email: 'teacher@sbjit.edu.in',
       password: 'Password123!',
       role: 'teacher',
@@ -113,7 +113,7 @@ async function seedWorkflowDemo() {
     });
 
     const hod = await User.create({
-      name: 'Dr. Kulkarni (HOD)',
+      name: 'Head of Department (HOD)',
       email: 'hod@sbjit.edu.in',
       password: 'Password123!',
       role: 'hod',

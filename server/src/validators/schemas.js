@@ -140,7 +140,7 @@ export const createClearanceItemSchema = {
     semesterId: Joi.string().required(),
     srNo: Joi.number().integer().min(1).required(),
     title: Joi.string().required(),
-    type: Joi.string().valid('theory', 'lab', 'elective', 'special').required(),
+    type: Joi.string().valid('theory', 'lab', 'elective', 'elective_lab', 'special').required(),
     subjectCode: Joi.string().optional().allow(''),
     isRequired: Joi.boolean().optional(),
     theoryTeacherId: Joi.string().optional(),
@@ -161,7 +161,7 @@ export const updateClearanceItemSchema = {
   body: Joi.object({
     srNo: Joi.number().integer().min(1),
     title: Joi.string(),
-    type: Joi.string().valid('theory', 'lab', 'elective', 'special'),
+    type: Joi.string().valid('theory', 'lab', 'elective', 'elective_lab', 'special'),
     subjectCode: Joi.string().allow(''),
     isRequired: Joi.boolean(),
     theoryTeacherId: Joi.string().allow(''),

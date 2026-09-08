@@ -116,28 +116,21 @@ export default function StudentClearance() {
         params: semId ? { semesterId: semId } : {},
       });
       if (res.data.success) {
-        const data = res.data.data;        const printWindow = window.open('', '_blank');
-        const sectionsHtml = (data.sections && data.sections.length > 0 ? data.sections : [
-          { srNo: 1, sectionName: 'Account Section', remarks: 'Fees Cleared / No Dues', status: 'Approved', reviewerName: 'Account Section Head' },
-          { srNo: 2, sectionName: 'Student Section', remarks: 'No Dues / Documents Verified', status: 'Approved', reviewerName: 'Student Section In-charge' },
-          { srNo: 3, sectionName: 'Bus In-charge', remarks: 'Transport Dues Cleared', status: 'Approved', reviewerName: 'Bus Section In-charge' },
-          { srNo: 4, sectionName: 'Library', remarks: 'No Overdue Books / Dues Cleared', status: 'Approved', reviewerName: 'Library Head' },
-        ]).map((s) => `
+        const sectionsHtml = (data.sections && data.sections.length > 0)
+          ? data.sections.map((s) => `
           <tr>
             <td style="text-align: center; font-weight: 600; width: 50px;">${s.srNo}</td>
-            <td style="font-weight: 600; color: #1e293b;">${s.sectionName}</td>
+            <td style="font-weight: 600; color: #1e293b;">${s.sectionName || s.department || 'Section'}</td>
             <td style="color: #475569;">${s.remarks || 'No Dues'}</td>
             <td style="text-align: center; color: #15803d; font-weight: 600;">
               <span class="badge-approved">✓ APPROVED</span>
               <span style="display: block; font-size: 9px; color: #64748b; font-weight: normal; margin-top: 2px;">${s.reviewerName || 'Verified'}</span>
             </td>
           </tr>
-        `).join('');
+        `).join('')
+          : `<tr><td colspan="4" style="text-align: center; color: #64748b; padding: 12px;">No institutional section clearance records found</td></tr>`;
 
-        const itemsHtml = (data.items && data.items.length > 0 ? data.items : [
-          { srNo: 1, title: 'Theory of Computation', teacherName: 'Prof. Sharma', remarks: 'All Submissions Verified', status: 'Approved' },
-          { srNo: 2, title: 'Data Analytics', teacherName: 'Prof. Sharma', remarks: 'Lab & Theory Cleared', status: 'Approved' },
-        ]).map((item) => `
+        const itemsHtml = (data.items || []).map((item) => `
           <tr>
             <td style="text-align: center; font-weight: 600; width: 50px;">${item.srNo}</td>
             <td style="font-weight: 600; color: #1e293b;">
@@ -480,12 +473,12 @@ export default function StudentClearance() {
                   <div class="sign-stamp">
                     ✓ FINAL HOD APPROVAL<br>
                     <span style="font-size: 9px; font-weight: normal; text-transform: none; color: #166534;">
-                      ${data.hod?.name || 'Dr. Kulkarni (HOD)'}<br>
+                      ${data.hod?.name || 'Head of Department'}<br>
                       ${new Date(data.clearance?.completedAt || Date.now()).toLocaleDateString('en-IN')}
                     </span>
                   </div>
                   <div class="sign-line">Head of Department</div>
-                  <div class="sign-sub">${data.program?.department || 'Department of Emerging Technologies'}</div>
+                  <div class="sign-sub">${data.program?.department || 'Department Office'}</div>
                 </div>
               </div>
 

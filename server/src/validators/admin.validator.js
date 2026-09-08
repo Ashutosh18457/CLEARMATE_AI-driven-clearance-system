@@ -167,9 +167,9 @@ const adminValidator = {
       .messages({ 'any.required': 'Serial number is required' }),
     title: Joi.string().trim().min(1).max(200).required()
       .messages({ 'any.required': 'Title is required' }),
-    type: Joi.string().valid('theory', 'lab', 'elective', 'special').required()
+    type: Joi.string().valid('theory', 'lab', 'elective', 'elective_lab', 'special').required()
       .messages({ 'any.required': 'Item type is required' }),
-    subjectCode: Joi.string().trim().max(30).optional().allow('', null),
+    subjectCode: Joi.string().trim().max(100).optional().allow('', null),
     isRequired: Joi.boolean().default(true),
     theoryTeacherId: objectId.optional().allow('', null),
     labBatchTeachers: Joi.array().items(
@@ -179,18 +179,24 @@ const adminValidator = {
       })
     ).optional(),
     electiveGroup: Joi.when('type', {
-      is: 'elective',
+      is: Joi.string().valid('elective', 'elective_lab'),
       then: Joi.string().trim().max(50).required(),
       otherwise: Joi.string().trim().max(50).optional().allow('', null),
     }),
     electiveOptions: Joi.when('type', {
-      is: 'elective',
+      is: Joi.string().valid('elective', 'elective_lab'),
       then: Joi.array().items(
         Joi.object({
           name: Joi.string().trim().min(1).max(100).required(),
-          teacherId: objectId.required(),
+          teacherId: objectId.optional().allow('', null),
+          labBatchTeachers: Joi.array().items(
+            Joi.object({
+              batchId: objectId.required(),
+              teacherId: objectId.required(),
+            })
+          ).optional(),
         })
-      ).min(2).required(),
+      ).min(1).required(),
       otherwise: Joi.array().optional(),
     }),
   }),
@@ -198,8 +204,8 @@ const adminValidator = {
   updateClearanceItemSchema: Joi.object({
     srNo: Joi.number().integer().min(1),
     title: Joi.string().trim().min(1).max(200),
-    type: Joi.string().valid('theory', 'lab', 'elective', 'special'),
-    subjectCode: Joi.string().trim().max(30).allow('', null),
+    type: Joi.string().valid('theory', 'lab', 'elective', 'elective_lab', 'special'),
+    subjectCode: Joi.string().trim().max(100).allow('', null),
     isRequired: Joi.boolean(),
     theoryTeacherId: objectId.optional().allow('', null),
     labBatchTeachers: Joi.array().items(
@@ -212,7 +218,13 @@ const adminValidator = {
     electiveOptions: Joi.array().items(
       Joi.object({
         name: Joi.string().trim().min(1).max(100).required(),
-        teacherId: objectId.required(),
+        teacherId: objectId.optional().allow('', null),
+        labBatchTeachers: Joi.array().items(
+          Joi.object({
+            batchId: objectId.required(),
+            teacherId: objectId.required(),
+          })
+        ).optional(),
       })
     ).optional(),
   }).min(1).messages({ 'object.min': 'At least one field must be provided for update' }),

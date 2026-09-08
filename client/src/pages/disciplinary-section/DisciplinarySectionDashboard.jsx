@@ -20,101 +20,7 @@ import {
   HiOutlineShieldCheck,
 } from 'react-icons/hi2';
 
-// Initial Mock Students for fallback / demo mode
-const MOCK_DISCIPLINARY_STUDENTS = [
-  {
-    student: {
-      id: 'mock-1',
-      _id: 'mock-1',
-      name: 'Phalguni',
-      enrollmentNo: 'EN2021CSE099',
-      email: 'phalguni@sbjit.edu.in',
-      program: 'CSE',
-      currentSemester: 6,
-      section: 'A',
-    },
-    disciplinary_status: 'not_cleared',
-    fees_status: 'not_paid',
-    reason: 'fine_pending',
-    remark_text: 'Pending lab fine Rs 200',
-    updated_by: { name: 'Disciplinary Head' },
-    updated_at: null,
-    auditTrail: [],
-  },
-  {
-    student: {
-      id: 'mock-2',
-      _id: 'mock-2',
-      name: 'Rahul Verma',
-      enrollmentNo: 'EN823680',
-      email: 'student@sbjit.edu.in',
-      program: 'AIML',
-      currentSemester: 5,
-      section: 'A',
-    },
-    disciplinary_status: 'cleared',
-    fees_status: 'paid',
-    reason: null,
-    remark_text: 'Good conduct verified. Disciplinary NOC issued.',
-    updated_by: { name: 'Disciplinary Head' },
-    updated_at: '2026-08-28T10:15:00.000Z',
-    auditTrail: [
-      {
-        status: 'cleared',
-        reason: null,
-        remark_text: 'Good conduct verified. Disciplinary NOC issued.',
-        changed_by_name: 'Disciplinary Head',
-        changed_at: '2026-08-28T10:15:00.000Z',
-      },
-    ],
-  },
-  {
-    student: {
-      id: 'mock-3',
-      _id: 'mock-3',
-      name: 'Aarav Singh',
-      enrollmentNo: 'EN_BULK_101',
-      email: 'aarav_bulk101@sbjit.edu.in',
-      program: 'CSE',
-      currentSemester: 6,
-      section: 'A',
-    },
-    disciplinary_status: 'not_cleared',
-    fees_status: 'not_paid',
-    reason: 'misconduct_record',
-    remark_text: 'Active disciplinary ticket under inquiry',
-    updated_by: { name: 'Disciplinary Head' },
-    updated_at: '2026-08-25T14:30:00.000Z',
-    auditTrail: [
-      {
-        status: 'not_cleared',
-        reason: 'misconduct_record',
-        remark_text: 'Active disciplinary ticket under inquiry',
-        changed_by_name: 'Disciplinary Head',
-        changed_at: '2026-08-25T14:30:00.000Z',
-      },
-    ],
-  },
-  {
-    student: {
-      id: 'mock-4',
-      _id: 'mock-4',
-      name: 'Aditya Joshi',
-      enrollmentNo: 'EN2024AIML001',
-      email: 'aditya.joshi@sbjit.edu.in',
-      program: 'CSE',
-      currentSemester: 8,
-      section: 'A',
-    },
-    disciplinary_status: 'cleared',
-    fees_status: 'paid',
-    reason: null,
-    remark_text: 'All conduct checks cleared. No active tickets.',
-    updated_by: { name: 'Disciplinary Head' },
-    updated_at: '2026-08-27T16:00:00.000Z',
-    auditTrail: [],
-  },
-];
+
 
 export default function DisciplinarySectionDashboard() {
   const [students, setStudents] = useState([]);
@@ -155,19 +61,13 @@ export default function DisciplinarySectionDashboard() {
           setBranches(res.data.programs);
         }
       } catch (err) {
-        setBranches([
-          { _id: 'cse', code: 'CSE', name: 'Computer Science & Engineering' },
-          { _id: 'aiml', code: 'AIML', name: 'Artificial Intelligence & Machine Learning' },
-          { _id: 'aids', code: 'AI&DS', name: 'Artificial Intelligence & Data Science' },
-          { _id: 'me', code: 'ME', name: 'Mechanical Engineering' },
-          { _id: 'ce', code: 'CE', name: 'Civil Engineering' },
-        ]);
+        setBranches([]);
+        toast.error('Failed to load branches');
       }
     }
     fetchMetadata();
   }, []);
 
-  // Fetch students function
   const fetchStudents = useCallback(async () => {
     setLoading(true);
     try {
@@ -178,49 +78,16 @@ export default function DisciplinarySectionDashboard() {
       if (selectedSem !== 'all') params.sem = selectedSem;
 
       const res = await api.get('/disciplinary-section/students', { params });
-      let studentData = res.data?.data || res.data?.students || [];
+      const studentData = res.data?.data || res.data?.students || [];
 
-      if (Array.isArray(studentData) && studentData.length > 0) {
+      if (Array.isArray(studentData)) {
         setStudents(studentData);
       } else {
-        // Fallback filter on local mock array
-        let filtered = [...MOCK_DISCIPLINARY_STUDENTS];
-        if (search.trim()) {
-          const s = search.toLowerCase();
-          filtered = filtered.filter(
-            (item) =>
-              item.student.name.toLowerCase().includes(s) ||
-              item.student.enrollmentNo.toLowerCase().includes(s) ||
-              item.student.email.toLowerCase().includes(s)
-          );
-        }
-        if (statusFilter !== 'all') {
-          filtered = filtered.filter((item) => item.disciplinary_status === statusFilter);
-        }
-        if (selectedBranch !== 'all') {
-          filtered = filtered.filter((item) => item.student.program === selectedBranch);
-        }
-        if (selectedSem !== 'all') {
-          filtered = filtered.filter((item) => String(item.student.currentSemester) === String(selectedSem));
-        }
-        setStudents(filtered);
+        setStudents([]);
       }
     } catch (err) {
-      console.warn('API error fetching disciplinary records, using fallback mock list:', err.message);
-      let filtered = [...MOCK_DISCIPLINARY_STUDENTS];
-      if (search.trim()) {
-        const s = search.toLowerCase();
-        filtered = filtered.filter(
-          (item) =>
-            item.student.name.toLowerCase().includes(s) ||
-            item.student.enrollmentNo.toLowerCase().includes(s) ||
-            item.student.email.toLowerCase().includes(s)
-        );
-      }
-      if (statusFilter !== 'all') {
-        filtered = filtered.filter((item) => item.disciplinary_status === statusFilter);
-      }
-      setStudents(filtered);
+      console.error('API error fetching disciplinary records:', err.message);
+      setStudents([]);
     } finally {
       setLoading(false);
     }
@@ -331,42 +198,7 @@ export default function DisciplinarySectionDashboard() {
         throw new Error(res.data?.message || 'Failed to update disciplinary status');
       }
     } catch (err) {
-      toast.success(
-        disciplinaryStatus === 'cleared'
-          ? 'Disciplinary NOC granted (Local Mode)'
-          : 'Disciplinary remark updated (Local Mode)'
-      );
-
-      setStudents((prev) =>
-        prev.map((item) => {
-          const sId = item.student.id || item.student._id;
-          const targetId = selectedStudent.student.id || selectedStudent.student._id;
-          if (sId === targetId) {
-            const newAudit = [
-              ...(item.auditTrail || []),
-              {
-                status: disciplinaryStatus,
-                reason: disciplinaryStatus === 'cleared' ? null : reason,
-                remark_text: remarkText || (disciplinaryStatus === 'cleared' ? 'Disciplinary NOC issued' : 'Fine pending'),
-                changed_by_name: 'Disciplinary Head',
-                changed_at: new Date().toISOString(),
-              },
-            ];
-            return {
-              ...item,
-              disciplinary_status: disciplinaryStatus,
-              fees_status: disciplinaryStatus === 'cleared' ? 'paid' : 'not_paid',
-              reason: disciplinaryStatus === 'cleared' ? null : reason,
-              remark_text: remarkText || (disciplinaryStatus === 'cleared' ? 'Disciplinary NOC issued' : 'Fine pending'),
-              updated_by: { name: 'Disciplinary Head' },
-              updated_at: new Date().toISOString(),
-              auditTrail: newAudit,
-            };
-          }
-          return item;
-        })
-      );
-      handleCloseModal();
+      toast.error(err.response?.data?.message || err.message || 'Failed to update disciplinary status');
     } finally {
       setSaving(false);
     }
@@ -393,24 +225,7 @@ export default function DisciplinarySectionDashboard() {
       setSelectedStudentIds([]);
       fetchStudents();
     } catch (err) {
-      setStudents((prev) =>
-        prev.map((s) => {
-          const sId = s.student.id || s.student._id;
-          if (selectedStudentIds.includes(sId)) {
-            return {
-              ...s,
-              disciplinary_status: 'cleared',
-              fees_status: 'paid',
-              reason: null,
-              remark_text: bulkRemarkText || 'Disciplinary NOC granted via bulk update',
-              updated_at: new Date().toISOString(),
-            };
-          }
-          return s;
-        })
-      );
-      toast.success(`Successfully granted Disciplinary NOC to ${selectedStudentIds.length} students!`);
-      setSelectedStudentIds([]);
+      toast.error(err.response?.data?.message || err.message || 'Bulk disciplinary update failed');
     } finally {
       setBulkLoading(false);
     }

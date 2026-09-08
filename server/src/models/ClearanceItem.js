@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const clearanceItemTypes = ['theory', 'lab', 'elective', 'special'];
+const clearanceItemTypes = ['theory', 'lab', 'elective', 'elective_lab', 'special'];
 
 // Embedded sub-schema for lab batches (each batch has a specific teacher)
 const labBatchTeacherSchema = new mongoose.Schema(
@@ -19,7 +19,7 @@ const labBatchTeacherSchema = new mongoose.Schema(
   { _id: false }
 );
 
-// Embedded sub-schema for elective options (student picks one, gets that teacher)
+// Embedded sub-schema for elective options (student picks one, gets that teacher, or batch teacher for labs)
 const electiveOptionSchema = new mongoose.Schema(
   {
     name: {
@@ -30,7 +30,11 @@ const electiveOptionSchema = new mongoose.Schema(
     teacherId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false,
+    },
+    labBatchTeachers: {
+      type: [labBatchTeacherSchema],
+      default: [],
     },
   }
 ); // Mongoose automatically adds an _id here, which is useful for 'selectedElective' on the User model
@@ -75,7 +79,7 @@ const clearanceItemSchema = new mongoose.Schema(
     theoryTeacherId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: function() { return this.type === 'theory' || this.type === 'special'; },
+      default: null,
     },
     
     // 2. For Lab items (teacher depends on the student's batch)
@@ -93,20 +97,20 @@ const clearanceItemSchema = new mongoose.Schema(
     // 3. For Elective items (student chooses one option, which maps to a teacher)
     isElective: {
       type: Boolean,
-      default: function() { return this.type === 'elective'; },
+      default: function() { return this.type === 'elective' || this.type === 'elective_lab'; },
     },
     electiveGroup: {
       type: String, // e.g. "OEC-II"
-      required: function() { return this.type === 'elective'; },
+      required: function() { return this.type === 'elective' || this.type === 'elective_lab'; },
     },
     electiveOptions: {
       type: [electiveOptionSchema],
       validate: {
         validator: function(v) {
-          if (this.type === 'elective') return v && v.length >= 2;
+          if (this.type === 'elective' || this.type === 'elective_lab') return v && v.length >= 1;
           return true;
         },
-        message: 'Elective items must have at least two options',
+        message: 'Elective items must have at least one option',
       },
     },
   },

@@ -41,6 +41,7 @@ export const extractStudentElectives = (st) => {
     { track: 'PE-III', regex: /(pe[-_ ]?(iii\b|3\b)|elective[-_ ]?(choice[-_ ]?)?(3\b|iii\b)|program[-_ ]?elective[-_ ]?(3\b|iii\b))/i },
     { track: 'PE-IV', regex: /(pe[-_ ]?(iv\b|4\b)|elective[-_ ]?(choice[-_ ]?)?(4\b|iv\b)|program[-_ ]?elective[-_ ]?(4\b|iv\b))/i },
     { track: 'OE', regex: /(oe[-_ ]?[0-9i]*|open[-_ ]?elective)/i },
+    { track: 'MDM', regex: /(mdm[-_ ]?([0-9i]*|allotment|choice)?|minor|multidisciplinary)/i },
   ];
 
   const matchedKeys = new Set();
@@ -58,12 +59,12 @@ export const extractStudentElectives = (st) => {
     }
   }
 
-  // Fallback for any other elective-related keys
+  // Fallback for any other elective/MDM-related keys
   for (const key of Object.keys(st)) {
     if (matchedKeys.has(key)) continue;
     const lk = key.toLowerCase();
     if (
-      (lk.includes('elective') || lk.startsWith('pe_') || lk.startsWith('pe-') || lk.startsWith('pe') || lk.startsWith('p_')) &&
+      (lk.includes('elective') || lk.includes('mdm') || lk.includes('minor') || lk.includes('multidisciplinary') || lk.startsWith('pe_') || lk.startsWith('pe-') || lk.startsWith('pe') || lk.startsWith('p_')) &&
       st[key] &&
       String(st[key]).trim() !== ''
     ) {
@@ -71,7 +72,8 @@ export const extractStudentElectives = (st) => {
       if (!seenChoices.has(val.toLowerCase())) {
         seenChoices.add(val.toLowerCase());
         let cleanTrack = key.replace(/[:_=-]/g, ' ').replace(/\ballotment\b|\bchoice\b/gi, '').trim();
-        if (/(^|\D)1($|\D)|(^|\D)i($|\D)/i.test(cleanTrack)) cleanTrack = 'PE-I';
+        if (/mdm|minor|multi/i.test(cleanTrack)) cleanTrack = 'MDM';
+        else if (/(^|\D)1($|\D)|(^|\D)i($|\D)/i.test(cleanTrack)) cleanTrack = 'PE-I';
         else if (/(^|\D)2($|\D)|(^|\D)ii($|\D)/i.test(cleanTrack)) cleanTrack = 'PE-II';
         else if (/(^|\D)3($|\D)|(^|\D)iii($|\D)/i.test(cleanTrack)) cleanTrack = 'PE-III';
         else if (/(^|\D)4($|\D)|(^|\D)iv($|\D)/i.test(cleanTrack)) cleanTrack = 'PE-IV';
@@ -151,9 +153,10 @@ export default function BulkSetup() {
     const wb = XLSX.utils.book_new();
 
     // Sheet 1: Semester Config
+    const defaultProgCode = programs[0]?.code || 'CSE';
     const semConfigData = [
       {
-        program_code: programs[0]?.code || 'AIDS',
+        program_code: defaultProgCode,
         sem_number: 5,
         academic_year: '2025-26',
         type: 'ODD',
@@ -191,7 +194,7 @@ export default function BulkSetup() {
         sr_no: 3,
         title: 'Professional Elective I',
         type: 'elective',
-        subject_code: 'PE503',
+        subject_code: 'PE503A / PE503B',
         teacher_email: '',
         lab_batches: '',
         elective_group: 'PE-I',
@@ -199,23 +202,33 @@ export default function BulkSetup() {
       },
       {
         sr_no: 4,
-        title: 'Professional Elective II',
-        type: 'elective',
-        subject_code: 'PE504',
+        title: 'Professional Elective I Lab',
+        type: 'elective_lab',
+        subject_code: 'PE503LA / PE503LB',
         teacher_email: '',
         lab_batches: '',
-        elective_group: 'PE-II',
-        elective_options: 'Natural Language Processing:teacher1@sbjit.edu.in,Computer Vision:teacher2@sbjit.edu.in',
+        elective_group: 'PE-I Lab',
+        elective_options: 'Machine Learning Lab (Batch A:teacher1@sbjit.edu.in, Batch B:teacher2@sbjit.edu.in), Cloud Computing Lab (Batch A:teacher2@sbjit.edu.in, Batch B:teacher1@sbjit.edu.in)',
       },
       {
         sr_no: 5,
-        title: 'Professional Elective III',
+        title: 'Minor Multidisciplinary Course (MDM)',
         type: 'elective',
-        subject_code: 'PE505',
+        subject_code: 'MDM601A / MDM601B',
         teacher_email: '',
         lab_batches: '',
-        elective_group: 'PE-III',
-        elective_options: 'Cyber Security:teacher1@sbjit.edu.in,Internet of Things:teacher2@sbjit.edu.in',
+        elective_group: 'MDM',
+        elective_options: 'Course A:teacher1@sbjit.edu.in,Course B:teacher2@sbjit.edu.in',
+      },
+      {
+        sr_no: 6,
+        title: 'Minor Multidisciplinary Course Lab (MDM Lab)',
+        type: 'elective_lab',
+        subject_code: 'MDM601LB',
+        teacher_email: '',
+        lab_batches: '',
+        elective_group: 'MDM Lab',
+        elective_options: 'Course B Lab (Batch A:teacher2@sbjit.edu.in, Batch B:teacher1@sbjit.edu.in)',
       },
     ];
     const ws2 = XLSX.utils.json_to_sheet(clearanceItemsData);
@@ -224,38 +237,71 @@ export default function BulkSetup() {
     // Sheet 3: Students Roster
     const studentsData = [
       {
-        enrollment_no: 'EN2024AIDS001',
+        enrollment_no: `EN2024${defaultProgCode}001`,
         full_name: 'Rahul Sharma',
         email: 'rahul.sharma@sbjit.edu.in',
         section: 'A',
         batch: 'Batch A',
         PE_I_Allotment: 'Machine Learning',
-        PE_II_Allotment: 'Natural Language Processing',
-        PE_III_Allotment: 'Cyber Security',
+        MDM_Allotment: 'Course A',
       },
       {
-        enrollment_no: 'EN2024AIDS002',
+        enrollment_no: `EN2024${defaultProgCode}002`,
         full_name: 'Priya Patel',
         email: 'priya.patel@sbjit.edu.in',
         section: 'A',
         batch: 'Batch B',
         PE_I_Allotment: 'Cloud Computing',
-        PE_II_Allotment: 'Computer Vision',
-        PE_III_Allotment: 'Internet of Things',
+        MDM_Allotment: 'Course B',
       },
       {
-        enrollment_no: 'EN2024AIDS003',
+        enrollment_no: `EN2024${defaultProgCode}003`,
         full_name: 'Amit Verma',
         email: 'amit.verma@sbjit.edu.in',
         section: 'A',
         batch: 'Batch C',
         PE_I_Allotment: 'Machine Learning',
-        PE_II_Allotment: 'Natural Language Processing',
-        PE_III_Allotment: 'Cyber Security',
+        MDM_Allotment: 'Course A',
       },
     ];
     const ws3 = XLSX.utils.json_to_sheet(studentsData);
     XLSX.utils.book_append_sheet(wb, ws3, 'students');
+
+    // Sheet 4: Setup Guide & Syntax Reference
+    const guideData = [
+      {
+        Topic: 'Regular Labs',
+        Type_Column: 'lab',
+        How_To_Configure: 'Provide comma-separated Batch:Email in lab_batches (e.g. Batch A:prof1@sbjit.edu.in, Batch B:prof2@sbjit.edu.in)',
+        Student_Roster_Mapping: 'Students are automatically assigned to the teacher for their "batch" column.',
+      },
+      {
+        Topic: 'Theory Electives (PE / MDM)',
+        Type_Column: 'elective',
+        How_To_Configure: 'Provide Option:Email pairs in elective_options (e.g. Machine Learning:prof1@sbjit.edu.in, Cloud Computing:prof2@sbjit.edu.in)',
+        Student_Roster_Mapping: 'Students specify elective name under PE_I_Allotment or MDM_Allotment column.',
+      },
+      {
+        Topic: 'Elective Labs with Batches (PE Lab / MDM Lab)',
+        Type_Column: 'elective_lab',
+        How_To_Configure: 'Specify batch teachers inside parentheses in elective_options: Machine Learning Lab (Batch A:prof1@sbjit.edu.in, Batch B:prof2@sbjit.edu.in), Cloud Computing Lab (Batch A:prof3@sbjit.edu.in, Batch B:prof4@sbjit.edu.in)',
+        Student_Roster_Mapping: 'No extra columns needed! A student\'s single elective choice + their "batch" automatically routes them to their exact lab batch teacher.',
+      },
+      {
+        Topic: 'Asymmetric Electives (Course A = Theory only, Course B = Theory + Lab)',
+        Type_Column: 'elective_lab',
+        How_To_Configure: 'In the elective lab row, ONLY list Course B Lab in elective_options. Do NOT list Course A (or write Course A (No Lab)).',
+        Student_Roster_Mapping: 'Students choosing Course A receive only Theory clearance (no lab item will ever be created for them). Students choosing Course B receive both Theory and Lab clearance automatically!',
+      },
+      {
+        Topic: 'Elective Lab (Single Faculty)',
+        Type_Column: 'elective_lab',
+        How_To_Configure: 'If one teacher handles all batches for an elective lab, simply write: Machine Learning Lab:prof1@sbjit.edu.in, Cloud Computing Lab:prof2@sbjit.edu.in',
+        Student_Roster_Mapping: 'All students choosing that elective are evaluated by that teacher.',
+      },
+    ];
+    const ws4 = XLSX.utils.json_to_sheet(guideData);
+    XLSX.utils.book_append_sheet(wb, ws4, 'setup_guide');
 
     // Export file
     XLSX.writeFile(wb, 'clearmate_bulk_semester_template.xlsx');
@@ -647,6 +693,14 @@ export default function BulkSetup() {
                     <p className="text-2xs font-bold text-green-600 uppercase">Sheet 3</p>
                     <p className="text-xs font-semibold text-ink-primary mt-0.5">Student Roster</p>
                     <p className="text-2xs text-ink-muted mt-0.5">Roll No, Email, Batch & Electives</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 p-3 bg-brand/5 border border-brand/15 rounded-xl text-left flex items-start gap-2.5">
+                  <span className="text-sm shrink-0">💡</span>
+                  <div className="text-2xs text-ink-secondary leading-relaxed">
+                    <strong className="text-ink-primary font-semibold">Program Elective & MDM Labs with Batches:</strong>
+                    {' '}You can specify batch teachers inside parentheses in <code className="text-brand font-mono px-1 py-0.5 bg-brand/10 rounded">elective_options</code> (e.g. <span className="font-mono text-ink-muted">Cloud Computing Lab (Batch A:prof1@sbjit.edu.in, Batch B:prof2@sbjit.edu.in)</span>). Students only enter their single elective name once in the roster; ClearMate automatically links both Theory & Lab and assigns the clearance to their batch's lab faculty!
                   </div>
                 </div>
               </div>

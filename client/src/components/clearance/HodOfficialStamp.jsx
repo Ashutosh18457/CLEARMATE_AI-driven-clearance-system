@@ -6,7 +6,7 @@ import { HiCheckBadge } from 'react-icons/hi2';
  * Changes dynamically based on department, HOD name, and approval status.
  */
 export default function HodOfficialStamp({
-  hodName = 'Dr. Kulkarni',
+  hodName = 'Head of Department',
   department = 'Computer Science & Engineering',
   departmentCode = 'CSE',
   approved = true,
@@ -48,7 +48,7 @@ export default function HodOfficialStamp({
       >
         {/* Top Arc Text */}
         <div className="text-[8.5px] font-extrabold tracking-wider leading-none uppercase pt-0.5 opacity-90">
-          ★ S.B. JAIN INST. OF TECH ★
+          ★ SBJIT NAGPUR ★
         </div>
 
         {/* Center Content */}

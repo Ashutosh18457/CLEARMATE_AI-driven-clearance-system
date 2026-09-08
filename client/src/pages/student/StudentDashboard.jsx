@@ -248,11 +248,7 @@ export default function StudentDashboard() {
       });
     }
 
-    return [
-      { srNo: 1, title: 'Database Management Systems (DBMS)', subjectCode: 'CS501', teacherName: 'Prof. Sharma', status: 'pending', remarks: 'Awaiting clearance initiation' },
-      { srNo: 2, title: 'Computer Networks (CN)', subjectCode: 'CS502', teacherName: 'Prof. K. Verma', status: 'pending', remarks: 'Awaiting clearance initiation' },
-      { srNo: 3, title: 'Theory of Computation (TOC)', subjectCode: 'CS503', teacherName: 'Prof. S. Mehta', status: 'pending', remarks: 'Awaiting clearance initiation' },
-    ];
+    return [];
   }, [isInitiated, itemClearances, clearance?.clearanceItems, submissions]);
 
   const totalVerifiedSubmissions = submissions.filter((s) => s.status === SUBMISSION_STATUSES.VERIFIED).length;

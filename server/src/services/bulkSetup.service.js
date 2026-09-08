@@ -137,6 +137,11 @@ const bulkSetupService = {
       if (Array.isArray(item.electiveOptions)) {
         for (const opt of item.electiveOptions) {
           if (opt.teacherEmail) allTeacherEmails.add(opt.teacherEmail.toLowerCase().trim());
+          if (Array.isArray(opt.labBatches)) {
+            for (const lb of opt.labBatches) {
+              if (lb.teacherEmail) allTeacherEmails.add(lb.teacherEmail.toLowerCase().trim());
+            }
+          }
         }
       } else if (typeof item.electiveOptions === 'string') {
         const pairs = item.electiveOptions.split(/[,;\n]/);
@@ -240,18 +245,47 @@ const bulkSetupService = {
           clearanceData.labBatchTeachers = labBatchTeachers;
         }
 
-        if (item.type === 'elective') {
-          clearanceData.electiveGroup = item.electiveGroup || 'Elective';
+        if (item.type === 'elective' || item.type === 'elective_lab') {
+          clearanceData.electiveGroup = item.electiveGroup || (item.type === 'elective_lab' ? 'Elective Lab' : 'Elective');
           clearanceData.isElective = true;
           const electiveOptions = [];
           const rawOptions = Array.isArray(item.electiveOptions) ? item.electiveOptions : [];
           for (const opt of rawOptions) {
             const teacherId = teacherEmailMap[opt.teacherEmail?.toLowerCase()?.trim()] || Object.values(teacherEmailMap)[0];
+            const optLabBatches = [];
+            if (Array.isArray(opt.labBatches)) {
+              for (const lb of opt.labBatches) {
+                const bTeacherId = teacherEmailMap[lb.teacherEmail?.toLowerCase()?.trim()] || teacherId;
+                const batch = findBatchDoc(lb.batchName);
+                if (batch && bTeacherId) {
+                  optLabBatches.push({ batchId: batch._id, teacherId: bTeacherId });
+                }
+              }
+            }
             if (opt.name) {
-              electiveOptions.push({ name: opt.name, teacherId });
+              electiveOptions.push({
+                name: opt.name,
+                teacherId: teacherId || null,
+                labBatchTeachers: optLabBatches,
+              });
             }
           }
           clearanceData.electiveOptions = electiveOptions;
+
+          // If item-level labBatches are specified on elective_lab
+          if (Array.isArray(item.labBatches) && item.labBatches.length > 0) {
+            const labBatchTeachers = [];
+            for (const lb of item.labBatches) {
+              const teacherId = teacherEmailMap[lb.teacherEmail?.toLowerCase()?.trim()];
+              const batch = findBatchDoc(lb.batchName);
+              if (batch && teacherId) {
+                labBatchTeachers.push({ batchId: batch._id, teacherId });
+              }
+            }
+            if (labBatchTeachers.length > 0) {
+              clearanceData.labBatchTeachers = labBatchTeachers;
+            }
+          }
         }
 
         const created = await ClearanceItem.create(clearanceData);
@@ -271,38 +305,58 @@ const bulkSetupService = {
     });
 
     // ─── Step 6: Create Students + Assign to Batches ───
-    // Resolve elective choices: find the created ClearanceItem elective option IDs
+    // Resolve elective choices: find the created ClearanceItem elective option IDs (both theory and lab)
     const electiveClearanceItems = await ClearanceItem.find({
       semesterId: semester._id,
-      type: 'elective',
+      type: { $in: ['elective', 'elective_lab'] },
     });
 
-    // Helper to resolve an elective choice to an option _id
-    const resolveElectiveOptionId = (rawChoice) => {
-      if (!rawChoice) return null;
+    // Helper to resolve an elective choice to all matching option _ids across theory & lab items
+    const resolveElectiveOptionIds = (rawChoice) => {
+      if (!rawChoice) return [];
       let val = String(rawChoice).trim();
-      if (!val) return null;
-      // Strip common prefixes like "PE-I:", "PE_1 - ", "Elective 1:", etc.
-      const strippedVal = val.replace(/^(pe[-_ ]?[i|v|x|0-9]+|elective[-_ ]?[0-9]+|group[-_ ]?[a-z0-9]+)\s*[:=-]\s*/i, '').trim();
+      if (!val) return [];
+      // Strip common prefixes like "PE-I:", "PE_1 - ", "Elective 1:", "PE-I Lab:", etc.
+      const strippedVal = val.replace(/^(pe[-_ ]?[i|v|x|0-9]+(\s*lab)?|elective[-_ ]?[0-9]+(\s*lab)?|group[-_ ]?[a-z0-9]+)\s*[:=-]\s*/i, '').trim();
+      const baseName = strippedVal.replace(/\s+(lab|laboratory)$/i, '').trim();
+
       const normRaw = val.toLowerCase().replace(/[^a-z0-9]/g, '');
       const normStripped = strippedVal.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const normBase = baseName.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      const matchedIds = [];
 
       for (const ci of electiveClearanceItems) {
-        for (const opt of ci.electiveOptions || []) {
-          const optName = String(opt.name || '').trim();
-          const normOpt = optName.toLowerCase().replace(/[^a-z0-9]/g, '');
-          if (
-            optName.toLowerCase() === val.toLowerCase() ||
-            optName.toLowerCase() === strippedVal.toLowerCase() ||
-            normOpt === normStripped ||
-            normOpt === normRaw ||
-            (normStripped.length >= 3 && (normOpt.includes(normStripped) || normStripped.includes(normOpt)))
-          ) {
-            return opt._id;
+        if (ci.electiveOptions && ci.electiveOptions.length > 0) {
+          for (const opt of ci.electiveOptions) {
+            const optName = String(opt.name || '').trim();
+            const optBase = optName.replace(/\s+(lab|laboratory)$/i, '').trim();
+            const normOpt = optName.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const normOptBase = optBase.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+            if (
+              optName.toLowerCase() === val.toLowerCase() ||
+              optName.toLowerCase() === strippedVal.toLowerCase() ||
+              optBase.toLowerCase() === baseName.toLowerCase() ||
+              normOpt === normStripped ||
+              normOpt === normRaw ||
+              normOptBase === normBase ||
+              (normBase.length >= 3 && (normOptBase.includes(normBase) || normBase.includes(normOptBase)))
+            ) {
+              matchedIds.push(opt._id);
+              break; // Matched this clearance item, advance to next
+            }
+          }
+        } else {
+          // Dedicated item per elective course (e.g. title: "Machine Learning Lab")
+          const titleBase = String(ci.title || '').replace(/^(pe[-_ ]?[i|v|x|0-9]+(\s*lab)?|elective[-_ ]?[0-9]+(\s*lab)?)\s*[:=-]\s*/i, '').replace(/\s+(lab|laboratory)$/i, '').trim();
+          const normTitleBase = titleBase.toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (normTitleBase === normBase || (normBase.length >= 3 && (normTitleBase.includes(normBase) || normBase.includes(normTitleBase)))) {
+            matchedIds.push(ci._id);
           }
         }
       }
-      return null;
+      return matchedIds;
     };
 
     for (let i = 0; i < students.length; i++) {
@@ -327,16 +381,24 @@ const bulkSetupService = {
           ],
         });
 
-        // Collect all possible elective choice values from row
+        // Collect all possible elective & MDM choice values from row
         const electiveChoices = [];
         if (row.electiveChoice) electiveChoices.push(row.electiveChoice);
+        if (row.mdmChoice || row.mdm_choice || row.mdm) electiveChoices.push(row.mdmChoice || row.mdm_choice || row.mdm);
+        if (row.electives) {
+          const parts = String(row.electives).split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
+          electiveChoices.push(...parts);
+        }
         Object.keys(row).forEach((k) => {
           const cleanKey = k.toLowerCase().replace(/[^a-z0-9_]/g, '');
           if (
             (cleanKey.startsWith('elective') ||
               cleanKey.startsWith('pe') ||
               cleanKey.startsWith('p') ||
-              cleanKey.startsWith('oe')) &&
+              cleanKey.startsWith('oe') ||
+              cleanKey.startsWith('mdm') ||
+              cleanKey.startsWith('minor') ||
+              cleanKey.startsWith('multi')) &&
             k !== 'electiveChoice' &&
             row[k]
           ) {
@@ -346,9 +408,11 @@ const bulkSetupService = {
 
         const matchedElectiveIds = [];
         for (const choice of electiveChoices) {
-          const optId = resolveElectiveOptionId(choice);
-          if (optId && !matchedElectiveIds.some((id) => id.toString() === optId.toString())) {
-            matchedElectiveIds.push(optId);
+          const optIds = resolveElectiveOptionIds(choice);
+          for (const optId of optIds) {
+            if (optId && !matchedElectiveIds.some((id) => id.toString() === optId.toString())) {
+              matchedElectiveIds.push(optId);
+            }
           }
         }
 
@@ -564,14 +628,14 @@ const bulkSetupService = {
           'elective_options',
         ],
         sampleRows: [
-          [1, 'Data Science', 'theory', 'CS501', 'prof.sharma@college.edu', '', '', ''],
+          [1, 'Data Science', 'theory', 'CS501', 'teacher@sbjit.edu.in', '', '', ''],
           [
             2,
             'AI Lab',
             'lab',
             'CS502L',
             '',
-            'Batch A:prof.jones@college.edu,Batch B:prof.smith@college.edu',
+            'Batch A:teacher@sbjit.edu.in,Batch B:teacher@sbjit.edu.in',
             '',
             '',
           ],
@@ -583,7 +647,7 @@ const bulkSetupService = {
             '',
             '',
             'PE-I',
-            'Machine Learning:prof.ml@college.edu,Cloud Computing:prof.cc@college.edu',
+            'Machine Learning:prof.ml@sbjit.edu.in,Cloud Computing:prof.cc@sbjit.edu.in',
           ],
           [
             4,
@@ -593,7 +657,7 @@ const bulkSetupService = {
             '',
             '',
             'PE-II',
-            'Deep Learning:prof.dl@college.edu,NLP:prof.nlp@college.edu',
+            'Deep Learning:prof.dl@sbjit.edu.in,NLP:prof.nlp@sbjit.edu.in',
           ],
           [
             5,
@@ -603,7 +667,7 @@ const bulkSetupService = {
             '',
             '',
             'PE-III',
-            'Cyber Security:prof.cs@college.edu,Internet of Things:prof.iot@college.edu',
+            'Cyber Security:prof.cs@sbjit.edu.in,Internet of Things:prof.iot@sbjit.edu.in',
           ],
         ],
       },
@@ -661,9 +725,10 @@ const bulkSetupService = {
     const normalizedItems = (clearanceItems || []).map((item, idx) => {
       const title = String(getVal(item, 'title', 'subject_name', 'subject', 'course_title', 'name') || '').trim();
       let type = String(getVal(item, 'type', 'course_type', 'item_type') || 'theory').toLowerCase().trim();
-      if (!['theory', 'lab', 'elective', 'special'].includes(type)) {
-        if (type.includes('lab') || type.includes('practical')) type = 'lab';
-        else if (type.includes('elec')) type = 'elective';
+      if (!['theory', 'lab', 'elective', 'elective_lab', 'special'].includes(type)) {
+        if ((type.includes('lab') || type.includes('practical')) && (type.includes('elec') || type.includes('pe') || type.includes('mdm'))) type = 'elective_lab';
+        else if (type.includes('lab') || type.includes('practical')) type = 'lab';
+        else if (type.includes('elec') || type.includes('mdm') || type.includes('minor') || type.includes('multi')) type = 'elective';
         else if (type.includes('proj') || type.includes('special')) type = 'special';
         else type = 'theory';
       }
@@ -691,8 +756,53 @@ const bulkSetupService = {
           .filter((p) => p[keyProp] && p.teacherEmail);
       };
 
+      // Helper to parse elective options (supporting batch-specific mappings for labs)
+      // Supports:
+      // 1. Parenthesized batches: "Course A Lab (Batch A:t1@..., Batch B:t2@...), Course B Lab (Batch A:t3@..., Batch B:t4@...)"
+      // 2. Simple key:email: "Course A:t1@..., Course B:t2@..."
+      const parseElectiveOptions = (str) => {
+        if (!str || typeof str !== 'string') return [];
+        const options = [];
+
+        if (str.includes('(') && str.includes(')')) {
+          const regex = /([^,;|()]+)\s*\(([^)]+)\)/g;
+          let match;
+          while ((match = regex.exec(str)) !== null) {
+            const optName = match[1].trim();
+            const batchesStr = match[2].trim();
+            // If explicitly marked as having no lab e.g. "Course A (No Lab)" or "Course A (None)"
+            if (/^(no\s*lab|none|n\/?a|nil)$/i.test(batchesStr.trim())) {
+              continue;
+            }
+            const labBatches = parseKeyEmailPairs(batchesStr, 'batchName');
+            if (labBatches.length > 0) {
+              options.push({
+                name: optName,
+                teacherEmail: labBatches[0]?.teacherEmail || '',
+                labBatches,
+              });
+            }
+          }
+        }
+
+        if (options.length === 0) {
+          const simplePairs = parseKeyEmailPairs(str, 'name');
+          for (const p of simplePairs) {
+            if (p.teacherEmail && !/^(no\s*lab|none|n\/?a|nil)$/i.test(p.teacherEmail.trim())) {
+              options.push({
+                name: p.name,
+                teacherEmail: p.teacherEmail,
+                labBatches: [],
+              });
+            }
+          }
+        }
+
+        return options;
+      };
+
       // Parse lab batches
-      if (type === 'lab') {
+      if (type === 'lab' || type === 'elective_lab') {
         const rawLb = getVal(item, 'labBatches', 'lab_batches', 'batches', 'batch_teachers');
         if (Array.isArray(rawLb)) {
           normalized.labBatches = rawLb;
@@ -703,14 +813,14 @@ const bulkSetupService = {
         }
       }
 
-      // Parse elective options
-      if (type === 'elective') {
-        normalized.electiveGroup = String(getVal(item, 'electiveGroup', 'elective_group', 'group') || 'Elective').trim();
+      // Parse elective & elective_lab options
+      if (type === 'elective' || type === 'elective_lab') {
+        normalized.electiveGroup = String(getVal(item, 'electiveGroup', 'elective_group', 'group') || (type === 'elective_lab' ? 'Elective Lab' : 'Elective')).trim();
         const rawEo = getVal(item, 'electiveOptions', 'elective_options', 'options');
         if (Array.isArray(rawEo)) {
           normalized.electiveOptions = rawEo;
         } else if (typeof rawEo === 'string' && rawEo) {
-          normalized.electiveOptions = parseKeyEmailPairs(rawEo, 'name');
+          normalized.electiveOptions = parseElectiveOptions(rawEo);
         } else {
           normalized.electiveOptions = [];
         }
