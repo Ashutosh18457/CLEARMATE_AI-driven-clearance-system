@@ -33,12 +33,14 @@ export const extractStudentElectives = (st) => {
   const results = [];
   const seenChoices = new Set();
 
+  // Bulletproof patterns matching any format:
+  // "ELECTIVE CHOICE 1:", "ELECTIVE CHOICE 1", "elective_1", "PE_I_Allotment", "PE 1", "Program Elective I", etc.
   const patterns = [
-    { track: 'PE-I', regex: /^(pe[-_ ]?i\b|pe[-_ ]?1\b|elective[-_ ]?1\b|pe[-_ ]?i[-_ ]?allotment|elective[-_ ]?i[-_ ]?allotment)/i },
-    { track: 'PE-II', regex: /^(pe[-_ ]?ii\b|pe[-_ ]?2\b|elective[-_ ]?2\b|pe[-_ ]?ii[-_ ]?allotment|elective[-_ ]?ii[-_ ]?allotment)/i },
-    { track: 'PE-III', regex: /^(pe[-_ ]?iii\b|pe[-_ ]?3\b|elective[-_ ]?3\b|pe[-_ ]?iii[-_ ]?allotment|elective[-_ ]?iii[-_ ]?allotment)/i },
-    { track: 'PE-IV', regex: /^(pe[-_ ]?iv\b|pe[-_ ]?4\b|elective[-_ ]?4\b|pe[-_ ]?iv[-_ ]?allotment|elective[-_ ]?iv[-_ ]?allotment)/i },
-    { track: 'OE', regex: /^(oe[-_ ]?[0-9i]*|open[-_ ]?elective)/i },
+    { track: 'PE-I', regex: /(pe[-_ ]?(i\b|1\b)|elective[-_ ]?(choice[-_ ]?)?(1\b|i\b)|program[-_ ]?elective[-_ ]?(1\b|i\b))/i },
+    { track: 'PE-II', regex: /(pe[-_ ]?(ii\b|2\b)|elective[-_ ]?(choice[-_ ]?)?(2\b|ii\b)|program[-_ ]?elective[-_ ]?(2\b|ii\b))/i },
+    { track: 'PE-III', regex: /(pe[-_ ]?(iii\b|3\b)|elective[-_ ]?(choice[-_ ]?)?(3\b|iii\b)|program[-_ ]?elective[-_ ]?(3\b|iii\b))/i },
+    { track: 'PE-IV', regex: /(pe[-_ ]?(iv\b|4\b)|elective[-_ ]?(choice[-_ ]?)?(4\b|iv\b)|program[-_ ]?elective[-_ ]?(4\b|iv\b))/i },
+    { track: 'OE', regex: /(oe[-_ ]?[0-9i]*|open[-_ ]?elective)/i },
   ];
 
   const matchedKeys = new Set();
@@ -56,6 +58,7 @@ export const extractStudentElectives = (st) => {
     }
   }
 
+  // Fallback for any other elective-related keys
   for (const key of Object.keys(st)) {
     if (matchedKeys.has(key)) continue;
     const lk = key.toLowerCase();
@@ -67,7 +70,13 @@ export const extractStudentElectives = (st) => {
       const val = String(st[key]).trim();
       if (!seenChoices.has(val.toLowerCase())) {
         seenChoices.add(val.toLowerCase());
-        const cleanTrack = key.replace(/[_]/g, ' ').replace(/\ballotment\b/gi, '').trim().toUpperCase() || 'Elective';
+        let cleanTrack = key.replace(/[:_=-]/g, ' ').replace(/\ballotment\b|\bchoice\b/gi, '').trim();
+        if (/(^|\D)1($|\D)|(^|\D)i($|\D)/i.test(cleanTrack)) cleanTrack = 'PE-I';
+        else if (/(^|\D)2($|\D)|(^|\D)ii($|\D)/i.test(cleanTrack)) cleanTrack = 'PE-II';
+        else if (/(^|\D)3($|\D)|(^|\D)iii($|\D)/i.test(cleanTrack)) cleanTrack = 'PE-III';
+        else if (/(^|\D)4($|\D)|(^|\D)iv($|\D)/i.test(cleanTrack)) cleanTrack = 'PE-IV';
+        else cleanTrack = 'PE';
+
         results.push({ track: cleanTrack, choice: val, label: `${cleanTrack}: ${val}` });
       }
     }
@@ -719,129 +728,186 @@ export default function BulkSetup() {
               {/* 3 Preview Panels */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Panel 1: Semester Info */}
-                <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-xs">
-                  <h3 className="text-xs font-bold text-ink-muted uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                    <HiOutlineCalendarDays className="w-4 h-4 text-brand" />
-                    1. Academic Semester
-                  </h3>
-                  {parsedData.semesterConfig ? (
-                    <div className="space-y-2.5 text-xs">
-                      <div className="flex justify-between border-b border-border-subtle/50 pb-1.5">
-                        <span className="text-ink-muted">Program Code:</span>
-                        <span className="font-bold text-ink-primary">
-                          {parsedData.semesterConfig.program_code || parsedData.semesterConfig.programCode || 'N/A'}
-                        </span>
+                <div className="bg-surface border border-border-subtle rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between pb-3 border-b border-border-subtle/60 mb-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-brand flex items-center justify-center border border-blue-200/50 shrink-0">
+                          <HiOutlineCalendarDays className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-xs font-bold text-ink-primary">
+                            1. Academic Semester
+                          </h3>
+                          <p className="text-3xs text-ink-muted">Cohort configuration</p>
+                        </div>
                       </div>
-                      <div className="flex justify-between border-b border-border-subtle/50 pb-1.5">
-                        <span className="text-ink-muted">Semester Number:</span>
-                        <span className="font-bold text-ink-primary">
-                          Sem {parsedData.semesterConfig.sem_number || parsedData.semesterConfig.semNumber || '—'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between border-b border-border-subtle/50 pb-1.5">
-                        <span className="text-ink-muted">Academic Year:</span>
-                        <span className="font-bold text-ink-primary">
-                          {parsedData.semesterConfig.academic_year || parsedData.semesterConfig.academicYear || '—'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between border-b border-border-subtle/50 pb-1.5">
-                        <span className="text-ink-muted">Term Type:</span>
-                        <span className="font-semibold text-ink-secondary">
-                          {parsedData.semesterConfig.type || 'ODD'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between pt-0.5">
-                        <span className="text-ink-muted">Clearance Deadline:</span>
-                        <span className="font-mono text-2xs text-ink-secondary">
-                          {parsedData.semesterConfig.clearance_deadline || parsedData.semesterConfig.clearanceDeadline || 'Default (+140d)'}
-                        </span>
-                      </div>
+                      <Badge variant="default" className="text-3xs font-mono font-semibold">
+                        Sem {parsedData.semesterConfig?.sem_number || parsedData.semesterConfig?.semNumber || '—'}
+                      </Badge>
                     </div>
-                  ) : (
-                    <p className="text-xs text-red-600">Missing semester configuration</p>
-                  )}
+
+                    {parsedData.semesterConfig ? (
+                      <div className="space-y-2.5 text-xs">
+                        <div className="flex items-center justify-between py-1.5 border-b border-border-subtle/40">
+                          <span className="text-ink-muted text-2xs font-medium">Program Code</span>
+                          <span className="font-mono text-xs font-bold text-ink-primary bg-canvas px-2 py-0.5 rounded-md border border-border-subtle">
+                            {parsedData.semesterConfig.program_code || parsedData.semesterConfig.programCode || 'N/A'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between py-1.5 border-b border-border-subtle/40">
+                          <span className="text-ink-muted text-2xs font-medium">Academic Session</span>
+                          <span className="font-semibold text-xs text-ink-primary">
+                            {parsedData.semesterConfig.academic_year || parsedData.semesterConfig.academicYear || '—'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between py-1.5 border-b border-border-subtle/40">
+                          <span className="text-ink-muted text-2xs font-medium">Term Type</span>
+                          <span className="text-2xs font-bold tracking-wider text-ink-secondary uppercase px-2 py-0.5 bg-canvas rounded-md border border-border-subtle">
+                            {parsedData.semesterConfig.type || 'ODD'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between py-1.5">
+                          <span className="text-ink-muted text-2xs font-medium">Clearance Deadline</span>
+                          <span className="font-mono text-2xs text-ink-secondary">
+                            {parsedData.semesterConfig.clearance_deadline || parsedData.semesterConfig.clearanceDeadline || 'Default (+140d)'}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-red-600">Missing semester configuration</p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Panel 2: Clearance Items Count */}
-                <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-xs">
-                  <h3 className="text-xs font-bold text-ink-muted uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                    <HiOutlineClipboardDocumentList className="w-4 h-4 text-indigo-600" />
-                    2. Clearance Items ({parsedData.clearanceItems.length})
-                  </h3>
-                  <div className="max-h-48 overflow-y-auto divide-y divide-border-subtle/50 text-xs custom-scrollbar">
-                    {parsedData.clearanceItems.map((item, idx) => (
-                      <div key={idx} className="py-2 flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-semibold text-ink-primary truncate">{item.title || item.title_text || `Item ${idx+1}`}</p>
-                          <p className="text-2xs text-ink-muted">{item.subject_code || item.subjectCode || 'No Code'} • {item.type}</p>
+                <div className="bg-surface border border-border-subtle rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between pb-3 border-b border-border-subtle/60 mb-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 flex items-center justify-center border border-indigo-200/50 shrink-0">
+                          <HiOutlineClipboardDocumentList className="w-4 h-4" />
                         </div>
-                        <Badge variant="default" className="capitalize text-2xs shrink-0">
-                          {item.type}
-                        </Badge>
+                        <div>
+                          <h3 className="text-xs font-bold text-ink-primary">
+                            2. Clearance Items
+                          </h3>
+                          <p className="text-3xs text-ink-muted">{parsedData.clearanceItems.length} subjects found</p>
+                        </div>
                       </div>
-                    ))}
+                      <Badge variant="info" className="text-3xs font-mono font-semibold">
+                        {parsedData.clearanceItems.length} Items
+                      </Badge>
+                    </div>
+
+                    <div className="divide-y divide-border-subtle/40 overflow-y-auto max-h-52 custom-scrollbar pr-1">
+                      {parsedData.clearanceItems.map((item, idx) => (
+                        <div key={idx} className="py-2.5 first:pt-0.5 last:pb-1 flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-xs text-ink-primary truncate">
+                              {item.title || item.title_text || `Item ${idx+1}`}
+                            </p>
+                            <p className="text-3xs text-ink-muted font-mono mt-0.5">
+                              {item.subject_code || item.subjectCode || 'No Code'} • {item.type}
+                            </p>
+                          </div>
+                          <span className={`text-3xs font-semibold px-2 py-0.5 rounded-full capitalize shrink-0 border ${
+                            item.type === 'theory'
+                              ? 'bg-blue-50 text-blue-700 border-blue-200/70 dark:bg-blue-950/50 dark:text-blue-300'
+                              : item.type === 'lab'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/70 dark:bg-emerald-950/50 dark:text-emerald-300'
+                              : item.type === 'elective'
+                              ? 'bg-purple-50 text-purple-700 border-purple-200/70 dark:bg-purple-950/50 dark:text-purple-300'
+                              : 'bg-canvas text-ink-secondary border-border-subtle'
+                          }`}>
+                            {item.type}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
                 {/* Panel 3: Students Preview */}
-                <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-xs flex flex-col justify-between">
+                <div className="bg-surface border border-border-subtle rounded-2xl p-5 shadow-xs flex flex-col justify-between">
                   <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-xs font-bold text-ink-muted uppercase tracking-wider flex items-center gap-1.5">
-                        <HiOutlineUsers className="w-4 h-4 text-green-600" />
-                        3. Students ({parsedData.students.length})
-                      </h3>
+                    <div className="flex items-center justify-between pb-3 border-b border-border-subtle/60 mb-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center border border-emerald-200/50 shrink-0">
+                          <HiOutlineUsers className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-xs font-bold text-ink-primary">
+                            3. Students Roster
+                          </h3>
+                          <p className="text-3xs text-ink-muted">{parsedData.students.length} students loaded</p>
+                        </div>
+                      </div>
                       {parsedData.students.length > 0 && (
                         <button
                           type="button"
                           onClick={() => { setStudentSearchQuery(''); setShowAllStudentsModal(true); }}
-                          className="text-2xs font-semibold text-brand hover:underline flex items-center gap-1 px-2 py-0.5 rounded bg-brand/5 hover:bg-brand/10 transition-colors cursor-pointer"
+                          className="text-2xs font-semibold text-brand hover:text-brand-dark bg-brand/5 hover:bg-brand/10 border border-brand/20 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
                         >
                           <HiOutlineMagnifyingGlass className="w-3 h-3" />
-                          View All
+                          <span>View All</span>
                         </button>
                       )}
                     </div>
-                    <div className="max-h-56 overflow-y-auto divide-y divide-border-subtle/50 text-xs custom-scrollbar">
-                      {parsedData.students.slice(0, 10).map((st, idx) => {
+
+                    <div className="divide-y divide-border-subtle/40 overflow-y-auto max-h-52 custom-scrollbar pr-1">
+                      {parsedData.students.slice(0, 8).map((st, idx) => {
                         const electives = extractStudentElectives(st);
                         return (
-                          <div key={idx} className="py-2 flex items-center justify-between gap-3">
-                            <div className="min-w-0 flex-1">
-                              <p className="font-semibold text-ink-primary truncate">{st.full_name || st.name || st.email}</p>
-                              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                                <span className="text-2xs text-ink-muted font-mono">{st.enrollment_no || st.enrollmentNo || 'N/A'}</span>
-                                {electives.slice(0, 2).map((el, i) => (
-                                  <span
-                                    key={i}
-                                    className="inline-flex items-center gap-1 text-3xs px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-200 font-medium"
-                                  >
-                                    <strong className="font-bold">{el.track}:</strong> {el.choice}
-                                  </span>
-                                ))}
-                                {electives.length > 2 && (
-                                  <span className="text-3xs text-ink-muted bg-canvas px-1 rounded border border-border-subtle">
-                                    +{electives.length - 2} more
-                                  </span>
-                                )}
-                              </div>
+                          <div key={idx} className="py-2.5 first:pt-0.5 last:pb-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-semibold text-xs text-ink-primary truncate">
+                                {st.full_name || st.name || st.email}
+                              </span>
+                              <span className="text-3xs font-mono px-1.5 py-0.5 rounded bg-canvas border border-border-subtle text-ink-muted shrink-0">
+                                {st.section ? `Sec ${st.section}` : ''} {st.batch ? `• ${st.batch}` : 'Batch A'}
+                              </span>
                             </div>
-                            <span className="text-2xs px-1.5 py-0.5 bg-canvas border border-border-subtle rounded font-mono text-ink-secondary shrink-0">
-                              {st.batch || 'Batch A'}
-                            </span>
+                            
+                            <div className="flex items-center justify-between gap-2 mt-1">
+                              <span className="text-3xs font-mono text-ink-muted">
+                                {st.enrollment_no || st.enrollmentNo || st.roll_no || st.rollNo || '—'}
+                              </span>
+
+                              {electives.length > 0 && (
+                                <div className="flex flex-wrap items-center gap-1 justify-end max-w-[65%]">
+                                  {electives.map((el, i) => (
+                                    <span
+                                      key={i}
+                                      className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-md bg-purple-50/90 dark:bg-purple-950/40 border border-purple-200/70 dark:border-purple-800/50 text-3xs font-medium text-purple-800 dark:text-purple-300 max-w-[130px] truncate"
+                                      title={`${el.track}: ${el.choice}`}
+                                    >
+                                      <span className="font-bold text-purple-900 dark:text-purple-200">{el.track}:</span>
+                                      <span className="truncate">{el.choice}</span>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
                     </div>
                   </div>
-                  {parsedData.students.length > 10 && (
+
+                  {parsedData.students.length > 8 && (
                     <button
                       type="button"
                       onClick={() => { setStudentSearchQuery(''); setShowAllStudentsModal(true); }}
-                      className="w-full mt-2 py-2 px-3 bg-brand/5 hover:bg-brand/10 border border-brand/20 rounded-lg text-2xs font-bold text-brand hover:text-brand-dark transition-all text-center flex items-center justify-center gap-1.5 shadow-2xs group cursor-pointer"
+                      className="w-full mt-3 py-2 px-3 bg-canvas hover:bg-surface border border-border-subtle hover:border-brand/30 rounded-xl text-xs font-semibold text-ink-secondary hover:text-brand transition-all flex items-center justify-between group cursor-pointer shadow-2xs"
                     >
-                      <HiOutlineUsers className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
-                      <span>+ {parsedData.students.length - 10} more students in roster (Click to view full list & electives)</span>
+                      <span className="flex items-center gap-1.5 text-2xs text-ink-muted">
+                        <HiOutlineUsers className="w-3.5 h-3.5 text-brand" />
+                        <span>+{parsedData.students.length - 8} more students</span>
+                      </span>
+                      <span className="text-2xs font-semibold text-brand flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                        Open Complete Roster <HiOutlineArrowRight className="w-3 h-3" />
+                      </span>
                     </button>
                   )}
                 </div>
