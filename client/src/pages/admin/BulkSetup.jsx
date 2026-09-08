@@ -811,27 +811,28 @@ export default function BulkSetup() {
 
               {/* Department Access Violation Alert */}
               {isDeptMismatch && (
-                <div className="p-4 bg-red-50 dark:bg-red-950/40 border-2 border-red-300 dark:border-red-800 rounded-2xl text-xs text-red-800 dark:text-red-300 flex items-start gap-3.5 shadow-sm">
-                  <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/60 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 mt-0.5">
-                    <HiOutlineExclamationTriangle className="w-5 h-5 text-red-600" />
+                <div className="p-5 bg-red-50 border-2 border-red-500 rounded-2xl flex items-start gap-4 shadow-md text-red-950">
+                  <div className="w-11 h-11 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                    <HiOutlineExclamationTriangle className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-sm text-red-900 dark:text-red-100">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <h4 className="text-base font-black text-red-950 tracking-tight">
                         Cross-Department Upload Prohibited
-                      </p>
-                      <span className="text-3xs font-mono font-bold bg-red-200/80 dark:bg-red-900 text-red-800 dark:text-red-200 px-2 py-0.5 rounded uppercase">
+                      </h4>
+                      <span className="text-[11px] font-mono font-black bg-red-600 text-white px-2.5 py-0.5 rounded-full uppercase tracking-wide shadow-2xs">
                         Department Scoped
                       </span>
                     </div>
-                    <p className="mt-1 leading-relaxed text-red-800 dark:text-red-200">
-                      You are logged in as <strong>Department Admin for {userDeptCode}</strong>.
-                      The uploaded file is configured for program <strong>{fileProgramCode}</strong>.
-                      Department Admins are strictly scoped to their own department and cannot create or modify data for other departments.
+                    <p className="mt-2 text-xs font-medium text-red-950 leading-relaxed">
+                      You are authenticated as <strong>Department Admin for <span className="px-2 py-0.5 bg-white border border-red-300 rounded font-mono font-black text-red-900 shadow-2xs">{userDeptCode}</span></strong>.
+                      The uploaded file contains configuration for <strong><span className="px-2 py-0.5 bg-white border border-red-300 rounded font-mono font-black text-red-900 shadow-2xs">{fileProgramCode}</span></strong>.
+                      Department Admins are strictly restricted to their designated department.
                     </p>
-                    <p className="mt-2 text-2xs text-red-700 dark:text-red-300 font-medium">
-                      💡 To proceed, please upload an Excel file configured for <strong>{userDeptCode}</strong>, or sign in with a Super Admin account.
-                    </p>
+                    <div className="mt-3 p-2.5 bg-white/80 border border-red-300 rounded-xl text-xs font-semibold text-red-900 flex items-center gap-2 shadow-2xs">
+                      <span>💡</span>
+                      <span>To resolve this, please upload an Excel file configured for <strong>{userDeptCode}</strong>, or sign in as Super Admin.</span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -854,65 +855,65 @@ export default function BulkSetup() {
               {/* 3 Preview Panels */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Panel 1: Semester Info */}
-                <div className={`bg-surface border rounded-2xl p-5 shadow-xs flex flex-col justify-between ${isDeptMismatch ? 'border-red-300 dark:border-red-800 ring-1 ring-red-200' : 'border-border-subtle'}`}>
+                <div className={`bg-surface border-2 rounded-2xl p-5 shadow-xs flex flex-col justify-between ${isDeptMismatch ? 'border-red-400 bg-red-50/30' : 'border-border-subtle'}`}>
                   <div>
                     <div className="flex items-center justify-between pb-3 border-b border-border-subtle/60 mb-3.5">
                       <div className="flex items-center gap-2.5">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center border shrink-0 ${isDeptMismatch ? 'bg-red-50 text-red-600 border-red-200' : 'bg-blue-50 text-brand border-blue-200/50'}`}>
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center border shrink-0 ${isDeptMismatch ? 'bg-red-100 text-red-700 border-red-300' : 'bg-blue-50 text-brand border-blue-200'}`}>
                           <HiOutlineCalendarDays className="w-4 h-4" />
                         </div>
                         <div>
                           <h3 className="text-xs font-bold text-ink-primary">
                             1. Academic Semester
                           </h3>
-                          <p className="text-3xs text-ink-muted">Cohort configuration</p>
+                          <p className="text-xs text-ink-secondary font-medium">Cohort configuration</p>
                         </div>
                       </div>
-                      <Badge variant="default" className="text-3xs font-mono font-semibold">
+                      <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-canvas border border-border-subtle text-ink-primary">
                         Sem {parsedData.semesterConfig?.sem_number || parsedData.semesterConfig?.semNumber || '—'}
-                      </Badge>
+                      </span>
                     </div>
 
                     {parsedData.semesterConfig ? (
                       <div className="space-y-2.5 text-xs">
                         <div className="flex items-center justify-between py-1.5 border-b border-border-subtle/40">
-                          <span className="text-ink-muted text-2xs font-medium">Program Code</span>
+                          <span className="text-ink-secondary text-xs font-semibold">Program Code</span>
                           <div className="flex items-center gap-1.5">
-                            <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded-md border ${
+                            <span className={`font-mono text-xs font-black px-2.5 py-0.5 rounded-md border ${
                               isDeptMismatch
-                                ? 'bg-red-100 border-red-300 text-red-800 dark:bg-red-950 dark:border-red-800 dark:text-red-200'
+                                ? 'bg-white border-red-400 text-red-900 shadow-2xs'
                                 : 'bg-canvas text-ink-primary border-border-subtle'
                             }`}>
                               {fileProgramCode || 'N/A'}
                             </span>
                             {isDeptMismatch && (
-                              <Badge variant="danger" className="text-3xs">
+                              <span className="px-2 py-0.5 bg-red-600 text-white rounded text-xs font-bold uppercase shadow-2xs">
                                 Required: {userDeptCode}
-                              </Badge>
+                              </span>
                             )}
                           </div>
                         </div>
                         <div className="flex items-center justify-between py-1.5 border-b border-border-subtle/40">
-                          <span className="text-ink-muted text-2xs font-medium">Academic Session</span>
-                          <span className="font-semibold text-xs text-ink-primary">
+                          <span className="text-ink-secondary text-xs font-semibold">Academic Session</span>
+                          <span className="font-bold text-xs text-ink-primary">
                             {parsedData.semesterConfig.academic_year || parsedData.semesterConfig.academicYear || '—'}
                           </span>
                         </div>
                         <div className="flex items-center justify-between py-1.5 border-b border-border-subtle/40">
-                          <span className="text-ink-muted text-2xs font-medium">Term Type</span>
-                          <span className="text-2xs font-bold tracking-wider text-ink-secondary uppercase px-2 py-0.5 bg-canvas rounded-md border border-border-subtle">
+                          <span className="text-ink-secondary text-xs font-semibold">Term Type</span>
+                          <span className="text-xs font-bold tracking-wider text-ink-primary uppercase px-2 py-0.5 bg-canvas rounded-md border border-border-subtle">
                             {parsedData.semesterConfig.type || 'ODD'}
                           </span>
                         </div>
                         <div className="flex items-center justify-between py-1.5">
-                          <span className="text-ink-muted text-2xs font-medium">Clearance Deadline</span>
-                          <span className="font-mono text-2xs text-ink-secondary">
+                          <span className="text-ink-secondary text-xs font-semibold">Clearance Deadline</span>
+                          <span className="font-mono text-xs font-bold text-ink-primary">
                             {parsedData.semesterConfig.clearance_deadline || parsedData.semesterConfig.clearanceDeadline || 'Default (+140d)'}
                           </span>
                         </div>
                       </div>
                     ) : (
-                      <p className="text-xs text-red-600">Missing semester configuration</p>
+                      <p className="text-xs text-red-600 font-bold">Missing semester configuration</p>
                     )}
                   </div>
                 </div>
@@ -922,40 +923,54 @@ export default function BulkSetup() {
                   <div>
                     <div className="flex items-center justify-between pb-3 border-b border-border-subtle/60 mb-3.5">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 flex items-center justify-center border border-indigo-200/50 shrink-0">
+                        <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center border border-indigo-200 shrink-0">
                           <HiOutlineClipboardDocumentList className="w-4 h-4" />
                         </div>
                         <div>
                           <h3 className="text-xs font-bold text-ink-primary">
                             2. Clearance Items
                           </h3>
-                          <p className="text-3xs text-ink-muted">{parsedData.clearanceItems.length} subjects found</p>
+                          <p className="text-xs text-ink-secondary font-medium">{parsedData.clearanceItems.length} subjects found</p>
                         </div>
                       </div>
-                      <Badge variant="info" className="text-3xs font-mono font-semibold">
+                      <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
                         {parsedData.clearanceItems.length} Items
-                      </Badge>
+                      </span>
                     </div>
 
-                    <div className="divide-y divide-border-subtle/40 overflow-y-auto max-h-52 custom-scrollbar pr-1">
+                    <div className="divide-y divide-border-subtle/60 overflow-y-auto max-h-56 custom-scrollbar pr-1">
                       {parsedData.clearanceItems.map((item, idx) => (
-                        <div key={idx} className="py-2.5 first:pt-0.5 last:pb-1 flex items-center justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="font-semibold text-xs text-ink-primary truncate">
+                        <div key={idx} className="py-2.5 first:pt-1 last:pb-1 flex items-center justify-between gap-3 hover:bg-canvas/50 px-1 rounded-lg transition-colors">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-xs text-ink-primary truncate" title={item.title || item.title_text}>
                               {item.title || item.title_text || `Item ${idx+1}`}
                             </p>
-                            <p className="text-3xs text-ink-muted font-mono mt-0.5">
-                              {item.subject_code || item.subjectCode || 'No Code'} • {item.type}
-                            </p>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <span className="font-mono text-xs font-bold text-ink-primary bg-slate-100 px-2 py-0.5 rounded border border-slate-300">
+                                {item.subject_code || item.subjectCode || 'No Code'}
+                              </span>
+                              {item.credits && (
+                                <span className="text-xs font-semibold text-ink-secondary">
+                                  {item.credits} Credits
+                                </span>
+                              )}
+                              {item.faculty_email && (
+                                <span className="text-xs text-ink-secondary truncate max-w-[130px] hidden sm:inline" title={item.faculty_email}>
+                                  • {item.faculty_email}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <span className={`text-3xs font-semibold px-2 py-0.5 rounded-full capitalize shrink-0 border ${
+                          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full capitalize shrink-0 border shadow-2xs ${
                             item.type === 'theory'
-                              ? 'bg-blue-50 text-blue-700 border-blue-200/70 dark:bg-blue-950/50 dark:text-blue-300'
+                              ? 'bg-blue-50 text-blue-800 border-blue-300'
                               : item.type === 'lab'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/70 dark:bg-emerald-950/50 dark:text-emerald-300'
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                               : item.type === 'elective'
-                              ? 'bg-purple-50 text-purple-700 border-purple-200/70 dark:bg-purple-950/50 dark:text-purple-300'
-                              : 'bg-canvas text-ink-secondary border-border-subtle'
+                              ? 'bg-purple-50 text-purple-800 border-purple-300'
+                              : item.type === 'elective_lab'
+                              ? 'bg-pink-50 text-pink-800 border-pink-300'
+                              : 'bg-slate-100 text-slate-800 border-slate-300'
                           }`}>
                             {item.type}
                           </span>
@@ -968,35 +983,49 @@ export default function BulkSetup() {
                 {/* Panel 3: Students Preview */}
                 <div className="bg-surface border border-border-subtle rounded-2xl p-5 shadow-xs flex flex-col justify-between">
                   <div>
-                    <div className="flex items-center justify-between pb-3 border-b border-border-subtle/60 mb-3">
-                      <h3 className="text-xs font-bold text-ink-primary flex items-center gap-2">
-                        <HiOutlineUsers className="w-4 h-4 text-emerald-600" />
-                        3. Students ({parsedData.students.length})
-                      </h3>
+                    <div className="flex items-center justify-between pb-3 border-b border-border-subtle/60 mb-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200 shrink-0">
+                          <HiOutlineUsers className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-xs font-bold text-ink-primary">
+                            3. Students ({parsedData.students.length})
+                          </h3>
+                          <p className="text-xs text-ink-secondary font-medium">Cohort roster preview</p>
+                        </div>
+                      </div>
                       {parsedData.students.length > 0 && (
                         <button
                           type="button"
                           onClick={() => { setStudentSearchQuery(''); setShowAllStudentsModal(true); }}
-                          className="text-2xs font-semibold text-brand hover:underline flex items-center gap-1 cursor-pointer"
+                          className="text-xs font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer bg-brand-50 border border-brand/20 px-2.5 py-1 rounded-lg hover:bg-brand-100 transition-colors"
                         >
-                          <HiOutlineMagnifyingGlass className="w-3 h-3" />
+                          <HiOutlineMagnifyingGlass className="w-3.5 h-3.5" />
                           View All
                         </button>
                       )}
                     </div>
 
-                    <div className="divide-y divide-border-subtle/40 overflow-y-auto max-h-52 custom-scrollbar">
+                    <div className="divide-y divide-border-subtle/60 overflow-y-auto max-h-56 custom-scrollbar pr-1">
                       {parsedData.students.slice(0, 8).map((st, idx) => (
-                        <div key={idx} className="py-2.5 flex items-center justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="font-semibold text-xs text-ink-primary truncate">
+                        <div key={idx} className="py-2.5 first:pt-1 last:pb-1 flex items-center justify-between gap-3 hover:bg-canvas/50 px-1 rounded-lg transition-colors">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-xs text-ink-primary truncate" title={st.full_name || st.name || st.email}>
                               {st.full_name || st.name || st.email}
                             </p>
-                            <p className="text-2xs text-ink-muted font-mono mt-0.5">
-                              {st.enrollment_no || st.enrollmentNo || st.roll_no || st.rollNo || 'N/A'}
-                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="font-mono text-xs font-bold text-ink-secondary bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                {st.enrollment_no || st.enrollmentNo || st.roll_no || st.rollNo || 'N/A'}
+                              </span>
+                              {st.section && (
+                                <span className="text-xs font-semibold text-ink-secondary">
+                                  Sec {st.section}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <span className="text-2xs px-2 py-0.5 bg-canvas border border-border-subtle rounded-md font-mono text-ink-secondary shrink-0">
+                          <span className="text-xs px-2 py-0.5 bg-blue-50 border border-blue-200 rounded-md font-mono font-bold text-blue-800 shrink-0">
                             {st.batch || 'Batch A'}
                           </span>
                         </div>
@@ -1008,7 +1037,7 @@ export default function BulkSetup() {
                     <button
                       type="button"
                       onClick={() => { setStudentSearchQuery(''); setShowAllStudentsModal(true); }}
-                      className="w-full mt-3 py-2 px-3 bg-brand/5 hover:bg-brand/10 border border-brand/20 rounded-xl text-2xs font-bold text-brand hover:text-brand-dark transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="w-full mt-3 py-2 px-3 bg-brand-50 hover:bg-brand-100 border border-brand/20 rounded-xl text-xs font-bold text-brand hover:text-brand-hover transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
                     >
                       <HiOutlineUsers className="w-3.5 h-3.5" />
                       <span>+ {parsedData.students.length - 8} more students in roster (Click to view full list)</span>
@@ -1037,28 +1066,28 @@ export default function BulkSetup() {
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
-                <div className="p-3.5 bg-green-50/60 rounded-xl border border-green-100 text-center">
-                  <p className="text-2xs font-bold text-green-700 uppercase">Semester</p>
+                <div className="p-3.5 bg-green-50/60 rounded-xl border border-green-200 text-center">
+                  <p className="text-xs font-bold text-green-800 uppercase tracking-wide">Semester</p>
                   <p className="text-lg font-bold text-ink-primary mt-0.5">{executionResult.semester?.name || 'Active'}</p>
                 </div>
-                <div className="p-3.5 bg-blue-50/60 rounded-xl border border-blue-100 text-center">
-                  <p className="text-2xs font-bold text-blue-700 uppercase">Batches Created</p>
+                <div className="p-3.5 bg-blue-50/60 rounded-xl border border-blue-200 text-center">
+                  <p className="text-xs font-bold text-blue-800 uppercase tracking-wide">Batches Created</p>
                   <p className="text-lg font-bold text-ink-primary mt-0.5">{executionResult.batchesCreated?.length || 0}</p>
                 </div>
-                <div className="p-3.5 bg-purple-50/60 rounded-xl border border-purple-100 text-center">
-                  <p className="text-2xs font-bold text-purple-700 uppercase">Clearance Items</p>
+                <div className="p-3.5 bg-purple-50/60 rounded-xl border border-purple-200 text-center">
+                  <p className="text-xs font-bold text-purple-800 uppercase tracking-wide">Clearance Items</p>
                   <p className="text-lg font-bold text-ink-primary mt-0.5">{executionResult.clearanceItemsCreated?.length || 0}</p>
                 </div>
-                <div className="p-3.5 bg-indigo-50/60 rounded-xl border border-indigo-100 text-center">
-                  <p className="text-2xs font-bold text-indigo-700 uppercase">Students Enrolled</p>
+                <div className="p-3.5 bg-indigo-50/60 rounded-xl border border-indigo-200 text-center">
+                  <p className="text-xs font-bold text-indigo-800 uppercase tracking-wide">Students Enrolled</p>
                   <p className="text-lg font-bold text-ink-primary mt-0.5">{executionResult.studentsCreated?.length || 0}</p>
                 </div>
               </div>
 
               {executionResult.warnings?.length > 0 && (
-                <div className="mt-4 p-3 bg-amber-50 rounded-lg text-2xs text-amber-800 space-y-1">
+                <div className="mt-4 p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-1">
                   <p className="font-bold">Execution Notes & Skipped Mappings:</p>
-                  <ul className="list-disc pl-4 space-y-0.5">
+                  <ul className="list-disc pl-4 space-y-0.5 font-medium">
                     {executionResult.warnings.map((w, i) => (
                       <li key={i}>{w}</li>
                     ))}
@@ -1304,7 +1333,7 @@ export default function BulkSetup() {
                 return (
                   <div className="border border-border-subtle rounded-xl overflow-hidden shadow-2xs">
                     <table className="w-full text-left text-xs border-collapse">
-                      <thead className="bg-canvas border-b border-border-subtle text-ink-muted text-2xs font-semibold uppercase tracking-wider">
+                      <thead className="bg-canvas border-b border-border-subtle text-ink-secondary text-xs font-bold uppercase tracking-wider">
                         <tr>
                           <th className="py-2.5 px-3 w-12 text-center">#</th>
                           <th className="py-2.5 px-3">Student Name</th>
@@ -1321,50 +1350,50 @@ export default function BulkSetup() {
 
                           return (
                             <tr key={idx} className="hover:bg-surface-hover/60 transition-colors">
-                              <td className="py-2.5 px-3 text-center text-ink-muted font-mono text-2xs">
+                              <td className="py-2.5 px-3 text-center text-ink-secondary font-mono text-xs font-medium">
                                 {idx + 1}
                               </td>
-                              <td className="py-2.5 px-3 font-semibold text-ink-primary">
+                              <td className="py-2.5 px-3 font-semibold text-xs text-ink-primary">
                                 {st.full_name || st.name || 'Unnamed Student'}
                               </td>
-                              <td className="py-2.5 px-3 font-mono text-2xs text-ink-secondary">
+                              <td className="py-2.5 px-3 font-mono text-xs font-bold text-ink-secondary">
                                 {st.enrollment_no || st.enrollmentNo || st.roll_no || st.rollNo || '—'}
                               </td>
-                              <td className="py-2.5 px-3 text-ink-muted font-mono text-2xs">
+                              <td className="py-2.5 px-3 text-ink-secondary font-mono text-xs">
                                 {st.email || '—'}
                               </td>
                               <td className="py-2.5 px-3 text-center">
-                                <span className="px-1.5 py-0.5 bg-canvas border border-border-subtle rounded text-2xs font-mono">
+                                <span className="px-2 py-0.5 bg-canvas border border-border-subtle rounded text-xs font-mono font-bold text-ink-primary">
                                   {st.section || 'A'}
                                 </span>
                               </td>
                               <td className="py-2.5 px-3 text-center">
-                                <Badge variant="info" className="text-2xs font-mono">
+                                <span className="px-2 py-0.5 bg-blue-50 border border-blue-200 rounded text-xs font-mono font-bold text-blue-800">
                                   {st.batch || 'Batch A'}
-                                </Badge>
+                                </span>
                               </td>
                               <td className="py-2.5 px-3">
                                 {electives.length > 0 ? (
                                   <div className="flex flex-wrap gap-1.5 items-center">
                                     {electives.map((el, i) => {
-                                      let colorClasses = "bg-purple-50 text-purple-700 border-purple-200";
-                                      let trackBadgeColor = "bg-purple-200/80 text-purple-900";
+                                      let colorClasses = "bg-purple-50 text-purple-800 border-purple-300";
+                                      let trackBadgeColor = "bg-purple-200 text-purple-900";
                                       if (el.track.includes('II') || el.track.includes('2')) {
-                                        colorClasses = "bg-indigo-50 text-indigo-700 border-indigo-200";
-                                        trackBadgeColor = "bg-indigo-200/80 text-indigo-900";
+                                        colorClasses = "bg-indigo-50 text-indigo-800 border-indigo-300";
+                                        trackBadgeColor = "bg-indigo-200 text-indigo-900";
                                       } else if (el.track.includes('III') || el.track.includes('3')) {
-                                        colorClasses = "bg-teal-50 text-teal-700 border-teal-200";
-                                        trackBadgeColor = "bg-teal-200/80 text-teal-900";
+                                        colorClasses = "bg-teal-50 text-teal-800 border-teal-300";
+                                        trackBadgeColor = "bg-teal-200 text-teal-900";
                                       } else if (el.track.includes('IV') || el.track.includes('4')) {
-                                        colorClasses = "bg-amber-50 text-amber-700 border-amber-200";
-                                        trackBadgeColor = "bg-amber-200/80 text-amber-900";
+                                        colorClasses = "bg-amber-50 text-amber-800 border-amber-300";
+                                        trackBadgeColor = "bg-amber-200 text-amber-900";
                                       }
                                       return (
                                         <span
                                           key={i}
-                                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-2xs font-medium shadow-2xs ${colorClasses}`}
+                                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-xs font-medium shadow-2xs ${colorClasses}`}
                                         >
-                                          <span className={`px-1 py-0.2 rounded font-bold uppercase tracking-wider text-3xs ${trackBadgeColor}`}>
+                                          <span className={`px-1 py-0.5 rounded font-bold uppercase tracking-wider text-[10px] ${trackBadgeColor}`}>
                                             {el.track}
                                           </span>
                                           <span className="font-semibold">{el.choice}</span>
@@ -1373,7 +1402,7 @@ export default function BulkSetup() {
                                     })}
                                   </div>
                                 ) : (
-                                  <span className="text-ink-muted italic text-2xs">None specified</span>
+                                  <span className="text-ink-muted italic text-xs">None specified</span>
                                 )}
                               </td>
                             </tr>
@@ -1388,7 +1417,7 @@ export default function BulkSetup() {
 
             {/* Modal Footer */}
             <div className="px-6 py-3.5 border-t border-border-subtle bg-canvas/40 flex items-center justify-between">
-              <span className="text-2xs text-ink-muted flex items-center gap-1.5">
+              <span className="text-xs text-ink-secondary flex items-center gap-1.5 font-medium">
                 <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
                 All {parsedData.students.length} student records validated and ready for provisioning.
               </span>
