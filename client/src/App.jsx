@@ -16,15 +16,13 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 
 // Student
 const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard'));
-const StudentSubmissions = lazy(() => import('./pages/student/StudentSubmissions'));
+
 const StudentClearance = lazy(() => import('./pages/student/StudentClearance'));
 const StudentClearanceReport = lazy(() => import('./pages/student/StudentClearanceReport'));
 const AdminClearanceReport = lazy(() => import('./pages/admin/AdminClearanceReport'));
 
 // Teacher
 const TeacherDashboard = lazy(() => import('./pages/teacher/TeacherDashboard'));
-const SubmissionItems = lazy(() => import('./pages/teacher/SubmissionItems'));
-const TeacherStudentSubmissions = lazy(() => import('./pages/teacher/StudentSubmissions'));
 const ItemClearances = lazy(() => import('./pages/teacher/ItemClearances'));
 
 // Section Head
@@ -167,14 +165,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/student/submissions"
-            element={
-              <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-                <StudentSubmissions />
-              </ProtectedRoute>
-            }
-          />
+
           <Route
             path="/student/clearance"
             element={
@@ -201,22 +192,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/teacher/submission-items"
-            element={
-              <ProtectedRoute allowedRoles={[ROLES.TEACHER]}>
-                <SubmissionItems />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/teacher/student-submissions"
-            element={
-              <ProtectedRoute allowedRoles={[ROLES.TEACHER]}>
-                <TeacherStudentSubmissions />
-              </ProtectedRoute>
-            }
-          />
+
           <Route
             path="/teacher/clearance-reviews"
             element={

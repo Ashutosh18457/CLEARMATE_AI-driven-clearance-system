@@ -25,14 +25,13 @@ import {
 const NAV_ITEMS = {
   [ROLES.STUDENT]: [
     { to: '/student', icon: HiOutlineHome, label: 'Dashboard', end: true },
-    { to: '/student/submissions', icon: HiOutlineDocumentText, label: 'Submissions' },
+
     { to: '/student/clearance', icon: HiOutlineClipboardDocumentCheck, label: 'Clearance Pipeline' },
     { to: '/student/clearance-report', icon: HiOutlineBuildingLibrary, label: 'Clearance Report' },
   ],
   [ROLES.TEACHER]: [
     { to: '/teacher', icon: HiOutlineHome, label: 'Dashboard', end: true },
-    { to: '/teacher/submission-items', icon: HiOutlineDocumentText, label: 'Submission Items' },
-    { to: '/teacher/student-submissions', icon: HiOutlineClipboardDocumentList, label: 'Student Submissions' },
+
     { to: '/teacher/clearance-reviews', icon: HiOutlineClipboardDocumentCheck, label: 'Clearance Reviews' },
   ],
   [ROLES.SECTION_HEAD]: [
