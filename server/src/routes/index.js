@@ -21,12 +21,9 @@ router.get('/health', (req, res) => {
   });
 });
 
-// Route mounts:
+// ─── Route Mounts ───
 router.use('/auth', require('./auth.routes'));
 router.use('/admin', require('./admin.routes'));
-// router.use('/student', require('./student.routes'));
-// router.use('/teacher', require('./teacher.routes'));
-// router.use('/section', require('./section.routes'));
 router.use('/account-section', require('./accountSection.routes'));
 router.use('/bus-section', require('./busSection.routes'));
 router.use('/library-section', require('./librarySection.routes'));

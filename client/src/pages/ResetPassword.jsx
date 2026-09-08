@@ -8,7 +8,7 @@ import {
   HiOutlineArrowLeft,
   HiOutlineShieldCheck,
 } from 'react-icons/hi2';
-import logoIcon from '../assets/logo_icon.png';
+import logoIcon from '../assets/logo.png';
 import Button from '../components/common/Button';
 
 export default function ResetPassword() {

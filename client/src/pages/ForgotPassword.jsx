@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { HiOutlineArrowLeft, HiOutlineCheckCircle, HiOutlineExclamationCircle } from 'react-icons/hi2';
 import Button from '../components/common/Button';
-import logoIcon from '../assets/logo_icon.png';
+import logoIcon from '../assets/logo.png';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');

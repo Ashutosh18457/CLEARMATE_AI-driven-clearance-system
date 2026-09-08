@@ -10,7 +10,7 @@ import Badge, { getStatusVariant } from '../../components/common/Badge';
 import EmptyState from '../../components/common/EmptyState';
 import Skeleton from '../../components/common/Skeleton';
 import { useAuth } from '../../context/AuthContext';
-import logoIcon from '../../assets/logo_icon.png';
+import logoIcon from '../../assets/logo.png';
 import {
   HiOutlineClipboardDocumentCheck,
   HiOutlineArrowPath,
