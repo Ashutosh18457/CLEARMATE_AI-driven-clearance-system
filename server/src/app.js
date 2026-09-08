@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
 const mongoSanitize = require('./middleware/mongoSanitize');
@@ -56,37 +55,7 @@ app.use(xssClean);
 app.use(morgan(env.isDev ? 'dev' : 'combined', { stream: logger.stream }));
 
 // ──────────────────────────────────────────────
-// RATE LIMITING
-// ──────────────────────────────────────────────
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: env.isDev ? 10000 : 200,
-  message: {
-    success: false,
-    message: 'Too many requests, please try again later',
-    error: { code: 'RATE_LIMIT' },
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: env.isDev ? 1000 : 10,
-  message: {
-    success: false,
-    message: 'Too many login attempts, please try again later',
-    error: { code: 'RATE_LIMIT' },
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-app.use('/api', globalLimiter);
-app.use('/api/auth/login', authLimiter);
-
-// ──────────────────────────────────────────────
-// API ROUTES
+// API ROUTES (Rate limiting removed)
 // ──────────────────────────────────────────────
 app.use('/api', routes);
 
