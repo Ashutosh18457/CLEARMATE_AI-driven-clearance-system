@@ -1,41 +1,30 @@
 const Joi = require('joi');
-const mongoose = require('mongoose');
-
-const objectId = Joi.custom((value, helpers) => {
-  if (value && typeof value === 'object' && value instanceof mongoose.Types.ObjectId) {
-    return value.toString();
-  }
-  if (typeof value === 'string' && mongoose.Types.ObjectId.isValid(value)) {
-    return value;
-  }
-  return helpers.error('any.invalid');
-}, 'ObjectId validation');
+const { objectId } = require('./common.validator');
 
 const submissionValidator = {
   // Teacher creates a submission item (assignment, lab record, etc.)
   createSubmissionItemSchema: Joi.object({
     clearanceItemId: objectId.required()
       .messages({ 'any.required': 'Clearance Item ID is required', 'any.invalid': 'Invalid Clearance Item ID' }),
-    title: Joi.string().trim().max(200).required()
+    title: Joi.string().trim().min(1).max(200).required()
       .messages({ 'any.required': 'Submission title is required' }),
     type: Joi.string().valid('assignment', 'lab_record', 'project', 'presentation', 'other').required()
       .messages({ 'any.required': 'Submission type is required' }),
     description: Joi.string().trim().max(1000).allow('', null).optional(),
-    deadline: Joi.date().optional().allow('', null)
-      .messages({ 'any.required': 'Deadline is required' }),
+    deadline: Joi.date().optional().allow('', null),
     isRequired: Joi.boolean().default(true),
-  }).unknown(true),
+  }),
 
   // Teacher updates a submission item
   updateSubmissionItemSchema: Joi.object({
     clearanceItemId: objectId.optional().allow('', null)
       .messages({ 'any.invalid': 'Invalid Clearance Item ID' }),
-    title: Joi.string().trim().max(200).optional(),
+    title: Joi.string().trim().min(1).max(200).optional(),
     type: Joi.string().valid('assignment', 'lab_record', 'project', 'presentation', 'other').optional(),
     description: Joi.string().trim().max(1000).allow('', null).optional(),
     deadline: Joi.date().optional().allow('', null),
     isRequired: Joi.boolean().optional(),
-  }).min(1).unknown(true).messages({
+  }).min(1).messages({
     'object.min': 'At least one field must be provided to update',
   }),
 
@@ -43,7 +32,7 @@ const submissionValidator = {
   verifySubmissionSchema: Joi.object({
     status: Joi.string().valid('verified', 'rejected').required()
       .messages({ 'any.required': 'Status is required (verified or rejected)' }),
-    remarks: Joi.string().trim().max(500).optional(),
+    remarks: Joi.string().trim().max(500).optional().allow(''),
   }),
 
   // Teacher bulk verifies or rejects multiple student submissions

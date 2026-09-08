@@ -145,6 +145,12 @@ const autoSeed = async () => {
   }
 };
 
+const shouldAutoSeed = () => {
+  if (process.env.AUTO_SEED === 'false') return false;
+  if (process.env.NODE_ENV === 'production' && process.env.AUTO_SEED !== 'true') return false;
+  return true;
+};
+
 const startMemoryServer = async () => {
   logger.info('🚀 Launching Zero-Setup In-Memory Local MongoDB...');
   const { MongoMemoryServer } = require('mongodb-memory-server');
@@ -152,7 +158,9 @@ const startMemoryServer = async () => {
   const memoryUri = mongod.getUri();
   await mongoose.connect(memoryUri);
   logger.info(`✅ In-Memory MongoDB connected: ${memoryUri}`);
-  await autoSeed();
+  if (shouldAutoSeed()) {
+    await autoSeed();
+  }
 };
 
 const connectDB = async (uri) => {
@@ -171,7 +179,9 @@ const connectDB = async (uri) => {
   try {
     const conn = await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 });
     logger.info(`✅ MongoDB connected: ${conn.connection.host}`);
-    await autoSeed();
+    if (shouldAutoSeed()) {
+      await autoSeed();
+    }
   } catch (error) {
     logger.warn(`⚠️ MongoDB Atlas connection failed: ${error.message}. Automatically falling back to zero-setup In-Memory Local MongoDB...`);
     try {

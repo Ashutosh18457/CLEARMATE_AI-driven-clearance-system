@@ -135,6 +135,26 @@ export default function BulkSetup() {
         elective_group: 'PE-I',
         elective_options: 'Machine Learning:teacher1@sbjit.edu.in,Cloud Computing:teacher2@sbjit.edu.in',
       },
+      {
+        sr_no: 4,
+        title: 'Professional Elective II',
+        type: 'elective',
+        subject_code: 'PE504',
+        teacher_email: '',
+        lab_batches: '',
+        elective_group: 'PE-II',
+        elective_options: 'Natural Language Processing:teacher1@sbjit.edu.in,Computer Vision:teacher2@sbjit.edu.in',
+      },
+      {
+        sr_no: 5,
+        title: 'Professional Elective III',
+        type: 'elective',
+        subject_code: 'PE505',
+        teacher_email: '',
+        lab_batches: '',
+        elective_group: 'PE-III',
+        elective_options: 'Cyber Security:teacher1@sbjit.edu.in,Internet of Things:teacher2@sbjit.edu.in',
+      },
     ];
     const ws2 = XLSX.utils.json_to_sheet(clearanceItemsData);
     XLSX.utils.book_append_sheet(wb, ws2, 'clearance_items');
@@ -147,7 +167,9 @@ export default function BulkSetup() {
         email: 'rahul.sharma@sbjit.edu.in',
         section: 'A',
         batch: 'Batch A',
-        elective_choice: 'Machine Learning',
+        elective_1: 'Machine Learning',
+        elective_2: 'Natural Language Processing',
+        elective_3: 'Cyber Security',
       },
       {
         enrollment_no: 'EN2024AIDS002',
@@ -155,7 +177,9 @@ export default function BulkSetup() {
         email: 'priya.patel@sbjit.edu.in',
         section: 'A',
         batch: 'Batch B',
-        elective_choice: 'Cloud Computing',
+        elective_1: 'Cloud Computing',
+        elective_2: 'Computer Vision',
+        elective_3: 'Internet of Things',
       },
       {
         enrollment_no: 'EN2024AIDS003',
@@ -163,7 +187,9 @@ export default function BulkSetup() {
         email: 'amit.verma@sbjit.edu.in',
         section: 'A',
         batch: 'Batch C',
-        elective_choice: 'Machine Learning',
+        elective_1: 'Machine Learning',
+        elective_2: 'Natural Language Processing',
+        elective_3: 'Cyber Security',
       },
     ];
     const ws3 = XLSX.utils.json_to_sheet(studentsData);
@@ -356,14 +382,24 @@ export default function BulkSetup() {
 
       // Normalize students: ultra-flexible mapping
       const normalizedStudents = (parsedData.students || [])
-        .map((s) => ({
-          enrollmentNo: String(getVal(s, 'enrollmentNo', 'enrollment_no', 'roll_no', 'rollNo', 'enrolment_no', 'student_id') || '').trim(),
-          name: String(getVal(s, 'name', 'full_name', 'student_name', 'studentName') || '').trim(),
-          email: String(getVal(s, 'email', 'student_email', 'mail') || '').toLowerCase().trim(),
-          section: String(getVal(s, 'section', 'sec') || 'A').trim(),
-          batch: String(getVal(s, 'batch', 'practical_batch', 'lab_batch') || '').trim(),
-          electiveChoice: String(getVal(s, 'electiveChoice', 'elective_choice', 'elective', 'subject_choice') || '').trim(),
-        }))
+        .map((s) => {
+          const studentObj = {
+            enrollmentNo: String(getVal(s, 'enrollmentNo', 'enrollment_no', 'roll_no', 'rollNo', 'enrolment_no', 'student_id') || '').trim(),
+            name: String(getVal(s, 'name', 'full_name', 'student_name', 'studentName') || '').trim(),
+            email: String(getVal(s, 'email', 'student_email', 'mail') || '').toLowerCase().trim(),
+            section: String(getVal(s, 'section', 'sec') || 'A').trim(),
+            batch: String(getVal(s, 'batch', 'practical_batch', 'lab_batch') || '').trim(),
+            electiveChoice: String(getVal(s, 'electiveChoice', 'elective_choice', 'elective', 'subject_choice') || '').trim(),
+          };
+          // Also forward any elective_1, elective_2, elective_3, p_i, p_ii, p_iii, etc.
+          Object.keys(s).forEach((k) => {
+            const cleanKey = k.toLowerCase().replace(/[^a-z0-9_]/g, '');
+            if (cleanKey.startsWith('elective') || cleanKey.startsWith('pe') || cleanKey.startsWith('p') || cleanKey.startsWith('oe')) {
+              studentObj[k] = s[k];
+            }
+          });
+          return studentObj;
+        })
         .filter((s) => s.email !== '');
 
       const payload = {

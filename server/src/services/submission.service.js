@@ -703,7 +703,10 @@ const submissionService = {
       const optionIds = clearanceItem.electiveOptions.map((opt) => opt._id);
       const students = await User.find({
         role: 'student',
-        selectedElective: { $in: optionIds },
+        $or: [
+          { selectedElective: { $in: optionIds } },
+          { selectedElectives: { $in: optionIds } },
+        ],
         isActive: true,
       }).select('_id');
       return students.map((s) => s._id);

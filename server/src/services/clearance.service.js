@@ -53,10 +53,13 @@ const clearanceService = {
         );
       }
       if (item.type === 'elective') {
-        if (!student.selectedElective) return false;
-        return item.electiveOptions?.some(
-          (opt) => opt._id?.toString() === student.selectedElective?.toString()
-        );
+        const selectedIds = [];
+        if (student.selectedElective) selectedIds.push(student.selectedElective.toString());
+        if (Array.isArray(student.selectedElectives)) {
+          student.selectedElectives.forEach((id) => selectedIds.push(id.toString()));
+        }
+        if (selectedIds.length === 0) return true;
+        return item.electiveOptions?.some((opt) => selectedIds.includes(opt._id?.toString()));
       }
       return false;
     });
@@ -1521,13 +1524,18 @@ const clearanceService = {
     }
 
     if (clearanceItem.type === 'elective') {
-      if (student.selectedElective && clearanceItem.electiveOptions?.length > 0) {
-        const option = clearanceItem.electiveOptions.find(
-          (opt) => opt._id?.toString() === student.selectedElective.toString()
-        );
-        if (option && option.teacherId) return option.teacherId;
-      }
       if (clearanceItem.electiveOptions?.length > 0) {
+        const selectedIds = [];
+        if (student.selectedElective) selectedIds.push(student.selectedElective.toString());
+        if (Array.isArray(student.selectedElectives)) {
+          student.selectedElectives.forEach((id) => selectedIds.push(id.toString()));
+        }
+        if (selectedIds.length > 0) {
+          const option = clearanceItem.electiveOptions.find(
+            (opt) => selectedIds.includes(opt._id?.toString())
+          );
+          if (option && option.teacherId) return option.teacherId;
+        }
         return clearanceItem.electiveOptions[0].teacherId;
       }
       return clearanceItem.theoryTeacherId || null;

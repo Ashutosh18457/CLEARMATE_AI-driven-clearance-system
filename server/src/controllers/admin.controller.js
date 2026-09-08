@@ -146,6 +146,16 @@ const adminController = {
     } catch (error) { next(error); }
   },
 
+  /** @route GET /api/admin/students/export */
+  async exportStudentsCsv(req, res, next) {
+    try {
+      const csv = await adminService.exportStudentsToCsv(req.query, req.user);
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="students_export.csv"');
+      res.status(200).send(csv);
+    } catch (error) { next(error); }
+  },
+
   /** @route GET /api/admin/users */
   async getUsers(req, res, next) {
     try {

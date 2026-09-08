@@ -343,6 +343,34 @@ const adminService = {
     const existingEmailSet = new Set(existingDbUsers.map((u) => u.email.toLowerCase()));
     const existingEnrollmentSet = new Set(existingDbUsers.map((u) => (u.enrollmentNo ? u.enrollmentNo.trim() : '')));
 
+    // Pre-fetch elective items, semesters & batches for resolving student assignments
+    const electiveItems = await ClearanceItem.find({ type: 'elective' }).lean();
+    const electiveMapBySem = {}; // `${semesterId}_${optionNameLower}` -> opt._id
+    const electiveMapByName = {}; // `${optionNameLower}` -> opt._id
+    for (const item of electiveItems) {
+      const semIdStr = item.semesterId ? item.semesterId.toString() : '';
+      for (const opt of item.electiveOptions || []) {
+        const optNameClean = (opt.name || '').toLowerCase().trim();
+        if (optNameClean) {
+          if (semIdStr) electiveMapBySem[`${semIdStr}_${optNameClean}`] = opt._id;
+          electiveMapByName[optNameClean] = opt._id;
+        }
+      }
+    }
+
+    const allSemesters = await Semester.find({}).lean();
+    const semesterMap = {}; // `${programId}_${semNumber}` -> semester
+    for (const sem of allSemesters) {
+      const pIdStr = sem.programId ? sem.programId.toString() : '';
+      semesterMap[`${pIdStr}_${sem.semNumber}`] = sem;
+    }
+
+    const allBatches = await Batch.find({}).lean();
+    const batchMapByName = {};
+    for (const b of allBatches) {
+      batchMapByName[(b.name || '').toLowerCase().trim()] = b;
+    }
+
     for (const item of rows) {
       const lineNo = item.line;
       const r = item.normalized;
@@ -406,8 +434,43 @@ const adminService = {
       seenEmailsInFile.add(email);
       seenEnrollmentsInFile.add(enrollmentNo);
 
+      // 7. Resolve elective choices (supports elective_1, elective_2, pe1, pe2, or comma-separated electives)
+      const electiveNames = [];
+      Object.keys(r).forEach((k) => {
+        if (k.startsWith('elective_') && r[k]) {
+          electiveNames.push(r[k].trim());
+        }
+      });
+      if (r.electives) {
+        const parts = r.electives.split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
+        electiveNames.push(...parts);
+      }
+
+      const matchedElectiveIds = [];
+      const studentSem = semesterMap[`${programId.toString()}_${semesterNum}`];
+      const studentSemIdStr = studentSem ? studentSem._id.toString() : '';
+
+      for (const elName of electiveNames) {
+        const cleanName = elName.toLowerCase().trim();
+        if (!cleanName) continue;
+        const optId = (studentSemIdStr && electiveMapBySem[`${studentSemIdStr}_${cleanName}`]) || electiveMapByName[cleanName];
+        if (optId && !matchedElectiveIds.some((id) => id.toString() === optId.toString())) {
+          matchedElectiveIds.push(optId);
+        }
+      }
+
+      // 8. Resolve batch if present
+      let batchId = undefined;
+      if (r.batch) {
+        const cleanBatch = r.batch.toLowerCase().trim();
+        const foundBatch = batchMapByName[cleanBatch];
+        if (foundBatch) {
+          batchId = foundBatch._id;
+        }
+      }
+
       try {
-        const newUser = await User.create({
+        const userData = {
           name,
           email,
           enrollmentNo,
@@ -416,7 +479,19 @@ const adminService = {
           programId,
           currentSemester: semesterNum,
           section: section || 'A',
-        });
+        };
+        if (batchId) {
+          userData.batchId = batchId;
+        }
+        if (matchedElectiveIds.length > 0) {
+          userData.selectedElectives = matchedElectiveIds;
+          userData.selectedElective = matchedElectiveIds[0];
+        }
+
+        const newUser = await User.create(userData);
+        if (batchId) {
+          await Batch.findByIdAndUpdate(batchId, { $addToSet: { studentIds: newUser._id } }).catch(() => {});
+        }
         newUser.password = undefined;
         createdUsers.push(newUser);
       } catch (err) {
@@ -453,10 +528,121 @@ const adminService = {
   },
 
   getSampleCsvTemplate() {
-    return 'student_id,full_name,email,department,semester,section\n' +
-      'EN2024CSE001,Aarav Sharma,aarav.sharma@sbjain.edu.in,CSE,6,A\n' +
-      'EN2024CSE002,Ananya Patel,ananya.patel@sbjain.edu.in,CSE,6,A\n' +
-      'EN2024ECE001,Rohan Verma,rohan.verma@sbjain.edu.in,ECE,4,B\n';
+    return 'student_id,full_name,email,department,semester,section,elective_1,elective_2,elective_3\n' +
+      'EN2024CSE001,Aarav Sharma,aarav.sharma@sbjain.edu.in,CSE,6,A,Cloud Computing,Natural Language Processing,Cyber Security\n' +
+      'EN2024CSE002,Ananya Patel,ananya.patel@sbjain.edu.in,CSE,6,A,Data Mining,Computer Vision,Internet of Things\n' +
+      'EN2024ECE001,Rohan Verma,rohan.verma@sbjain.edu.in,ECE,4,B,VLSI Design,Embedded Systems,Wireless Sensor Networks\n';
+  },
+
+  /**
+   * Export students to Excel-compatible CSV format
+   */
+  async exportStudentsToCsv(filters = {}, requester) {
+    const query = { role: 'student' };
+
+    if (filters.search && filters.search.trim()) {
+      const searchRegex = new RegExp(filters.search.trim(), 'i');
+      query.$or = [
+        { name: searchRegex },
+        { email: searchRegex },
+        { enrollmentNo: searchRegex },
+      ];
+    }
+    if (filters.programId) query.programId = filters.programId;
+    if (filters.isActive !== undefined) query.isActive = filters.isActive;
+    if (filters.section) query.section = filters.section;
+    if (filters.currentSemester) query.currentSemester = Number(filters.currentSemester);
+
+    // HOD department scoping
+    if (requester && requester.role === 'hod') {
+      const hodUser = await User.findById(requester.id);
+      if (hodUser && hodUser.programId) {
+        query.programId = hodUser.programId;
+      }
+    }
+
+    const students = await User.find(query)
+      .populate('programId', 'name code')
+      .populate('batchId', 'name')
+      .sort({ currentSemester: 1, section: 1, enrollmentNo: 1 });
+
+    // Pre-fetch elective items to resolve elective option names
+    const electiveItems = await ClearanceItem.find({ type: 'elective' }).lean();
+    const optionNameMap = {};
+    for (const item of electiveItems) {
+      for (const opt of item.electiveOptions || []) {
+        if (opt._id) {
+          optionNameMap[opt._id.toString()] = opt.name;
+        }
+      }
+    }
+
+    const escapeCsv = (val) => {
+      if (val === null || val === undefined) return '';
+      const str = String(val).trim();
+      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    // Determine max electives across students (at least 2, but expands to 3, 4, etc.)
+    let maxElectives = 2;
+    for (const s of students) {
+      const count = Array.isArray(s.selectedElectives) ? s.selectedElectives.length : (s.selectedElective ? 1 : 0);
+      if (count > maxElectives) maxElectives = count;
+    }
+
+    const electiveHeaders = Array.from({ length: maxElectives }, (_, i) => `elective_${i + 1}`);
+
+    const headers = [
+      'student_id',
+      'full_name',
+      'email',
+      'department',
+      'semester',
+      'section',
+      'batch',
+      ...electiveHeaders,
+      'status',
+    ];
+
+    const lines = [headers.join(',')];
+
+    for (const s of students) {
+      const electivesList = [];
+      if (Array.isArray(s.selectedElectives) && s.selectedElectives.length > 0) {
+        for (const elId of s.selectedElectives) {
+          const name = optionNameMap[elId.toString()] || '';
+          if (name) electivesList.push(name);
+        }
+      } else if (s.selectedElective) {
+        const name = optionNameMap[s.selectedElective.toString()] || '';
+        if (name) electivesList.push(name);
+      }
+
+      const electiveCells = [];
+      for (let i = 0; i < maxElectives; i++) {
+        electiveCells.push(escapeCsv(electivesList[i] || ''));
+      }
+
+      const row = [
+        escapeCsv(s.enrollmentNo || ''),
+        escapeCsv(s.name || ''),
+        escapeCsv(s.email || ''),
+        escapeCsv(s.programId?.code || s.programId?.name || ''),
+        escapeCsv(s.currentSemester || ''),
+        escapeCsv(s.section || ''),
+        escapeCsv(s.batchId?.name || ''),
+        ...electiveCells,
+        escapeCsv(s.isActive !== false ? 'Active' : 'Inactive'),
+      ];
+
+      lines.push(row.join(','));
+    }
+
+    // Prepend UTF-8 BOM so Excel opens with proper character encoding
+    return '\uFEFF' + lines.join('\r\n') + '\r\n';
   },
 
   async getUsers(filters, requester) {

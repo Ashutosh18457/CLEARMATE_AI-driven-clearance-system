@@ -1,44 +1,36 @@
 const Joi = require('joi');
-const mongoose = require('mongoose');
-
-// Custom ObjectId validator
-const objectId = Joi.string().custom((value, helpers) => {
-  if (!mongoose.Types.ObjectId.isValid(value)) {
-    return helpers.error('any.invalid');
-  }
-  return value;
-}, 'ObjectId validation');
+const { objectId } = require('./common.validator');
 
 const adminValidator = {
   // ──────────────────────────────────────────────
   // PROGRAMS
   // ──────────────────────────────────────────────
   createProgramSchema: Joi.object({
-    name: Joi.string().trim().max(100).required()
+    name: Joi.string().trim().min(1).max(100).required()
       .messages({ 'any.required': 'Program name is required' }),
-    code: Joi.string().trim().uppercase().max(20).required()
+    code: Joi.string().trim().uppercase().min(1).max(20).required()
       .messages({ 'any.required': 'Program code is required' }),
-    degree: Joi.string().trim().optional().default('B.Tech'),
-    branch: Joi.string().trim().optional().allow('', null),
+    degree: Joi.string().trim().max(50).optional().default('B.Tech'),
+    branch: Joi.string().trim().max(100).optional().allow('', null),
     totalSemesters: Joi.number().integer().min(1).max(12).optional().default(8),
-    department: Joi.string().trim().required()
+    department: Joi.string().trim().min(1).max(100).required()
       .messages({ 'any.required': 'Department is required' }),
     departmentAdminId: objectId.optional().allow('', null),
     hodId: objectId.optional().allow('', null),
     isActive: Joi.boolean().optional(),
-  }).unknown(true),
+  }),
 
   updateProgramSchema: Joi.object({
-    name: Joi.string().trim().max(100),
-    code: Joi.string().trim().uppercase().max(20),
-    degree: Joi.string().trim().optional(),
-    branch: Joi.string().trim().optional().allow('', null),
-    totalSemesters: Joi.number().integer().min(1).max(12).optional(),
-    department: Joi.string().trim(),
+    name: Joi.string().trim().min(1).max(100),
+    code: Joi.string().trim().uppercase().min(1).max(20),
+    degree: Joi.string().trim().max(50),
+    branch: Joi.string().trim().max(100).allow('', null),
+    totalSemesters: Joi.number().integer().min(1).max(12),
+    department: Joi.string().trim().min(1).max(100),
     departmentAdminId: objectId.optional().allow('', null),
     hodId: objectId.optional().allow('', null),
     isActive: Joi.boolean(),
-  }).min(1).unknown(true).messages({ 'object.min': 'At least one field must be provided for update' }),
+  }).min(1).messages({ 'object.min': 'At least one field must be provided for update' }),
 
   // ──────────────────────────────────────────────
   // SEMESTERS
@@ -46,34 +38,34 @@ const adminValidator = {
   createSemesterSchema: Joi.object({
     programId: objectId.required()
       .messages({ 'any.required': 'Program ID is required', 'any.invalid': 'Invalid Program ID format' }),
-    name: Joi.string().trim().required()
+    name: Joi.string().trim().min(1).max(100).required()
       .messages({ 'any.required': 'Semester name is required' }),
     semNumber: Joi.number().integer().min(1).max(12).required()
       .messages({ 'any.required': 'Semester number is required' }),
-    academicYear: Joi.string().trim().required()
+    academicYear: Joi.string().trim().max(20).required()
       .messages({ 'any.required': 'Academic year is required' }),
     type: Joi.string().valid('ODD', 'EVEN').required()
       .messages({ 'any.required': 'Semester type (ODD/EVEN) is required' }),
-    studyYear: Joi.any().optional(),
+    studyYear: Joi.alternatives().try(Joi.number().integer().min(1).max(6), Joi.string().max(20)).optional().allow('', null),
     startDate: Joi.date().iso().optional().allow('', null),
     endDate: Joi.date().iso().optional().allow('', null),
     clearanceDeadline: Joi.date().iso().required()
       .messages({ 'any.required': 'Clearance deadline is required' }),
-    studyYear: Joi.any().optional().allow('', null),
     isActive: Joi.boolean().optional(),
-  }).unknown(true),
- 
+  }),
+
   updateSemesterSchema: Joi.object({
     programId: objectId.optional().allow('', null),
-    name: Joi.string().trim(),
+    name: Joi.string().trim().min(1).max(100),
     semNumber: Joi.number().integer().min(1).max(12),
-    academicYear: Joi.string().trim(),
+    academicYear: Joi.string().trim().max(20),
     type: Joi.string().valid('ODD', 'EVEN'),
-    studyYear: Joi.any().optional(),
+    studyYear: Joi.alternatives().try(Joi.number().integer().min(1).max(6), Joi.string().max(20)).optional().allow('', null),
+    startDate: Joi.date().iso().optional().allow('', null),
+    endDate: Joi.date().iso().optional().allow('', null),
     clearanceDeadline: Joi.date().iso().optional().allow('', null),
-    studyYear: Joi.any().optional().allow('', null),
     isActive: Joi.boolean(),
-  }).min(1).unknown(true),
+  }).min(1).messages({ 'object.min': 'At least one field must be provided for update' }),
 
   // ──────────────────────────────────────────────
   // BATCHES
@@ -81,7 +73,7 @@ const adminValidator = {
   createBatchSchema: Joi.object({
     semesterId: objectId.required()
       .messages({ 'any.required': 'Semester ID is required', 'any.invalid': 'Invalid Semester ID format' }),
-    name: Joi.string().trim().required()
+    name: Joi.string().trim().min(1).max(50).required()
       .messages({ 'any.required': 'Batch name is required' }),
   }),
 
@@ -94,66 +86,76 @@ const adminValidator = {
   // USERS
   // ──────────────────────────────────────────────
   createUserSchema: Joi.object({
-    name: Joi.string().trim().max(100).required()
+    name: Joi.string().trim().min(1).max(100).required()
       .messages({ 'any.required': 'Name is required' }),
-    email: Joi.string().email().required()
+    email: Joi.string().email().trim().max(255).required()
       .messages({ 'any.required': 'Email is required' }),
-    password: Joi.string().min(8).optional().default('Pass@123')
+    password: Joi.string().min(8).max(128).optional().default('Pass@123')
       .messages({ 'string.min': 'Password must be at least 8 characters' }),
-    role: Joi.string().valid('student', 'teacher', 'section_head', 'account_section', 'bus_section', 'library_section', 'class_incharge', 'hod', 'admin', 'super_admin').required()
+    role: Joi.string()
+      .valid('student', 'teacher', 'section_head', 'account_section', 'bus_section', 'library_section', 'disciplinary_section', 'class_incharge', 'hod', 'admin', 'super_admin')
+      .required()
       .messages({ 'any.required': 'Role is required' }),
-    // Student, Admin, HOD-specific
     programId: objectId.optional().allow('', null),
-    enrollmentNo: Joi.string().trim().optional().allow('', null),
-    currentSemester: Joi.alternatives().try(Joi.number().integer().min(1).max(12), Joi.string().allow('', null)).optional(),
-    section: Joi.string().trim().optional().allow('', null),
-    // Class Incharge-specific fields
+    enrollmentNo: Joi.string().trim().max(50).optional().allow('', null),
+    currentSemester: Joi.alternatives().try(Joi.number().integer().min(1).max(12), Joi.string().max(10).allow('', null)).optional(),
+    section: Joi.string().trim().max(10).optional().allow('', null),
     assignedProgramId: objectId.optional().allow('', null),
-    assignedSemester: Joi.alternatives().try(Joi.number(), Joi.string().trim()).optional().allow('', null),
-    assignedSection: Joi.string().trim().optional().allow('', null),
-    // Section Head-specific
-    sectionType: Joi.string().valid('library', 'accounts', 'bus', 'student_section', 'disciplinary').optional().allow('', null),
-    // Class Incharge-specific
-    assignedProgramId: objectId.optional().allow('', null),
-    assignedSemester: Joi.alternatives().try(Joi.number().integer().min(1).max(12), Joi.string().allow('', null)).optional(),
-    assignedSection: Joi.string().trim().optional().allow('', null),
+    assignedSemester: Joi.alternatives().try(Joi.number().integer().min(1).max(12), Joi.string().max(10).allow('', null)).optional().allow('', null),
+    assignedSection: Joi.string().trim().max(10).optional().allow('', null),
     assignedStudents: Joi.array().items(objectId).optional(),
+    sectionType: Joi.string().valid('library', 'accounts', 'bus', 'student_section', 'disciplinary').optional().allow('', null),
     isActive: Joi.boolean().optional(),
-  }).unknown(true),
+  }),
 
   bulkCreateStudentsSchema: Joi.object({
     programId: objectId.required()
       .messages({ 'any.required': 'Program ID is required' }),
     currentSemester: Joi.number().integer().min(1).max(12).required()
       .messages({ 'any.required': 'Current semester is required' }),
-    section: Joi.string().trim().required()
+    section: Joi.string().trim().max(10).required()
       .messages({ 'any.required': 'Section is required' }),
-    defaultPassword: Joi.string().min(8).default('Pass@123'),
+    defaultPassword: Joi.string().min(8).max(128).default('Pass@123'),
     students: Joi.array().items(
       Joi.object({
-        name: Joi.string().trim().max(100).required(),
-        email: Joi.string().email().required(),
-        enrollmentNo: Joi.string().trim().required(),
+        name: Joi.string().trim().min(1).max(100).required(),
+        email: Joi.string().email().trim().max(255).required(),
+        enrollmentNo: Joi.string().trim().min(1).max(50).required(),
       })
-    ).min(1).required()
+    ).min(1).max(500).required()
       .messages({ 'any.required': 'Students array is required', 'array.min': 'At least one student is required' }),
   }),
 
+  bulkUploadStudentsCsvSchema: Joi.object({
+    programId: objectId.required().messages({ 'any.required': 'Program ID is required' }),
+    currentSemester: Joi.number().integer().min(1).max(12).required().messages({ 'any.required': 'Semester is required' }),
+    section: Joi.string().trim().max(10).required().messages({ 'any.required': 'Section is required' }),
+    csvData: Joi.string().min(1).optional(),
+    students: Joi.array().items(
+      Joi.object({
+        name: Joi.string().trim().max(100).required(),
+        email: Joi.string().email().trim().max(255).required(),
+        enrollmentNo: Joi.string().trim().max(50).required(),
+      })
+    ).optional(),
+  }),
+
   updateUserSchema: Joi.object({
-    name: Joi.string().trim().max(100),
-    email: Joi.string().email(),
-    password: Joi.string().min(8).optional().allow('', null),
+    name: Joi.string().trim().min(1).max(100),
+    email: Joi.string().email().trim().max(255),
+    password: Joi.string().min(8).max(128).optional().allow('', null),
     role: Joi.string().valid('student', 'teacher', 'section_head', 'account_section', 'bus_section', 'library_section', 'disciplinary_section', 'class_incharge', 'hod', 'admin', 'super_admin'),
     programId: objectId.optional().allow('', null),
-    enrollmentNo: Joi.string().trim().optional().allow('', null),
-    currentSemester: Joi.alternatives().try(Joi.number().integer().min(1).max(12), Joi.string().allow('', null)).optional(),
-    section: Joi.string().trim().optional().allow('', null),
+    enrollmentNo: Joi.string().trim().max(50).optional().allow('', null),
+    currentSemester: Joi.alternatives().try(Joi.number().integer().min(1).max(12), Joi.string().max(10).allow('', null)).optional(),
+    section: Joi.string().trim().max(10).optional().allow('', null),
     sectionType: Joi.string().valid('library', 'accounts', 'bus', 'student_section', 'disciplinary').optional().allow('', null),
-    assignedSemester: Joi.alternatives().try(Joi.number().integer().min(1).max(12), Joi.string().trim().allow('', null)).optional().allow('', null),
-    assignedSection: Joi.string().trim().optional().allow('', null),
+    assignedProgramId: objectId.optional().allow('', null),
+    assignedSemester: Joi.alternatives().try(Joi.number().integer().min(1).max(12), Joi.string().max(10).trim().allow('', null)).optional().allow('', null),
+    assignedSection: Joi.string().trim().max(10).optional().allow('', null),
     assignedStudents: Joi.array().items(objectId).optional(),
     isActive: Joi.boolean(),
-  }).min(1).unknown(true),
+  }).min(1).messages({ 'object.min': 'At least one field must be provided for update' }),
 
   // ──────────────────────────────────────────────
   // CLEARANCE ITEMS
@@ -163,13 +165,12 @@ const adminValidator = {
       .messages({ 'any.required': 'Semester ID is required' }),
     srNo: Joi.number().integer().min(1).required()
       .messages({ 'any.required': 'Serial number is required' }),
-    title: Joi.string().trim().required()
+    title: Joi.string().trim().min(1).max(200).required()
       .messages({ 'any.required': 'Title is required' }),
     type: Joi.string().valid('theory', 'lab', 'elective', 'special').required()
       .messages({ 'any.required': 'Item type is required' }),
-    subjectCode: Joi.string().trim().optional(),
+    subjectCode: Joi.string().trim().max(30).optional().allow('', null),
     isRequired: Joi.boolean().default(true),
-    // Theory/Special
     theoryTeacherId: objectId.optional().allow('', null),
     labBatchTeachers: Joi.array().items(
       Joi.object({
@@ -177,28 +178,28 @@ const adminValidator = {
         teacherId: objectId.required(),
       })
     ).optional(),
-    // Elective
     electiveGroup: Joi.when('type', {
       is: 'elective',
-      then: Joi.string().trim().required(),
-      otherwise: Joi.string().trim().optional(),
+      then: Joi.string().trim().max(50).required(),
+      otherwise: Joi.string().trim().max(50).optional().allow('', null),
     }),
     electiveOptions: Joi.when('type', {
       is: 'elective',
       then: Joi.array().items(
         Joi.object({
-          name: Joi.string().trim().required(),
+          name: Joi.string().trim().min(1).max(100).required(),
           teacherId: objectId.required(),
         })
       ).min(2).required(),
       otherwise: Joi.array().optional(),
     }),
-  }).unknown(true),
+  }),
 
   updateClearanceItemSchema: Joi.object({
     srNo: Joi.number().integer().min(1),
-    title: Joi.string().trim(),
-    subjectCode: Joi.string().trim().allow('', null),
+    title: Joi.string().trim().min(1).max(200),
+    type: Joi.string().valid('theory', 'lab', 'elective', 'special'),
+    subjectCode: Joi.string().trim().max(30).allow('', null),
     isRequired: Joi.boolean(),
     theoryTeacherId: objectId.optional().allow('', null),
     labBatchTeachers: Joi.array().items(
@@ -207,14 +208,24 @@ const adminValidator = {
         teacherId: objectId.required(),
       })
     ).optional(),
-    electiveGroup: Joi.string().trim().optional(),
+    electiveGroup: Joi.string().trim().max(50).optional().allow('', null),
     electiveOptions: Joi.array().items(
       Joi.object({
-        name: Joi.string().trim().required(),
+        name: Joi.string().trim().min(1).max(100).required(),
         teacherId: objectId.required(),
       })
     ).optional(),
-  }).min(1).unknown(true),
+  }).min(1).messages({ 'object.min': 'At least one field must be provided for update' }),
+
+  // ──────────────────────────────────────────────
+  // CLASS INCHARGE ASSIGNMENT
+  // ──────────────────────────────────────────────
+  assignClassInchargeSchema: Joi.object({
+    assignedProgramId: objectId.required().messages({ 'any.required': 'Assigned program ID is required' }),
+    assignedSemester: Joi.number().integer().min(1).max(12).required().messages({ 'any.required': 'Assigned semester number is required' }),
+    assignedSection: Joi.string().trim().max(10).required().messages({ 'any.required': 'Assigned section is required' }),
+    assignedStudents: Joi.array().items(objectId).optional(),
+  }),
 };
 
 module.exports = adminValidator;
