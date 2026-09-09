@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Program = require('../models/Program');
 const AppError = require('../utils/AppError');
 const env = require('../config/env');
 
@@ -15,13 +16,15 @@ const authService = {
    */
   async login(email, password, ip, userAgent) {
     const cleanEmail = email ? email.toLowerCase().trim() : '';
-    // 1. Find user by email or enrollment number and explicitly select the password field
     let user = await User.findOne({
       $or: [
         { email: cleanEmail },
         { enrollmentNo: new RegExp(`^${cleanEmail}$`, 'i') },
       ],
-    }).select('+password +loginAttempts +lockUntil');
+    })
+      .select('+password +loginAttempts +lockUntil')
+      .populate('programId')
+      .populate('assignedProgramId');
 
     // Using generic error messages for both cases to prevent user enumeration
     if (!user) {
@@ -196,12 +199,16 @@ const authService = {
     }
 
     const payload = { ...data };
+    payload.password = payload.password || env.defaultUserPassword;
 
     if (payload.role === 'student') {
       if (!payload.programId) {
-        const Program = require('../models/Program');
         const prog = await Program.findOne();
         if (prog) payload.programId = prog._id;
+      }
+      if (payload.programId && !payload.program) {
+        const prog = await Program.findById(payload.programId);
+        if (prog) payload.program = prog.code || prog.name;
       }
       if (!payload.enrollmentNo) {
         payload.enrollmentNo = 'EN' + Date.now().toString().slice(-6);
@@ -219,6 +226,8 @@ const authService = {
     }
 
     const user = await User.create(payload);
+    await user.populate('programId');
+    await user.populate('assignedProgramId');
     const AuditLog = require('../models/AuditLog');
     new AuditLog({ userId: user._id, action: 'register_success', resource: 'Auth', ip, userAgent }).save().catch(()=>{});
 

@@ -25,4 +25,7 @@ module.exports = Object.freeze({
     user: process.env.EMAIL_USER || '',
     pass: process.env.EMAIL_PASS || '',
   },
+  defaultUserPassword: process.env.DEFAULT_USER_PASSWORD || 'Password123!',
+  defaultStudentPassword: process.env.DEFAULT_STUDENT_PASSWORD || process.env.DEFAULT_USER_PASSWORD || 'Password123!',
+  defaultTeacherPassword: process.env.DEFAULT_TEACHER_PASSWORD || 'Pass@Teacher123!',
 });

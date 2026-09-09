@@ -62,6 +62,10 @@ const userSchema = new mongoose.Schema(
       ref: 'Program',
       required: function () { return this.role === 'student'; },
     },
+    program: {
+      type: String,
+      trim: true,
+    },
     enrollmentNo: {
       type: String,
       required: function () { return this.role === 'student'; },

@@ -24,7 +24,7 @@ export default function StudentClearanceReport() {
 
   // Dynamic filter state initialized strictly with logged-in student's real profile
   const [filters, setFilters] = useState({
-    branch: user?.programId?.code || '',
+    branch: user?.program || user?.programId?.code || '',
     semester: semNum || '',
     semesterId: semId,
     section: user?.section ? user.section.replace(/^Sec(tion)?\s*/i, '').trim() : '',
@@ -77,7 +77,7 @@ export default function StudentClearanceReport() {
         (typeof user.currentSemester === 'string' && user.currentSemester.length === 24 ? user.currentSemester : undefined);
 
       const updated = {
-        branch: user.programId?.code || '',
+        branch: user.program || user.programId?.code || '',
         semester: currentSemNum || '',
         semesterId: currentSemId,
         section: user.section ? user.section.replace(/^Sec(tion)?\s*/i, '').trim() : '',

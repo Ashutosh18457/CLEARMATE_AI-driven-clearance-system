@@ -311,13 +311,13 @@ export default function StudentDashboard() {
             <div className="space-y-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold text-blue-200 border border-white/15">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                Semester {user?.currentSemester || 6} • Section {user?.section || 'A'} • {user?.programId?.code || 'CSE'}
+                Semester {user?.currentSemester || clearance?.semesterId?.semNumber || 1} • Section {user?.section || 'A'}{(user?.program || user?.programId?.code || clearance?.semesterId?.programId?.code) ? ` • ${user?.program || user?.programId?.code || clearance?.semesterId?.programId?.code}` : ''}
               </div>
               <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">
                 Welcome back, {user?.name || 'Student'}!
               </h1>
               <p className="text-slate-300 text-sm max-w-2xl">
-                Roll No: <span className="font-mono font-semibold text-white">{user?.enrollmentNo || 'EN2024CSE002'}</span> • Track and manage your official multi-stage academic clearance in real time.
+                Roll No: <span className="font-mono font-semibold text-white">{user?.enrollmentNo || '—'}</span> • Track and manage your official multi-stage academic clearance in real time.
               </p>
             </div>
 
@@ -385,7 +385,7 @@ export default function StudentDashboard() {
                 <HiOutlineRocketLaunch className="w-4 h-4" /> Academic Clearance Initiation
               </div>
               <h2 className="text-xl font-bold text-slate-900">
-                Ready to start your Semester {user?.currentSemester || 6} Clearance?
+                Ready to start your Semester {user?.currentSemester || clearance?.semesterId?.semNumber || ''} Clearance?
               </h2>
               <p className="text-slate-600 text-sm leading-relaxed">
                 Initiating clearance creates review items for all your subject teachers and the 4 institutional departments (Accounts, Transport, Library, Disciplinary). Make sure your required coursework is uploaded first!

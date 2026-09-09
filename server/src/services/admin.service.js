@@ -5,6 +5,7 @@ const User = require('../models/User');
 const ClearanceItem = require('../models/ClearanceItem');
 const AppError = require('../utils/AppError');
 const logger = require('../config/logger');
+const env = require('../config/env');
 
 const cleanEmptyValues = (obj, idFields = [], numFields = []) => {
   if (!obj || typeof obj !== 'object') return obj;
@@ -252,12 +253,16 @@ const adminService = {
       ['programId', 'assignedProgramId', 'batchId', 'selectedElective', 'departmentAdminId', 'hodId'],
       ['currentSemester', 'assignedSemester']
     );
-    payload.password = payload.password || 'Pass@123';
+    payload.password = payload.password || env.defaultUserPassword;
 
     if (payload.role === 'student') {
       if (!payload.programId) {
         const prog = await Program.findOne();
         if (prog) payload.programId = prog._id;
+      }
+      if (payload.programId && !payload.program) {
+        const prog = await Program.findById(payload.programId);
+        if (prog) payload.program = prog.code || prog.name;
       }
       if (!payload.enrollmentNo) {
         payload.enrollmentNo = `EN${Date.now().toString().slice(-6)}`;
@@ -313,9 +318,10 @@ const adminService = {
           name: student.name,
           email: student.email,
           enrollmentNo: student.enrollmentNo,
-          password: defaultPassword || 'Pass@123',
+          password: defaultPassword || student.password || env.defaultStudentPassword,
           role: 'student',
           programId,
+          program: program.code || program.name,
           currentSemester,
           section,
         });
@@ -539,13 +545,15 @@ const adminService = {
       }
 
       try {
+        const progDoc = programs.find((p) => p._id.toString() === programId.toString());
         const userData = {
           name,
           email,
           enrollmentNo,
-          password: defaultPassword || 'Password123!',
+          password: defaultPassword || env.defaultStudentPassword,
           role: 'student',
           programId,
+          program: progDoc ? (progDoc.code || progDoc.name) : deptStr,
           currentSemester: semesterNum,
           section: section || 'A',
         };
@@ -825,6 +833,11 @@ const adminService = {
       ['programId', 'assignedProgramId', 'batchId', 'selectedElective', 'departmentAdminId', 'hodId'],
       ['currentSemester', 'assignedSemester']
     );
+
+    if (cleanedData.programId && !cleanedData.program) {
+      const prog = await Program.findById(cleanedData.programId);
+      if (prog) cleanedData.program = prog.code || prog.name;
+    }
 
     if (cleanedData.password && typeof cleanedData.password === 'string' && cleanedData.password.trim().length > 0) {
       targetUser.password = cleanedData.password.trim();

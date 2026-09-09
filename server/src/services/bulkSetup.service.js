@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Program = require('../models/Program');
 const AppError = require('../utils/AppError');
 const logger = require('../config/logger');
+const env = require('../config/env');
 const bcrypt = require('bcryptjs');
 
 const parseToDate = (val, fallback) => {
@@ -199,7 +200,7 @@ const bulkSetupService = {
         teacher = await User.create({
           name: cleanName.startsWith('Prof') ? cleanName : `Prof. ${cleanName}`,
           email: email.toLowerCase(),
-          password: 'Pass@Teacher123!',
+          password: env.defaultTeacherPassword || 'Pass@Teacher123!',
           role: 'teacher',
           department: program.department || 'Emerging Technologies',
           isActive: true,
@@ -215,7 +216,7 @@ const bulkSetupService = {
         fallbackTeacher = await User.create({
           name: 'Prof. Faculty Incharge',
           email: `faculty.${(program.code || 'dept').toLowerCase()}@sbjit.edu.in`,
-          password: 'Pass@Teacher123!',
+          password: env.defaultTeacherPassword || 'Pass@Teacher123!',
           role: 'teacher',
           department: program.department || 'Academic Department',
           isActive: true,
@@ -478,6 +479,7 @@ const bulkSetupService = {
             currentSemester: semesterConfig.semNumber,
             section: row.section || existingUser.section || 'A',
             programId: program._id,
+            program: program.code || program.name,
             isActive: true,
           };
 
@@ -507,7 +509,7 @@ const bulkSetupService = {
           });
         } else {
           // Generate default password satisfying strength requirements (min 8 chars, upper, lower, number, special)
-          const defaultPassword = 'Pass@' + enrollClean + '1';
+          const defaultPassword = env.defaultStudentPassword || ('Pass@' + enrollClean + '1');
 
           const studentData = {
             name: row.name.trim(),
@@ -515,6 +517,7 @@ const bulkSetupService = {
             password: defaultPassword,
             role: 'student',
             programId: program._id,
+            program: program.code || program.name,
             enrollmentNo: enrollClean,
             currentSemester: semesterConfig.semNumber,
             section: row.section || 'A',
