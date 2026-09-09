@@ -65,16 +65,11 @@ export default function LoginPage() {
     setForgotLoading(true);
     try {
       const res = await api.post('/auth/forgot-password', { email: clean });
-      const data = res.data;
-
-      const token = data.data?.resetToken || data.resetToken;
-      if (token) {
-        setResetToken(token);
-        setForgotStep(2);
-        setForgotMsg('Identity verified! Please set your new secure password below.');
-      } else {
-        setForgotMsg(data.message || 'Password reset instructions have been dispatched to your email.');
-      }
+      setForgotMsg(
+        res.data?.message ||
+          'Password reset link has been dispatched to your email address. Please check your inbox and click the reset link.'
+      );
+      setForgotError('');
     } catch (err) {
       setForgotError(err.message || 'Error processing request. Please try again.');
     } finally {
@@ -365,12 +360,10 @@ export default function LoginPage() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border-subtle rounded-md shadow-lg p-6 max-w-md w-full space-y-4">
             <h2 className="text-base font-semibold text-ink-primary">
-              {forgotStep === 1 ? 'Reset Password' : 'Set New Password'}
+              Reset Password
             </h2>
             <p className="text-xs text-ink-secondary">
-              {forgotStep === 1
-                ? 'Enter your registered college email (@sbjit.edu.in) to proceed.'
-                : `Setting new password for ${forgotEmail}`}
+              Enter your registered college email (@sbjit.edu.in) to receive a secure password reset link.
             </p>
 
             {forgotError && (
@@ -379,133 +372,74 @@ export default function LoginPage() {
               </div>
             )}
 
-            {forgotMsg && (
-              <div className="p-3 bg-green-50 border border-green-200 rounded-md text-xs text-green-700 flex items-center gap-1.5">
-                <HiOutlineCheckCircle className="w-4 h-4 shrink-0" />
-                <span>{forgotMsg}</span>
-              </div>
-            )}
-
-            {forgotStep === 1 ? (
-              <div>
-                <label htmlFor="forgot-email" className="label-base">
-                  Institutional Email
-                </label>
-                <input
-                  id="forgot-email"
-                  name="forgotEmail"
-                  type="email"
-                  autoComplete="email"
-                  className="input-base"
-                  placeholder="you@sbjit.edu.in"
-                  value={forgotEmail}
-                  onChange={(e) => setForgotEmail(e.target.value)}
-                />
+            {forgotMsg ? (
+              <div className="space-y-4 py-2">
+                <div className="p-4 bg-green-50 border border-green-200 rounded-md text-xs text-green-800 space-y-2">
+                  <div className="flex items-center gap-2 font-semibold text-green-900 text-sm">
+                    <HiOutlineCheckCircle className="w-5 h-5 text-green-600 shrink-0" />
+                    <span>Instructions Dispatched!</span>
+                  </div>
+                  <p className="leading-relaxed">
+                    We sent a secure password reset link to <strong>{forgotEmail}</strong>. Please check your inbox (and Spam folder) and click the button in the email to set your new password.
+                  </p>
+                </div>
+                <div className="flex justify-end pt-2">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => {
+                      setForgotOpen(false);
+                      setForgotMsg('');
+                      setForgotEmail('');
+                    }}
+                  >
+                    Got It / Close
+                  </Button>
+                </div>
               </div>
             ) : (
-              <div className="space-y-3">
+              <>
                 <div>
-                  <label htmlFor="new-password" className="label-base">
-                    New Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="new-password"
-                      name="newPassword"
-                      type={showNewPassword ? 'text' : 'password'}
-                      autoComplete="new-password"
-                      className="input-base pr-10"
-                      placeholder="••••••••"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNewPassword((p) => !p)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-ink-muted hover:text-ink-secondary"
-                    >
-                      {showNewPassword ? <HiOutlineEyeSlash className="w-4 h-4" /> : <HiOutlineEye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Password Strength Checklist */}
-                {newPassword && (
-                  <div className="p-3 bg-canvas border border-border-subtle rounded-md space-y-1 text-xs">
-                    <div className="font-semibold text-ink-secondary flex items-center gap-1">
-                      <HiOutlineShieldCheck className="w-3.5 h-3.5 text-brand" />
-                      <span>Password Requirements:</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-1 text-[11px]">
-                      <span className={passwordChecks.length ? 'text-status-approved font-medium' : 'text-ink-muted'}>
-                        {passwordChecks.length ? '✓' : '•'} 8+ characters
-                      </span>
-                      <span className={passwordChecks.upper ? 'text-status-approved font-medium' : 'text-ink-muted'}>
-                        {passwordChecks.upper ? '✓' : '•'} Uppercase (A-Z)
-                      </span>
-                      <span className={passwordChecks.lower ? 'text-status-approved font-medium' : 'text-ink-muted'}>
-                        {passwordChecks.lower ? '✓' : '•'} Lowercase (a-z)
-                      </span>
-                      <span className={passwordChecks.number ? 'text-status-approved font-medium' : 'text-ink-muted'}>
-                        {passwordChecks.number ? '✓' : '•'} Number (0-9)
-                      </span>
-                      <span className={passwordChecks.special ? 'text-status-approved font-medium' : 'text-ink-muted'}>
-                        {passwordChecks.special ? '✓' : '•'} Special char (!@#...)
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <label htmlFor="confirm-password" className="label-base">
-                    Confirm New Password
+                  <label htmlFor="forgot-email" className="label-base">
+                    Institutional Email
                   </label>
                   <input
-                    id="confirm-password"
-                    name="confirmPassword"
-                    type="password"
-                    autoComplete="new-password"
+                    id="forgot-email"
+                    name="forgotEmail"
+                    type="email"
+                    autoComplete="email"
                     className="input-base"
-                    placeholder="Re-type new password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="you@sbjit.edu.in"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
                   />
+                  <span className="text-[11px] text-ink-muted mt-1 block">
+                    Must be your registered @sbjit.edu.in email
+                  </span>
                 </div>
-              </div>
-            )}
 
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setForgotOpen(false);
-                  setForgotStep(1);
-                }}
-              >
-                Cancel
-              </Button>
-              {forgotStep === 1 ? (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  loading={forgotLoading}
-                  onClick={handleForgotSubmit}
-                >
-                  Verify Email
-                </Button>
-              ) : (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  loading={forgotLoading}
-                  disabled={!isPasswordStrong || !confirmPassword}
-                  onClick={handleResetPasswordSubmit}
-                >
-                  Update Password
-                </Button>
-              )}
-            </div>
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setForgotOpen(false);
+                      setForgotError('');
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    loading={forgotLoading}
+                    onClick={handleForgotSubmit}
+                  >
+                    Send Reset Link
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

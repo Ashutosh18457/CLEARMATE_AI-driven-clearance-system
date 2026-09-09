@@ -101,7 +101,13 @@ const authService = {
     await user.save({ validateBeforeSave: false });
 
     // 2. Build Reset URL
-    const clientBaseUrl = process.env.CLIENT_URL || reqOrigin || 'http://localhost:5173';
+    let clientBaseUrl = reqOrigin;
+    if (process.env.CLIENT_URL && process.env.CLIENT_URL !== '*' && !process.env.CLIENT_URL.includes('localhost')) {
+      clientBaseUrl = process.env.CLIENT_URL;
+    }
+    if (!clientBaseUrl || clientBaseUrl === '*') {
+      clientBaseUrl = reqOrigin || 'http://localhost:5173';
+    }
     const resetUrl = `${clientBaseUrl.replace(/\/$/, '')}/reset-password/${resetToken}`;
 
     // 3. Send Email
@@ -117,9 +123,7 @@ const authService = {
       new AuditLog({ userId: user._id, action: 'password_reset_requested', resource: 'Auth' }).save().catch(() => {});
 
       return {
-        message: 'Password reset link has been dispatched to your email address.',
-        resetToken, // Returned for dev testing ease
-        resetUrl,
+        message: 'Password reset link has been dispatched to your email address. Please check your inbox and click the link to reset your password.',
       };
     } catch (err) {
       // If email fails to send, clear reset token from DB
