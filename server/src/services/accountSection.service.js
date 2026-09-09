@@ -280,6 +280,11 @@ const accountSectionService = {
     } catch (notifErr) {
       logger.warn('Failed to send notification to student for fee update', { error: notifErr.message });
     }
+    try {
+      const { emitToUser } = require('../config/socket');
+      emitToUser(studentId, 'clearance_updated', { studentId, department: 'accounts', status });
+    } catch (e) {}
+
     logger.info('Student fee status updated by Account Section', {
       studentId,
       status,

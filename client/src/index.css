@@ -4,18 +4,18 @@
 
 /* ─── Design Tokens as CSS Variables ─── */
 :root {
-  --bg-canvas: #F7F8FA;
+  --bg-canvas: #F8FAFC;
   --bg-surface: #FFFFFF;
-  --border-subtle: #E4E7EC;
-  --ink-primary: #101828;
-  --ink-secondary: #475467;
-  --ink-muted: #98A2B3;
-  --brand-primary: #2547D0;
-  --brand-primary-hover: #1E3AA8;
-  --status-success: #12B76A;
-  --status-pending: #F79009;
-  --status-rejected: #F04438;
-  --status-info: #2547D0;
+  --border-subtle: #E2E8F0;
+  --ink-primary: #0F172A;
+  --ink-secondary: #475569;
+  --ink-muted: #94A3B8;
+  --brand-primary: #1D4ED8;
+  --brand-primary-hover: #1E40AF;
+  --status-success: #16A34A;
+  --status-pending: #D97706;
+  --status-rejected: #DC2626;
+  --status-info: #2563EB;
 }
 
 /* ─── Base Layer ─── */
@@ -34,7 +34,7 @@
 
   body {
     margin: 0;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
     background-color: var(--bg-canvas);
     color: var(--ink-primary);
   }
@@ -98,6 +98,36 @@
 
 /* ─── Utility Layer ─── */
 @layer utilities {
+  /* Mobile touch & momentum scrolling */
+  .touch-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  /* Tap target optimization */
+  .tap-target {
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+  }
+
+  /* Safe area insets for mobile notches */
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Responsive scrollbar hide */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
   /* Reduced motion preference */
   @media (prefers-reduced-motion: reduce) {
     *,
@@ -110,3 +140,18 @@
     }
   }
 }
+
+/* ─── Mobile Viewport & Form Zoom Fix ─── */
+@media screen and (max-width: 640px) {
+  /* Prevents iOS Safari from auto-zooming into inputs */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="search"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+

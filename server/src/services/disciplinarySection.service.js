@@ -308,6 +308,11 @@ const disciplinarySectionService = {
       logger.warn('Failed to send disciplinary notification to student:', nErr);
     }
 
+    try {
+      const { emitToUser } = require('../config/socket');
+      emitToUser(studentId, 'clearance_updated', { studentId, department: 'disciplinary', status: finalStatus });
+    } catch (e) {}
+
     return {
       student: {
         id: student._id,

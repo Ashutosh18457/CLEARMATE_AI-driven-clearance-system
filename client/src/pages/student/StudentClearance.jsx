@@ -10,6 +10,7 @@ import Badge, { getStatusVariant } from '../../components/common/Badge';
 import EmptyState from '../../components/common/EmptyState';
 import Skeleton from '../../components/common/Skeleton';
 import { useAuth } from '../../context/AuthContext';
+import { useSocket } from '../../context/SocketContext';
 import logoIcon from '../../assets/logo.png';
 import {
   HiOutlineClipboardDocumentCheck,
@@ -28,6 +29,7 @@ import { CLEARANCE_STATUS_LABELS, DEPARTMENT_LABELS, ITEM_TYPE_LABELS } from '..
 
 export default function StudentClearance() {
   const { user } = useAuth();
+  const { socket } = useSocket() || {};
   const navigate = useNavigate();
 
   const [clearance, setClearance] = useState(null);
@@ -37,8 +39,8 @@ export default function StudentClearance() {
   const [noClearance, setNoClearance] = useState(false);
   const [downloadingCert, setDownloadingCert] = useState(false);
 
-  const fetchClearance = useCallback(async () => {
-    setLoading(true);
+  const fetchClearance = useCallback(async (showLoader = false) => {
+    if (showLoader) setLoading(true);
     try {
       const [clearanceRes, prereqRes] = await Promise.all([
         api.get('/clearances/my'),
@@ -65,8 +67,25 @@ export default function StudentClearance() {
   }, []);
 
   useEffect(() => {
-    fetchClearance();
+    fetchClearance(true);
   }, [fetchClearance]);
+
+  // Real-time socket event listener
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleUpdate = () => {
+      fetchClearance(false);
+    };
+
+    socket.on('clearance_updated', handleUpdate);
+    socket.on('new_notification', handleUpdate);
+
+    return () => {
+      socket.off('clearance_updated', handleUpdate);
+      socket.off('new_notification', handleUpdate);
+    };
+  }, [socket, fetchClearance]);
 
   const handleInitiate = async () => {
     if (prereq && !prereq.allCleared && prereq.pendingItems?.length > 0) {

@@ -5,6 +5,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import Table from '../../components/common/Table';
 import Button from '../../components/common/Button';
 import Badge, { getStatusVariant } from '../../components/common/Badge';
+import { useSocket } from '../../context/SocketContext';
 import { SUBMISSION_STATUS_LABELS, SUBMISSION_ITEM_TYPE_LABELS } from '../../utils/constants';
 import {
   HiOutlineDocumentText,
@@ -18,14 +19,15 @@ import {
 } from 'react-icons/hi2';
 
 export default function StudentSubmissions() {
+  const { socket } = useSocket() || {};
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [submitting, setSubmitting] = useState(null);
 
-  const fetchSubmissions = useCallback(async () => {
-    setLoading(true);
+  const fetchSubmissions = useCallback(async (showLoader = false) => {
+    if (showLoader) setLoading(true);
     try {
       const res = await api.get('/submissions/my');
       const raw = res.data.data || [];
@@ -70,8 +72,27 @@ export default function StudentSubmissions() {
   }, []);
 
   useEffect(() => {
-    fetchSubmissions();
+    fetchSubmissions(true);
   }, [fetchSubmissions]);
+
+  // Real-time socket event listener for live coursework synchronization
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleUpdate = () => {
+      fetchSubmissions(false);
+    };
+
+    socket.on('submission_verified', handleUpdate);
+    socket.on('clearance_updated', handleUpdate);
+    socket.on('new_notification', handleUpdate);
+
+    return () => {
+      socket.off('submission_verified', handleUpdate);
+      socket.off('clearance_updated', handleUpdate);
+      socket.off('new_notification', handleUpdate);
+    };
+  }, [socket, fetchSubmissions]);
 
   const handleSubmit = async (submissionItemId) => {
     if (!submissionItemId) {

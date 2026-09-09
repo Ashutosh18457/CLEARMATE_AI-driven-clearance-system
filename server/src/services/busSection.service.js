@@ -274,6 +274,11 @@ const busSectionService = {
       logger.warn('Failed to send notification to student for bus fee update', { error: notifErr.message });
     }
 
+    try {
+      const { emitToUser } = require('../config/socket');
+      emitToUser(student._id || studentId, 'clearance_updated', { studentId: student._id || studentId, department: 'bus', status });
+    } catch (e) {}
+
     logger.info('Student bus fee status updated by Bus Section', {
       studentId,
       status,

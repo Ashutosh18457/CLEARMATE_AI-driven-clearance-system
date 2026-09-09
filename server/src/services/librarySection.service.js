@@ -265,6 +265,11 @@ const librarySectionService = {
       logger.warn('Failed to send notification to student for library update', { error: notifErr.message });
     }
 
+    try {
+      const { emitToUser } = require('../config/socket');
+      emitToUser(student._id || studentId, 'clearance_updated', { studentId: student._id || studentId, department: 'library', status });
+    } catch (e) {}
+
     logger.info('Student library status updated by Library Section', {
       studentId,
       status,

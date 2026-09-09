@@ -87,26 +87,38 @@ export default function Sidebar() {
   };
 
   const linkClasses = ({ isActive }) =>
-    `flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors duration-150 ${
+    `flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 ${
       isActive
-        ? 'bg-brand-50 text-brand border-r-2 border-brand'
-        : 'text-ink-secondary hover:bg-canvas hover:text-ink-primary'
+        ? 'bg-blue-50/90 text-blue-700 font-bold border-l-3 border-blue-600 shadow-xs'
+        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
     }`;
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-white">
       {/* Logo / Brand */}
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-border-subtle shrink-0">
-        <img src={logoIcon} alt="ClearMate" className="h-10 w-auto object-contain shrink-0" />
+      <div className="flex items-center gap-3 px-4 h-16 border-b border-slate-200 shrink-0 bg-slate-50/50">
+        <img src={logoIcon} alt="ClearMate" className="h-9 w-auto object-contain shrink-0" />
         {!collapsed && (
-          <span className="text-xl font-extrabold text-ink-primary tracking-wide font-display">
-            CLEARMATE
-          </span>
+          <div className="flex flex-col min-w-0">
+            <span className="text-base font-black text-slate-900 tracking-wider font-display leading-tight">
+              CLEARMATE
+            </span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">
+              Academic ERP
+            </span>
+          </div>
         )}
       </div>
 
       {/* Navigation Links */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
+      <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto custom-scrollbar">
+        {!collapsed && (
+          <div className="px-3 pb-1">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+              Navigation Menu
+            </span>
+          </div>
+        )}
         {navItems.map((item) => (
           <NavLink
             key={`${item.to}-${item.label}`}
@@ -116,25 +128,28 @@ export default function Sidebar() {
             onClick={() => setMobileOpen(false)}
           >
             <item.icon className="w-5 h-5 shrink-0" />
-            {!collapsed && <span>{item.label}</span>}
+            {!collapsed && <span className="truncate">{item.label}</span>}
           </NavLink>
         ))}
       </nav>
 
       {/* User info + Logout */}
-      <div className="border-t border-border-subtle p-3 shrink-0">
+      <div className="border-t border-slate-200 p-3 shrink-0 bg-slate-50/60">
         {!collapsed && (
-          <div className="px-3 py-2 mb-2">
-            <p className="text-sm font-medium text-ink-primary truncate">{user?.name}</p>
-            <p className="text-xs text-ink-muted truncate">{ROLE_LABELS[user?.role]}</p>
+          <div className="px-3 py-2 mb-2 bg-white rounded-lg border border-slate-200 shadow-2xs">
+            <p className="text-xs font-bold text-slate-800 truncate">{user?.name}</p>
+            <p className="text-[11px] font-semibold text-blue-600 truncate">{ROLE_LABELS[user?.role] || user?.role}</p>
+            {user?.enrollmentNo && (
+              <p className="text-[10px] text-slate-400 font-mono mt-0.5 font-medium">ID: {user.enrollmentNo}</p>
+            )}
           </div>
         )}
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-ink-secondary hover:bg-red-50 hover:text-status-rejected transition-colors duration-150 w-full"
+          className="flex items-center justify-center sm:justify-start gap-2.5 px-3 py-2 rounded-lg text-xs font-bold text-red-600 hover:bg-red-50 transition-colors duration-150 w-full"
         >
-          <HiOutlineArrowRightOnRectangle className="w-5 h-5 shrink-0" />
-          {!collapsed && <span>Log out</span>}
+          <HiOutlineArrowRightOnRectangle className="w-4 h-4 shrink-0" />
+          {!collapsed && <span>Sign Out</span>}
         </button>
       </div>
     </div>

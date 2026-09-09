@@ -70,8 +70,8 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [initiating, setInitiating] = useState(false);
 
-  const fetchDashboardData = useCallback(async () => {
-    setLoading(true);
+  const fetchDashboardData = useCallback(async (showLoader = false) => {
+    if (showLoader) setLoading(true);
     try {
       const [submissionsRes, clearanceRes, prereqRes] = await Promise.all([
         api.get('/submissions/my').catch(() => ({ data: { data: [] } })),
@@ -113,7 +113,7 @@ export default function StudentDashboard() {
   }, []);
 
   useEffect(() => {
-    fetchDashboardData();
+    fetchDashboardData(true);
   }, [fetchDashboardData]);
 
   // Real-time socket event listener for live dashboard synchronization
@@ -121,7 +121,7 @@ export default function StudentDashboard() {
     if (!socket) return;
 
     const handleDataUpdate = () => {
-      fetchDashboardData();
+      fetchDashboardData(false);
     };
 
     socket.on('clearance_updated', handleDataUpdate);

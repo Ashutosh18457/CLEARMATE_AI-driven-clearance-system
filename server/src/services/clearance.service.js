@@ -11,6 +11,7 @@ const AppError = require('../utils/AppError');
 const logger = require('../config/logger');
 const notificationService = require('./notification.service');
 const auditService = require('./audit.service');
+const { emitToUser, emitToRole, emitToUsers } = require('../config/socket');
 
 const SECTION_DEPARTMENTS = ['library', 'accounts', 'bus', 'disciplinary'];
 
@@ -335,6 +336,13 @@ const clearanceService = {
       details: { semesterId: semester._id, itemClearancesCreated: itemClearances.length },
     });
 
+    try {
+      emitToUser(studentId, 'clearance_updated', { studentId, status: clearanceRequest.status });
+      emitToRole('teacher', 'clearance_updated', { studentId });
+      emitToRole('class_incharge', 'clearance_updated', { studentId });
+      emitToRole('admin', 'clearance_updated', { studentId });
+    } catch (e) {}
+
     return {
       clearanceRequest,
       itemClearancesCreated: itemClearances.length,
@@ -580,6 +588,12 @@ const clearanceService = {
       await this._checkAndAdvanceFromItems(clearanceRequest._id);
     }
 
+    try {
+      emitToUser(itemClearance.studentId, 'clearance_updated', { studentId: itemClearance.studentId, itemClearanceId, status });
+      emitToUser(itemClearance.studentId, 'submission_verified', { studentId: itemClearance.studentId });
+      emitToRole('class_incharge', 'clearance_updated', { studentId: itemClearance.studentId });
+    } catch (e) {}
+
     return itemClearance;
   },
 
@@ -653,6 +667,11 @@ const clearanceService = {
     } else if (status === 'approved') {
       await this._checkAndAdvanceFromSections(clearanceRequest._id);
     }
+
+    try {
+      emitToUser(sectionClearance.studentId, 'clearance_updated', { studentId: sectionClearance.studentId, sectionClearanceId, status });
+      emitToRole('class_incharge', 'clearance_updated', { studentId: sectionClearance.studentId });
+    } catch (e) {}
 
     return sectionClearance;
   },
@@ -910,6 +929,12 @@ const clearanceService = {
       );
     }
 
+    try {
+      emitToUser(clearanceRequest.studentId, 'clearance_updated', { studentId: clearanceRequest.studentId, status: clearanceRequest.status });
+      emitToRole('hod', 'clearance_updated', { studentId: clearanceRequest.studentId });
+      emitToRole('class_incharge', 'clearance_updated', { studentId: clearanceRequest.studentId });
+    } catch (e) {}
+
     return clearanceRequest;
   },
 
@@ -1073,6 +1098,13 @@ const clearanceService = {
         details: { studentId: clearanceRequest.studentId },
       });
     }
+
+    try {
+      emitToUser(clearanceRequest.studentId, 'clearance_updated', { studentId: clearanceRequest.studentId, status: clearanceRequest.status });
+      emitToRole('admin', 'clearance_updated', { studentId: clearanceRequest.studentId });
+      emitToRole('hod', 'clearance_updated', { studentId: clearanceRequest.studentId });
+      emitToRole('class_incharge', 'clearance_updated', { studentId: clearanceRequest.studentId });
+    } catch (e) {}
 
     return clearanceRequest;
   },
@@ -1387,6 +1419,12 @@ const clearanceService = {
       hallTicketNumber: clearanceRequest.hallTicketNumber,
     });
 
+    try {
+      if (student?._id) {
+        emitToUser(student._id, 'clearance_updated', { studentId: student._id, hallTicketIssued: true });
+      }
+    } catch (e) {}
+
     return {
       clearanceRequest,
       message: `Hall ticket successfully approved and issued for ${student?.name || 'Student'}. Congratulations email sent!`,
@@ -1497,6 +1535,10 @@ const clearanceService = {
       logger.info(`Auto-advanced to ${nextStatus}`, { requestId: clearanceRequestId });
       if (updatedRequest) {
         await notificationService.notifyStageAdvanced(updatedRequest.studentId, nextStatus);
+        try {
+          emitToUser(updatedRequest.studentId, 'clearance_updated', { studentId: updatedRequest.studentId, status: nextStatus });
+          emitToRole('class_incharge', 'clearance_updated', { studentId: updatedRequest.studentId });
+        } catch (e) {}
       }
     }
   },
@@ -1527,6 +1569,10 @@ const clearanceService = {
         logger.info(`Auto-advanced to ${nextStatus}`, { requestId: clearanceRequestId });
         if (updatedRequest) {
           await notificationService.notifyStageAdvanced(updatedRequest.studentId, nextStatus);
+          try {
+            emitToUser(updatedRequest.studentId, 'clearance_updated', { studentId: updatedRequest.studentId, status: nextStatus });
+            emitToRole('class_incharge', 'clearance_updated', { studentId: updatedRequest.studentId });
+          } catch (e) {}
         }
       }
     }

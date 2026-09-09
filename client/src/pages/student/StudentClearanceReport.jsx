@@ -34,6 +34,37 @@ export default function StudentClearanceReport() {
     rollNo: user?.enrollmentNo || '',
   });
 
+  const filtersRef = React.useRef(filters);
+  filtersRef.current = filters;
+
+  const fetchReport = useCallback(async (customFilters) => {
+    setLoading(true);
+    const active = customFilters || filtersRef.current;
+    try {
+      const res = await api.get('/certificate/my', {
+        params: {
+          branch: active.branch,
+          semester: active.semester,
+          semesterId: active.semesterId,
+          section: active.section,
+          includeReRun: active.includeReRun,
+          forceAllCleared: active.forceAllCleared,
+          name: active.name,
+          rollNo: active.rollNo,
+        },
+      });
+      if (res.data.success && res.data.data) {
+        setReportData(res.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch clearance data:', err);
+      toast.error('No clearance record or items found for this semester yet.');
+      setReportData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (user) {
       const currentSemNum =
@@ -57,43 +88,10 @@ export default function StudentClearanceReport() {
       };
       setFilters(updated);
       fetchReport(updated);
+    } else {
+      fetchReport();
     }
-  }, [user]);
-
-  const fetchReport = useCallback(
-    async (customFilters) => {
-      setLoading(true);
-      const active = customFilters || filters;
-      try {
-        const res = await api.get('/certificate/my', {
-          params: {
-            branch: active.branch,
-            semester: active.semester,
-            semesterId: active.semesterId,
-            section: active.section,
-            includeReRun: active.includeReRun,
-            forceAllCleared: active.forceAllCleared,
-            name: active.name,
-            rollNo: active.rollNo,
-          },
-        });
-        if (res.data.success && res.data.data) {
-          setReportData(res.data.data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch clearance data:', err);
-        toast.error('No clearance record or items found for this semester yet.');
-        setReportData(null);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [filters, user]
-  );
-
-  useEffect(() => {
-    fetchReport();
-  }, [fetchReport]);
+  }, [user, fetchReport]);
 
   // Real-time socket event listener for live synchronization
   useEffect(() => {

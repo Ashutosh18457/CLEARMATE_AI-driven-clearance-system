@@ -18,7 +18,7 @@ export default function DashboardLayout({ title, children }) {
       <div className="md:pl-60">
         <Navbar title={title} />
 
-        <main className="p-6 md:p-8 max-w-7xl mx-auto">
+        <main className="p-3 sm:p-5 md:p-8 max-w-7xl mx-auto w-full transition-all duration-150">
           {children}
         </main>
       </div>

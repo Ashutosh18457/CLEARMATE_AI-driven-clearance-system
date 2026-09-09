@@ -41,7 +41,7 @@ export function SocketProvider({ children }) {
 
     const newSocket = io(backendUrl, {
       auth: { token },
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,
@@ -111,8 +111,22 @@ export function SocketProvider({ children }) {
     socketRef.current = newSocket;
     setSocket(newSocket);
 
+    // Mobile & Cross-platform lifecycle: reconnect when device wakes or reconnects to network
+    const handleVisibilityOrNetworkChange = () => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        if (socketRef.current && !socketRef.current.connected) {
+          socketRef.current.connect();
+        }
+      }
+    };
+
+    window.addEventListener('online', handleVisibilityOrNetworkChange);
+    document.addEventListener('visibilitychange', handleVisibilityOrNetworkChange);
+
     return () => {
       // Disconnect cleanly when component unmounts or user logs out
+      window.removeEventListener('online', handleVisibilityOrNetworkChange);
+      document.removeEventListener('visibilitychange', handleVisibilityOrNetworkChange);
       newSocket.off('connect');
       newSocket.off('connect_error');
       newSocket.off('disconnect');

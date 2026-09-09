@@ -4,6 +4,7 @@ const SectionClearance = require('../models/SectionClearance');
 const User = require('../models/User');
 const Semester = require('../models/Semester');
 const Program = require('../models/Program');
+const ClearanceItem = require('../models/ClearanceItem');
 const FacultyMapping = require('../models/FacultyMapping');
 const AppError = require('../utils/AppError');
 const logger = require('../config/logger');
@@ -99,7 +100,7 @@ const certificateService = {
       'CSE'
     ).toUpperCase();
 
-    const effectiveSection = (
+    const effectiveSection = String(
       sectionOverride ||
       student.section ||
       'A'
@@ -108,44 +109,98 @@ const certificateService = {
     const effectiveSem = semOverride
       ? Number(semOverride)
       : (clearanceRequest?.semesterId?.semNumber || student.currentSemester || 5);
-    const effectiveRollNo = rollNoOverride || student.enrollmentNo || 'EN2024CSE002';
-    const effectiveName = nameOverride || student.name || 'Student';
+    const effectiveRollNo = String(rollNoOverride || student.enrollmentNo || 'EN2024CSE002');
+    const effectiveName = String(nameOverride || student.name || 'Student');
 
     // 1. Resolve Branch Faculty Mapping from DB
     const branchMapping = await this.resolveBranchMapping(effectiveBranchCode);
 
-    // 2. Resolve Class Incharge: Check DB Users first, fallback to FacultyMapping
+    // 2. Resolve Class Incharge: Check DB Users (assignedStudents, assignedSection/program), then FacultyMapping
     let dbCI = null;
     try {
-      dbCI = await User.findOne({
-        role: 'class_incharge',
-        $or: [
-          { section: effectiveSection },
-          { section: `Section ${effectiveSection}` },
-          { programId: student.programId?._id || student.programId },
-        ],
-      });
+      // Priority A: Check if a teacher / class incharge is explicitly assigned to this student
+      if (student._id && String(student._id) !== 'demo-student-id') {
+        dbCI = await User.findOne({
+          role: { $in: ['class_incharge', 'teacher'] },
+          assignedStudents: student._id,
+          isActive: { $ne: false },
+        });
+      }
+
+      // Priority B: Check if a class_incharge user matches this student's branch & section
+      if (!dbCI) {
+        const progIds = [];
+        if (student.programId?._id) progIds.push(student.programId._id);
+        else if (student.programId) progIds.push(student.programId);
+
+        const secVariants = [effectiveSection, `Section ${effectiveSection}`, `Sec ${effectiveSection}`];
+
+        if (progIds.length > 0) {
+          dbCI = await User.findOne({
+            role: 'class_incharge',
+            isActive: { $ne: false },
+            $and: [
+              {
+                $or: [
+                  { assignedProgramId: { $in: progIds } },
+                  { programId: { $in: progIds } },
+                ],
+              },
+              {
+                $or: [
+                  { assignedSection: { $in: secVariants } },
+                  { section: { $in: secVariants } },
+                ],
+              },
+            ],
+          });
+        }
+
+        if (!dbCI) {
+          dbCI = await User.findOne({
+            role: 'class_incharge',
+            isActive: { $ne: false },
+            $or: [
+              { assignedSection: { $in: secVariants } },
+              { section: { $in: secVariants } },
+            ],
+          });
+        }
+      }
     } catch (e) {}
 
     const matchedSection = (branchMapping.sections || []).find(
       (s) => s.sectionName?.toUpperCase() === effectiveSection
     ) || branchMapping.sections?.[0];
 
+    const ciName = dbCI?.name || matchedSection?.classIncharge?.name || `Prof. Class Incharge (Sec ${effectiveSection})`;
+    const ciEmail = dbCI?.email || matchedSection?.classIncharge?.email || `ci.${effectiveBranchCode.toLowerCase()}@sbjit.edu.in`;
+    const ciDesignation = dbCI
+      ? `Assistant Professor & Class Incharge (Sec ${effectiveSection})`
+      : (matchedSection?.classIncharge?.designation || `Assistant Professor & Class Incharge (Sec ${effectiveSection})`);
+
     const resolvedCI = {
-      name: dbCI?.name || matchedSection?.classIncharge?.name || `Prof. Class Incharge (Sec ${effectiveSection})`,
-      email: dbCI?.email || matchedSection?.classIncharge?.email || `ci.${effectiveBranchCode.toLowerCase()}@sbjit.edu.in`,
-      designation: dbCI ? `Assistant Professor & Class Incharge (Sec ${effectiveSection})` : (matchedSection?.classIncharge?.designation || `Assistant Professor & Class Incharge (Sec ${effectiveSection})`),
+      name: ciName,
+      email: ciEmail,
+      designation: ciDesignation,
     };
 
     // 3. Resolve HOD: Check DB Users first, fallback to FacultyMapping
     let dbHOD = null;
     try {
+      const progIds = [];
+      if (student.programId?._id) progIds.push(student.programId._id);
+      else if (student.programId) progIds.push(student.programId);
+
+      const hodOrs = [{ department: new RegExp(effectiveBranchCode, 'i') }];
+      if (progIds.length > 0) {
+        hodOrs.push({ programId: { $in: progIds } }, { assignedProgramId: { $in: progIds } });
+      }
+
       dbHOD = await User.findOne({
         role: 'hod',
-        $or: [
-          { programId: student.programId?._id || student.programId },
-          { department: new RegExp(effectiveBranchCode, 'i') },
-        ],
+        isActive: { $ne: false },
+        $or: hodOrs,
       });
     } catch (e) {}
 
@@ -195,18 +250,69 @@ const certificateService = {
       const semMap = (branchMapping.semesters || []).find((s) => s.semNumber === effectiveSem);
       if (semMap && semMap.subjects && semMap.subjects.length > 0) {
         semesterSubjects = semMap.subjects;
-      } else if (effectiveSemesterId) {
-        const ClearanceItem = require('../models/ClearanceItem');
-        const dbItems = await ClearanceItem.find({ semesterId: effectiveSemesterId })
-          .populate('theoryTeacherId', 'name')
-          .sort({ srNo: 1 });
-        semesterSubjects = dbItems.map((item) => ({
-          code: item.subjectCode || '',
-          title: item.title,
-          teacherName: item.theoryTeacherId?.name || 'Faculty Incharge',
-          type: item.type,
-          remarks: 'Coursework pending',
-        }));
+      } else {
+        let resolvedSemesterId = semesterId || clearanceRequest?.semesterId?._id || clearanceRequest?.semesterId;
+        if (!resolvedSemesterId && student?.programId) {
+          try {
+            const semDoc = await Semester.findOne({
+              programId: student.programId._id || student.programId,
+              semNumber: effectiveSem,
+            });
+            if (semDoc) resolvedSemesterId = semDoc._id;
+          } catch (e) {}
+        }
+
+        if (resolvedSemesterId) {
+          try {
+            const dbItems = await ClearanceItem.find({ semesterId: resolvedSemesterId })
+              .populate('theoryTeacherId', 'name')
+              .sort({ srNo: 1 });
+            if (dbItems && dbItems.length > 0) {
+              semesterSubjects = dbItems.map((item) => ({
+                code: item.subjectCode || '',
+                title: item.title,
+                teacherName: item.theoryTeacherId?.name || 'Faculty Incharge',
+                type: item.type,
+                remarks: 'Coursework pending',
+              }));
+            }
+          } catch (e) {}
+        }
+
+        // Fallback default subjects if neither mapping nor DB clearance items exist
+        if (semesterSubjects.length === 0) {
+          if (effectiveBranchCode === 'AIML') {
+            semesterSubjects = [
+              { code: 'AI501', title: 'Machine Learning (ML)', teacherName: 'Prof. Verma', type: 'theory', remarks: 'Model implementations verified' },
+              { code: 'AI502', title: 'Deep Learning Architectures (DL)', teacherName: 'Prof. P. Gupta', type: 'theory', remarks: 'Neural network projects signed off' },
+              { code: 'AI503', title: 'Natural Language Processing (NLP)', teacherName: 'Dr. Singh', type: 'theory', remarks: 'Transformer labs cleared' },
+            ];
+          } else if (effectiveBranchCode === 'IT') {
+            semesterSubjects = [
+              { code: 'IT501', title: 'Web Technologies & Frameworks', teacherName: 'Prof. Patil', type: 'theory', remarks: 'Assignments & practical cleared' },
+              { code: 'IT502', title: 'Cloud Computing & DevOps', teacherName: 'Prof. S. Joshi', type: 'theory', remarks: 'Cloud lab tasks verified' },
+              { code: 'IT503', title: 'Information & Cyber Security', teacherName: 'Prof. N. Deshmukh', type: 'theory', remarks: 'Audit assignment submitted' },
+            ];
+          } else if (effectiveBranchCode === 'CIVIL') {
+            semesterSubjects = [
+              { code: 'CE501', title: 'Structural Analysis-II', teacherName: 'Prof. Joshi', type: 'theory', remarks: 'Calculation sheets verified' },
+              { code: 'CE502', title: 'Geotechnical Engineering', teacherName: 'Prof. R. Dave', type: 'theory', remarks: 'Soil sample tests evaluated' },
+              { code: 'CE503', title: 'Surveying & GIS', teacherName: 'Dr. A. Verma', type: 'theory', remarks: 'Field survey maps submitted' },
+            ];
+          } else if (effectiveBranchCode === 'MECHANICAL') {
+            semesterSubjects = [
+              { code: 'ME501', title: 'Heat Transfer & Thermodynamics', teacherName: 'Prof. Rao', type: 'theory', remarks: 'Assignments & term tests cleared' },
+              { code: 'ME502', title: 'Design of Machine Elements', teacherName: 'Prof. S. R. Patil', type: 'theory', remarks: 'CAD sheets submitted' },
+              { code: 'ME503', title: 'Fluid Mechanics & Machinery', teacherName: 'Prof. M. Shinde', type: 'theory', remarks: 'Practical journals verified' },
+            ];
+          } else {
+            semesterSubjects = [
+              { code: 'CS501', title: 'Database Management Systems (DBMS)', teacherName: 'Prof. Sharma', type: 'theory', remarks: 'Theory records & assignments verified' },
+              { code: 'CS502', title: 'Computer Networks (CN)', teacherName: 'Prof. K. Verma', type: 'theory', remarks: 'Assignments & practical cleared' },
+              { code: 'CS503', title: 'Theory of Computation (TOC)', teacherName: 'Prof. S. Mehta', type: 'theory', remarks: 'Tutorials & assignments cleared' },
+            ];
+          }
+        }
       }
 
       finalSubjectRows = semesterSubjects.map((sub, idx) => ({

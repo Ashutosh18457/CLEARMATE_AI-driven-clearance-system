@@ -7,6 +7,7 @@ const Batch = require('../models/Batch');
 const AppError = require('../utils/AppError');
 const logger = require('../config/logger');
 const notificationService = require('./notification.service');
+const { emitToUser, emitToRole } = require('../config/socket');
 
 const submissionService = {
   // ══════════════════════════════════════════════
@@ -325,6 +326,11 @@ const submissionService = {
       await notificationService.notifySubmissionRejected(submission.studentId, itemTitle, remarks);
     }
 
+    try {
+      emitToUser(submission.studentId, 'submission_verified', { submissionId, status });
+      emitToUser(submission.studentId, 'clearance_updated', { studentId: submission.studentId });
+    } catch (e) {}
+
     return submission;
   },
 
@@ -432,6 +438,13 @@ const submissionService = {
         }
       }
     }
+
+    try {
+      for (const sub of validSubmissions) {
+        emitToUser(sub.studentId, 'submission_verified', { submissionId: sub._id, status });
+        emitToUser(sub.studentId, 'clearance_updated', { studentId: sub.studentId });
+      }
+    } catch (e) {}
 
     logger.info('Bulk submissions verified', {
       teacherId,
@@ -623,6 +636,11 @@ const submissionService = {
     } catch (notifErr) {
       logger.error('Failed to dispatch teacher notification on submitWork', { error: notifErr.message });
     }
+
+    try {
+      emitToUser(studentId, 'submission_verified', { submissionId: submission._id, status: submission.status });
+      emitToUser(studentId, 'clearance_updated', { studentId });
+    } catch (e) {}
 
     return submission;
   },

@@ -194,6 +194,15 @@ const facultyMappingController = {
       if (!mapping) {
         throw AppError.notFound('Faculty mapping not found');
       }
+
+      try {
+        const { emitToRole } = require('../config/socket');
+        emitToRole('student', 'clearance_updated', { branchCode: mapping.branchCode });
+        emitToRole('teacher', 'clearance_updated', { branchCode: mapping.branchCode });
+        emitToRole('class_incharge', 'clearance_updated', { branchCode: mapping.branchCode });
+        emitToRole('hod', 'clearance_updated', { branchCode: mapping.branchCode });
+      } catch (e) {}
+
       sendSuccess(res, { data: mapping, message: 'Faculty mapping updated successfully' });
     } catch (error) {
       next(error);
