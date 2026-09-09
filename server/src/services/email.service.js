@@ -50,7 +50,7 @@ const createTransporter = () => {
 // ══════════════════════════════════════════════
 
 const EMAIL_FROM = () =>
-  `"${process.env.EMAIL_FROM_NAME || 'ClearMate'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@sbjit.edu.in'}>`;
+  `"${process.env.EMAIL_FROM_NAME || 'ClearMate'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER || process.env.GMAIL_USER || 'no-reply@sbjit.edu.in'}>`;
 
 const baseStyle = `
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 20px; }
