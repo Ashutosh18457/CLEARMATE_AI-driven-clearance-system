@@ -154,6 +154,24 @@ const authController = {
   },
 
   /**
+   * @route GET /api/auth/env-check
+   * @desc Lightweight endpoint to check email env vars without sending
+   * @access Public
+   */
+  async envCheck(req, res) {
+    res.json({
+      success: true,
+      envStatus: {
+        GMAIL_USER: process.env.GMAIL_USER ? 'CONFIGURED' : 'MISSING',
+        GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD ? 'CONFIGURED' : 'MISSING',
+        EMAIL_USER: process.env.EMAIL_USER ? 'CONFIGURED' : 'MISSING',
+        EMAIL_HOST: process.env.EMAIL_HOST || 'NONE',
+        GMAIL_USER_VALUE: process.env.GMAIL_USER ? process.env.GMAIL_USER.substring(0, 5) + '***' : 'N/A',
+      },
+    });
+  },
+
+  /**
    * @route GET /api/auth/test-email
    * @desc Diagnostic endpoint to test live email delivery and env configuration
    * @access Public
@@ -162,11 +180,18 @@ const authController = {
     try {
       const { sendPasswordResetEmail } = require('../services/email.service');
       const targetEmail = req.query.to || process.env.GMAIL_USER || 'adityamahalle.aiml23@sbjit.edu.in';
-      const result = await sendPasswordResetEmail({
+
+      // Wrap with a 15-second timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('SMTP send timed out after 15 seconds')), 15000)
+      );
+      const sendPromise = sendPasswordResetEmail({
         email: targetEmail,
         resetUrl: 'https://clearmate.vercel.app/reset-password/test-diagnostic-token',
         name: 'Aditya Mahalle',
       });
+
+      const result = await Promise.race([sendPromise, timeoutPromise]);
       res.json({
         success: true,
         message: `Email test dispatched to ${targetEmail}`,
