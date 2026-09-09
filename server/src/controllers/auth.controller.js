@@ -151,6 +151,43 @@ const authController = {
     } catch (error) {
       next(error);
     }
+  /**
+   * @route GET /api/auth/test-email
+   * @desc Diagnostic endpoint to test live email delivery and env configuration
+   * @access Public
+   */
+  async testEmail(req, res) {
+    try {
+      const { sendPasswordResetEmail } = require('../services/email.service');
+      const targetEmail = req.query.to || process.env.GMAIL_USER || 'adityamahalle.aiml23@sbjit.edu.in';
+      const result = await sendPasswordResetEmail({
+        email: targetEmail,
+        resetUrl: 'https://clearmate.vercel.app/reset-password/test-diagnostic-token',
+        name: 'Aditya Mahalle',
+      });
+      res.json({
+        success: true,
+        message: `Email test dispatched to ${targetEmail}`,
+        details: result,
+        envStatus: {
+          GMAIL_USER: process.env.GMAIL_USER ? 'CONFIGURED' : 'MISSING',
+          GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD ? 'CONFIGURED' : 'MISSING',
+          EMAIL_USER: process.env.EMAIL_USER ? 'CONFIGURED' : 'MISSING',
+          EMAIL_HOST: process.env.EMAIL_HOST || 'NONE',
+        },
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        error: err.message,
+        stack: err.stack,
+        envStatus: {
+          GMAIL_USER: process.env.GMAIL_USER ? 'CONFIGURED' : 'MISSING',
+          GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD ? 'CONFIGURED' : 'MISSING',
+          EMAIL_USER: process.env.EMAIL_USER ? 'CONFIGURED' : 'MISSING',
+        },
+      });
+    }
   },
 };
 

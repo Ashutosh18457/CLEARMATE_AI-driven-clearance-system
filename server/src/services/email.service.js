@@ -29,11 +29,13 @@ const createTransporter = () => {
     });
   }
 
-  // 2. Gmail service / Google Workspace (for @gmail.com or @sbjit.edu.in)
+  // 2. Gmail / Google Workspace SMTP (uses secure SSL port 465 for 100% cloud reliability)
   if (nodemailer && gmailUser && gmailPass) {
-    logger.info(`📧 Initializing Gmail SMTP transporter for ${gmailUser}`);
+    logger.info(`📧 Initializing Gmail SMTP (smtp.gmail.com:465) for ${gmailUser}`);
     return nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: {
         user: gmailUser,
         pass: gmailPass,
