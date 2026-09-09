@@ -25,11 +25,13 @@ const createTransporter = () => {
 
   // 2. Gmail service shortcut
   if (nodemailer && process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+    const user = process.env.GMAIL_USER.trim();
+    const pass = process.env.GMAIL_APP_PASSWORD.replace(/\s+/g, '');
     return nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD,
+        user,
+        pass,
       },
     });
   }
