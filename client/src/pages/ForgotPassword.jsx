@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { HiOutlineArrowLeft, HiOutlineCheckCircle, HiOutlineExclamationCircle } from 'react-icons/hi2';
 import Button from '../components/common/Button';
 import logoIcon from '../assets/logo.png';
+import api from '../api/axios';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -30,16 +31,8 @@ export default function ForgotPassword() {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || 'Failed to process request.');
-      }
+      const res = await api.post('/auth/forgot-password', { email: cleanEmail });
+      const data = res.data;
 
       setSuccessMsg(
         data.message || 'Password reset link has been dispatched to your email address.'

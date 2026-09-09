@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import logoIcon from '../assets/logo.png';
 import { ROLE_DASHBOARD_ROUTES } from '../utils/constants';
 import Button from '../components/common/Button';
+import api from '../api/axios';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -63,15 +64,8 @@ export default function LoginPage() {
 
     setForgotLoading(true);
     try {
-      const res = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: clean }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || 'Failed to process password reset request.');
-      }
+      const res = await api.post('/auth/forgot-password', { email: clean });
+      const data = res.data;
 
       const token = data.data?.resetToken || data.resetToken;
       if (token) {
@@ -79,7 +73,7 @@ export default function LoginPage() {
         setForgotStep(2);
         setForgotMsg('Identity verified! Please set your new secure password below.');
       } else {
-        setForgotMsg(data.message || 'Password reset instructions have been dispatched.');
+        setForgotMsg(data.message || 'Password reset instructions have been dispatched to your email.');
       }
     } catch (err) {
       setForgotError(err.message || 'Error processing request. Please try again.');
@@ -106,15 +100,8 @@ export default function LoginPage() {
 
     setForgotLoading(true);
     try {
-      const res = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: resetToken, password: newPassword }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || 'Failed to reset password.');
-      }
+      const res = await api.post('/auth/reset-password', { token: resetToken, password: newPassword });
+      const data = res.data;
 
       setForgotMsg('Password successfully reset! You can now log in.');
       setEmail(forgotEmail.trim());

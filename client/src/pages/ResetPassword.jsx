@@ -10,6 +10,7 @@ import {
 } from 'react-icons/hi2';
 import logoIcon from '../assets/logo.png';
 import Button from '../components/common/Button';
+import api from '../api/axios';
 
 export default function ResetPassword() {
   const { token: paramToken } = useParams();
@@ -66,18 +67,8 @@ export default function ResetPassword() {
 
     setLoading(true);
     try {
-      const res = await fetch(`/api/auth/reset-password/${token}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(
-          data.message || 'Password reset token is invalid or has expired (15-minute limit).'
-        );
-      }
+      const res = await api.post(`/auth/reset-password/${token}`, { token, password });
+      const data = res.data;
 
       setIsDone(true);
       setSuccessMsg(
