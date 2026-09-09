@@ -7,15 +7,109 @@ try {
 const logger = require('../config/logger');
 
 /**
- * Creates and returns a Nodemailer transporter based on environment variables.
+ * Helper to parse email address strings into { name, email } for API services
+ */
+const parseRecipient = (to) => {
+  if (!to) return [];
+  if (Array.isArray(to)) {
+    return to.map(parseRecipient).flat();
+  }
+  if (typeof to === 'string') {
+    const match = to.match(/(.*)<(.+@.+)>/);
+    if (match) {
+      return [{ name: match[1].replace(/["']/g, '').trim(), email: match[2].trim() }];
+    }
+    return [{ email: to.trim() }];
+  }
+  if (to && to.email) {
+    return [{ name: to.name || '', email: to.email }];
+  }
+  return [];
+};
+
+/**
+ * Creates and returns an email sender based on available environment variables.
+ * Priority:
+ * 1. Brevo REST API (BREVO_API_KEY) - Highest reliability on cloud & local (port 443 HTTPS)
+ * 2. Custom SMTP host (EMAIL_HOST)
+ * 3. Gmail SMTP (GMAIL_USER & GMAIL_APP_PASSWORD)
+ * 4. Dev console logger fallback
  */
 const createTransporter = () => {
+  const brevoApiKey = (process.env.BREVO_API_KEY || '').trim();
   const gmailUser = (process.env.GMAIL_USER || process.env.EMAIL_USER || '').trim();
   const gmailPass = (process.env.GMAIL_APP_PASSWORD || process.env.EMAIL_PASS || '').replace(/\s+/g, '');
   const emailHost = (process.env.EMAIL_HOST || '').trim();
   const emailPort = Number(process.env.EMAIL_PORT) || 587;
+  const senderEmail = (process.env.EMAIL_FROM || gmailUser || 'no-reply@sbjit.edu.in').trim();
+  const senderName = (process.env.EMAIL_FROM_NAME || 'ClearMate').trim();
 
-  // 1. Custom SMTP host specified
+  // 1. Brevo REST API (Transactional Email v3)
+  if (brevoApiKey) {
+    logger.info('📧 Initializing Brevo Transactional Email API (HTTPS)');
+    return {
+      sendMail: async (options) => {
+        const recipients = parseRecipient(options.to);
+        const sender = options.from ? parseRecipient(options.from)[0] : { name: senderName, email: senderEmail };
+        
+        try {
+          const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+            method: 'POST',
+            headers: {
+              'accept': 'application/json',
+              'api-key': brevoApiKey,
+              'content-type': 'application/json',
+            },
+            body: JSON.stringify({
+              sender: {
+                name: sender.name || senderName,
+                email: sender.email || senderEmail,
+              },
+              to: recipients,
+              subject: options.subject,
+              htmlContent: options.html || options.text,
+              textContent: options.text || undefined,
+            }),
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            logger.error('❌ Brevo API Email Send Failed:', data);
+            if (data.message && data.message.includes('unrecognised IP address')) {
+              logger.warn('⚠️ [Brevo IP Whitelist Notice] Please authorize your IP or disable IP restrictions in Brevo Dashboard: https://app.brevo.com/security/authorised_ips');
+            }
+            throw new Error(data.message || 'Failed to send email via Brevo API');
+          }
+
+          logger.info(`✅ Email successfully sent via Brevo to ${options.to} (MessageId: ${data.messageId})`);
+          return { messageId: data.messageId, response: 'ok' };
+        } catch (err) {
+          logger.warn(`⚠️ Brevo failed (${err.message}). Attempting fallback transporter...`);
+          if (nodemailer && gmailUser && gmailPass) {
+            try {
+              const dns = require('dns');
+              dns.setDefaultResultOrder('ipv4first');
+              const fallbackTransporter = nodemailer.createTransport({
+                host: 'smtp.gmail.com',
+                port: emailPort || 587,
+                secure: (emailPort || 587) === 465,
+                auth: { user: gmailUser, pass: gmailPass },
+                connectionTimeout: 8000,
+              });
+              const info = await fallbackTransporter.sendMail(options);
+              logger.info(`✅ Email delivered via Gmail SMTP fallback to ${options.to}`);
+              return info;
+            } catch (fallbackErr) {
+              logger.error('❌ Gmail SMTP fallback also failed:', fallbackErr.message);
+            }
+          }
+          throw err;
+        }
+      },
+    };
+  }
+
+  // 2. Custom SMTP host specified
   if (nodemailer && emailHost && gmailUser && gmailPass) {
     logger.info(`📧 Initializing custom SMTP transporter (${emailHost}:${emailPort}) for ${gmailUser}`);
     return nodemailer.createTransport({
@@ -29,9 +123,7 @@ const createTransporter = () => {
     });
   }
 
-  // 2. Gmail / Google Workspace SMTP
-  //    Use port 587 (STARTTLS) — many cloud hosts block port 465.
-  //    Force IPv4 — Render free tier can't reach Gmail via IPv6.
+  // 3. Gmail / Google Workspace SMTP
   if (nodemailer && gmailUser && gmailPass) {
     const dns = require('dns');
     dns.setDefaultResultOrder('ipv4first');
@@ -55,8 +147,8 @@ const createTransporter = () => {
     });
   }
 
-  // 3. Fallback: Development logger transporter
-  logger.warn('⚠️ [EMAIL FALLBACK] No valid SMTP credentials found (GMAIL_USER / EMAIL_USER). Using console logger.');
+  // 4. Fallback: Development logger transporter
+  logger.warn('⚠️ [EMAIL FALLBACK] No valid email credentials found. Using console logger.');
   return {
     sendMail: async (options) => {
       logger.info(`📧 [DEV EMAIL FALLBACK] Email would be sent to: ${options.to}`);
@@ -73,6 +165,7 @@ const createTransporter = () => {
 
 const EMAIL_FROM = () =>
   `"${process.env.EMAIL_FROM_NAME || 'ClearMate'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER || process.env.GMAIL_USER || 'no-reply@sbjit.edu.in'}>`;
+
 
 const baseStyle = `
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 20px; }
