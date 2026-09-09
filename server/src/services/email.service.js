@@ -30,11 +30,14 @@ const createTransporter = () => {
   }
 
   // 2. Gmail / Google Workspace SMTP
-  //    Try port 587 (STARTTLS) first — many cloud hosts (Render, etc.) block port 465.
+  //    Use port 587 (STARTTLS) — many cloud hosts block port 465.
+  //    Force IPv4 — Render free tier can't reach Gmail via IPv6.
   if (nodemailer && gmailUser && gmailPass) {
+    const dns = require('dns');
+    dns.setDefaultResultOrder('ipv4first');
     const smtpPort = emailPort || 587;
     const useSSL = smtpPort === 465;
-    logger.info(`📧 Initializing Gmail SMTP (smtp.gmail.com:${smtpPort}, secure=${useSSL}) for ${gmailUser}`);
+    logger.info(`📧 Initializing Gmail SMTP (smtp.gmail.com:${smtpPort}, secure=${useSSL}, ipv4) for ${gmailUser}`);
     return nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: smtpPort,
@@ -46,6 +49,9 @@ const createTransporter = () => {
       connectionTimeout: 10000,
       greetingTimeout: 10000,
       socketTimeout: 15000,
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
   }
 
