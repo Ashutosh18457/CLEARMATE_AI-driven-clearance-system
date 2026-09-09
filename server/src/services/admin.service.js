@@ -543,7 +543,7 @@ const adminService = {
           name,
           email,
           enrollmentNo,
-          password: defaultPassword || 'Pass@123',
+          password: defaultPassword || 'Password123!',
           role: 'student',
           programId,
           currentSemester: semesterNum,
