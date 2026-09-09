@@ -10,33 +10,39 @@ const logger = require('../config/logger');
  * Creates and returns a Nodemailer transporter based on environment variables.
  */
 const createTransporter = () => {
-  // 1. Gmail SMTP or Custom SMTP Service
-  if (nodemailer && process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+  const gmailUser = (process.env.GMAIL_USER || process.env.EMAIL_USER || '').trim();
+  const gmailPass = (process.env.GMAIL_APP_PASSWORD || process.env.EMAIL_PASS || '').replace(/\s+/g, '');
+  const emailHost = (process.env.EMAIL_HOST || '').trim();
+  const emailPort = Number(process.env.EMAIL_PORT) || 587;
+
+  // 1. Custom SMTP host specified
+  if (nodemailer && emailHost && gmailUser && gmailPass) {
+    logger.info(`📧 Initializing custom SMTP transporter (${emailHost}:${emailPort}) for ${gmailUser}`);
     return nodemailer.createTransport({
-      host: process.env.EMAIL_HOST,
-      port: Number(process.env.EMAIL_PORT) || 587,
-      secure: Number(process.env.EMAIL_PORT) === 465, // true for 465, false for 587
+      host: emailHost,
+      port: emailPort,
+      secure: emailPort === 465,
       auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
+        user: gmailUser,
+        pass: gmailPass,
       },
     });
   }
 
-  // 2. Gmail service shortcut
-  if (nodemailer && process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
-    const user = process.env.GMAIL_USER.trim();
-    const pass = process.env.GMAIL_APP_PASSWORD.replace(/\s+/g, '');
+  // 2. Gmail service / Google Workspace (for @gmail.com or @sbjit.edu.in)
+  if (nodemailer && gmailUser && gmailPass) {
+    logger.info(`📧 Initializing Gmail SMTP transporter for ${gmailUser}`);
     return nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user,
-        pass,
+        user: gmailUser,
+        pass: gmailPass,
       },
     });
   }
 
   // 3. Fallback: Development logger transporter
+  logger.warn('⚠️ [EMAIL FALLBACK] No valid SMTP credentials found (GMAIL_USER / EMAIL_USER). Using console logger.');
   return {
     sendMail: async (options) => {
       logger.info(`📧 [DEV EMAIL FALLBACK] Email would be sent to: ${options.to}`);
