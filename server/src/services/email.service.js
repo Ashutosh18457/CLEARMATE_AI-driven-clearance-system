@@ -29,17 +29,23 @@ const createTransporter = () => {
     });
   }
 
-  // 2. Gmail / Google Workspace SMTP (uses secure SSL port 465 for 100% cloud reliability)
+  // 2. Gmail / Google Workspace SMTP
+  //    Try port 587 (STARTTLS) first — many cloud hosts (Render, etc.) block port 465.
   if (nodemailer && gmailUser && gmailPass) {
-    logger.info(`📧 Initializing Gmail SMTP (smtp.gmail.com:465) for ${gmailUser}`);
+    const smtpPort = emailPort || 587;
+    const useSSL = smtpPort === 465;
+    logger.info(`📧 Initializing Gmail SMTP (smtp.gmail.com:${smtpPort}, secure=${useSSL}) for ${gmailUser}`);
     return nodemailer.createTransport({
       host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
+      port: smtpPort,
+      secure: useSSL,
       auth: {
         user: gmailUser,
         pass: gmailPass,
       },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     });
   }
 
