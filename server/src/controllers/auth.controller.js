@@ -151,6 +151,8 @@ const authController = {
     } catch (error) {
       next(error);
     }
+  },
+
   /**
    * @route GET /api/auth/test-email
    * @desc Diagnostic endpoint to test live email delivery and env configuration
