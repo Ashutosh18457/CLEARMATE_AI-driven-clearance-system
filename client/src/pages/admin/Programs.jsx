@@ -679,10 +679,6 @@ export default function Programs() {
                 </select>
               </div>
             </div>
-
-            <p className="text-[11px] text-ink-muted leading-relaxed bg-surface p-2 rounded border border-border-subtle/75">
-              💡 <strong>No chicken-and-egg loop:</strong> You can create the department now without choosing staff. Create Department Admin or HOD accounts in <strong>User Management</strong> later, and return here or there to link them anytime!
-            </p>
           </div>
 
           {/* Active Status checkbox for editing */}

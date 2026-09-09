@@ -17,11 +17,11 @@ router.get(
   facultyMappingController.getByBranch
 );
 
-// Admin-only management endpoints
+// Super Admin-only management endpoints
 router.post(
   '/',
   protect,
-  restrictTo('admin', 'super_admin'),
+  restrictTo('super_admin'),
   validate(createFacultyMappingSchema),
   facultyMappingController.createMapping
 );
@@ -29,7 +29,7 @@ router.post(
 router.put(
   '/:id',
   protect,
-  restrictTo('admin', 'super_admin'),
+  restrictTo('super_admin'),
   validate({ params: idParamSchema, body: updateFacultyMappingSchema }),
   facultyMappingController.updateMapping
 );
@@ -37,7 +37,7 @@ router.put(
 router.delete(
   '/:id',
   protect,
-  restrictTo('admin', 'super_admin'),
+  restrictTo('super_admin'),
   validate(idParamSchema, 'params'),
   facultyMappingController.deleteMapping
 );
@@ -45,14 +45,14 @@ router.delete(
 router.post(
   '/seed-defaults',
   protect,
-  restrictTo('admin', 'super_admin'),
+  restrictTo('super_admin'),
   facultyMappingController.seedDefaults
 );
 
 router.post(
   '/sync/:branchCode',
   protect,
-  restrictTo('admin', 'super_admin'),
+  restrictTo('super_admin'),
   validate(branchCodeParamSchema, 'params'),
   facultyMappingController.syncWithClearanceItems
 );

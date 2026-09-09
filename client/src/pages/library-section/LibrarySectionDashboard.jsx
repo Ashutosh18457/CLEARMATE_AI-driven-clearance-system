@@ -315,7 +315,7 @@ export default function LibrarySectionDashboard() {
   const fetchStudents = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {};
+      const params = { limit: 1000 };
       if (search) params.search = search;
       if (statusFilter !== 'all') params.status = statusFilter;
       if (selectedBranch !== 'all') params.branch = selectedBranch;

@@ -750,14 +750,6 @@ export default function BulkSetup() {
                     <p className="text-2xs text-ink-muted mt-0.5">Roll No, Email, Batch & Electives</p>
                   </div>
                 </div>
-
-                <div className="mt-4 p-3 bg-brand/5 border border-brand/15 rounded-xl text-left flex items-start gap-2.5">
-                  <span className="text-sm shrink-0">💡</span>
-                  <div className="text-2xs text-ink-secondary leading-relaxed">
-                    <strong className="text-ink-primary font-semibold">Program Elective & MDM Labs with Batches:</strong>
-                    {' '}You can specify batch teachers inside parentheses in <code className="text-brand font-mono px-1 py-0.5 bg-brand/10 rounded">elective_options</code> (e.g. <span className="font-mono text-ink-muted">Cloud Computing Lab (Batch A:prof1@sbjit.edu.in, Batch B:prof2@sbjit.edu.in)</span>). Students only enter their single elective name once in the roster; ClearMate automatically links both Theory & Lab and assigns the clearance to their batch's lab faculty!
-                  </div>
-                </div>
               </div>
             </div>
           )}

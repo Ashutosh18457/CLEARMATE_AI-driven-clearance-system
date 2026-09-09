@@ -24,7 +24,7 @@ const accountSectionService = {
    */
   async getStudentsFeeStatus(queryParams = {}) {
     const page = parseInt(queryParams.page, 10) || 1;
-    const limit = parseInt(queryParams.limit, 10) || 50;
+    const limit = parseInt(queryParams.limit, 10) || 1000;
     const skip = (page - 1) * limit;
     const search = queryParams.search ? queryParams.search.trim() : '';
     const statusFilter = queryParams.status; // 'paid' | 'not_paid'

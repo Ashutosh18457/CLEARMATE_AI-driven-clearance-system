@@ -97,7 +97,7 @@ const sectionValidator = {
   // ─── QUERY SCHEMA FOR SECTIONS ──────────────────────────────────────────────
   sectionStudentsQuerySchema: Joi.object({
     page: Joi.number().integer().min(1).default(1),
-    limit: Joi.number().integer().min(1).max(200).default(50),
+    limit: Joi.number().integer().min(1).max(5000).default(1000),
     search: Joi.string().trim().max(100).allow(''),
     status: Joi.string().trim().max(50).allow(''),
     programId: Joi.string().trim().max(50).allow(''),

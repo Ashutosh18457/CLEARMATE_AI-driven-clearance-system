@@ -312,7 +312,7 @@ export default function AccountSectionDashboard() {
   const fetchStudents = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {};
+      const params = { limit: 1000 };
       if (search.trim()) params.search = search.trim();
       if (statusFilter !== 'all') params.status = statusFilter;
       if (selectedBranch !== 'all') params.branch = selectedBranch;
