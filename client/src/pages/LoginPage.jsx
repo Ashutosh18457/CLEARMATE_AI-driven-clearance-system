@@ -8,6 +8,7 @@ import {
 } from 'react-icons/hi2';
 import { useAuth } from '../context/AuthContext';
 import logoIcon from '../assets/logo.png';
+import collegeBg from '../assets/college-bg.png';
 import { ROLE_DASHBOARD_ROUTES } from '../utils/constants';
 import Button from '../components/common/Button';
 import api from '../api/axios';
@@ -136,29 +137,53 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-canvas flex flex-col items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex items-center justify-center mb-6">
-          <Link to="/" className="flex items-center justify-center gap-3 group">
-            <img src={logoIcon} alt="ClearMate Logo" className="h-16 sm:h-20 w-auto object-contain transition-transform duration-200 group-hover:scale-105" />
-            <span className="text-2xl sm:text-3xl font-extrabold text-ink-primary tracking-wide font-display">
+    <div className="min-h-screen relative flex flex-col items-center justify-center px-4 py-8 overflow-hidden bg-slate-100">
+      {/* Exact Uploaded College Background Photo - Fully natural & clear */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${collegeBg})` }}
+      />
+
+      <div className="relative z-10 w-full max-w-sm">
+        {/* Logo Banner */}
+        <div className="flex items-center justify-center mb-5">
+          <Link
+            to="/"
+            className="flex items-center justify-center gap-3 px-5 py-2 rounded-full shadow-md group transition-all"
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.4)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255, 255, 255, 0.5)',
+            }}
+          >
+            <img src={logoIcon} alt="ClearMate Logo" className="h-9 sm:h-10 w-auto object-contain transition-transform duration-200 group-hover:scale-105" />
+            <span className="text-xl sm:text-2xl font-extrabold text-[#1e293b] tracking-wide font-display">
               CLEARMATE
             </span>
           </Link>
         </div>
 
-        {/* Card */}
-        <div className="bg-surface border border-border-subtle rounded-md shadow-sm p-6">
-          <h1 className="text-lg font-semibold text-ink-primary mb-1">Sign in</h1>
-          <p className="text-sm text-ink-muted mb-6">
+        {/* Frosted Glass Card */}
+        <div
+          className="rounded-2xl p-6 sm:p-7 transition-all"
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.22)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.4)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
+          }}
+        >
+          <h1 className="text-xl font-bold text-[#1e293b] mb-1">Sign in</h1>
+          <p className="text-sm text-[#475569] font-medium mb-6">
             Enter your credentials to access your dashboard.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
             <div>
-              <label htmlFor="login-email" className="label-base">
+              <label htmlFor="login-email" className="block text-xs font-bold text-[#1e293b] mb-1.5 uppercase tracking-wide">
                 College Email (@sbjit.edu.in)
               </label>
               <input
@@ -166,7 +191,13 @@ export default function LoginPage() {
                 name="email"
                 type="email"
                 autoComplete="email"
-                className="input-base"
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.70)',
+                  backdropFilter: 'blur(10px)',
+                  WebkitBackdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.6)',
+                }}
+                className="w-full px-3.5 py-2.5 rounded-lg text-sm text-[#1e293b] placeholder-slate-500 font-medium focus:outline-none focus:ring-2 focus:ring-blue-600/40 focus:bg-white/90 transition-all"
                 placeholder="you@sbjit.edu.in"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -175,7 +206,7 @@ export default function LoginPage() {
 
             {/* Password */}
             <div>
-              <label htmlFor="login-password" className="label-base">
+              <label htmlFor="login-password" className="block text-xs font-bold text-[#1e293b] mb-1.5 uppercase tracking-wide">
                 Password
               </label>
               <div className="relative">
@@ -184,7 +215,13 @@ export default function LoginPage() {
                   name="password"
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
-                  className="input-base pr-10"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.70)',
+                    backdropFilter: 'blur(10px)',
+                    WebkitBackdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255, 255, 255, 0.6)',
+                  }}
+                  className="w-full px-3.5 py-2.5 pr-10 rounded-lg text-sm text-[#1e293b] placeholder-slate-500 font-medium focus:outline-none focus:ring-2 focus:ring-blue-600/40 focus:bg-white/90 transition-all"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -192,7 +229,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-ink-muted hover:text-ink-secondary transition-colors duration-150"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-[#475569] hover:text-[#1e293b] transition-colors duration-150"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? (
@@ -215,7 +252,7 @@ export default function LoginPage() {
                   setForgotMsg('');
                   setForgotEmail(email || '');
                 }}
-                className="text-xs font-medium text-brand hover:underline"
+                className="text-xs font-bold text-blue-700 hover:text-blue-900 hover:underline"
               >
                 Forgot password?
               </button>
@@ -223,7 +260,7 @@ export default function LoginPage() {
 
             {/* Error */}
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-status-rejected">
+              <div className="p-3 bg-red-50/90 border border-red-200 rounded-lg text-sm text-status-rejected font-medium">
                 {error}
               </div>
             )}
@@ -234,122 +271,52 @@ export default function LoginPage() {
               variant="primary"
               size="md"
               loading={loading}
-              className="w-full"
+              className="w-full font-semibold shadow-md py-2.5"
             >
               Sign in
             </Button>
           </form>
 
           {/* Quick Demo Login Chips */}
-          <div className="mt-6 pt-5 border-t border-border-subtle space-y-2.5">
-            <div className="text-xs font-semibold text-ink-muted uppercase tracking-wider text-center flex items-center justify-center gap-1.5">
+          <div className="mt-6 pt-5 border-t border-white/40 space-y-2.5">
+            <div className="text-xs font-bold text-[#475569] uppercase tracking-wider text-center flex items-center justify-center gap-1.5">
               <span>💡</span> QUICK DEMO LOGIN (@SBJIT.EDU.IN)
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('student@sbjit.edu.in');
-                  setPassword('Password123!');
-                }}
-                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
-              >
-                <span>🎓</span> Student
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('teacher@sbjit.edu.in');
-                  setPassword('Password123!');
-                }}
-                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
-              >
-                <span>👩‍🏫</span> Teacher
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('accounts@sbjit.edu.in');
-                  setPassword('Password123!');
-                }}
-                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
-              >
-                <span>💳</span> Accounts Section
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('library@sbjit.edu.in');
-                  setPassword('Password123!');
-                }}
-                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
-              >
-                <span>📚</span> Library
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('disciplinary@sbjit.edu.in');
-                  setPassword('Password123!');
-                }}
-                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
-              >
-                <span>⚖️</span> Disciplinary
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('bus@sbjit.edu.in');
-                  setPassword('Password123!');
-                }}
-                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
-              >
-                <span>🚌</span> Bus / Transport
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('ci@sbjit.edu.in');
-                  setPassword('Password123!');
-                }}
-                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
-              >
-                <span>📋</span> Class Incharge
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('hod@sbjit.edu.in');
-                  setPassword('Password123!');
-                }}
-                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
-              >
-                <span>👨‍💼</span> HOD
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('admin@sbjit.edu.in');
-                  setPassword('Admin@123456');
-                }}
-                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
-              >
-                <span>👑</span> Super Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('deptadmin@sbjit.edu.in');
-                  setPassword('Password123!');
-                }}
-                className="py-2 px-3 bg-canvas hover:bg-surface-hover border border-border-subtle text-ink-primary rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
-              >
-                <span>⚙️</span> Dept Admin
-              </button>
+              {[
+                { label: 'Student', icon: '🎓', email: 'student@sbjit.edu.in', pass: 'Password123!' },
+                { label: 'Teacher', icon: '👩‍🏫', email: 'teacher@sbjit.edu.in', pass: 'Password123!' },
+                { label: 'Accounts Section', icon: '💳', email: 'accounts@sbjit.edu.in', pass: 'Password123!' },
+                { label: 'Library', icon: '📚', email: 'library@sbjit.edu.in', pass: 'Password123!' },
+                { label: 'Disciplinary', icon: '⚖️', email: 'disciplinary@sbjit.edu.in', pass: 'Password123!' },
+                { label: 'Bus / Transport', icon: '🚌', email: 'bus@sbjit.edu.in', pass: 'Password123!' },
+                { label: 'Class Incharge', icon: '📋', email: 'ci@sbjit.edu.in', pass: 'Password123!' },
+                { label: 'HOD', icon: '👨‍💼', email: 'hod@sbjit.edu.in', pass: 'Password123!' },
+                { label: 'Super Admin', icon: '👑', email: 'admin@sbjit.edu.in', pass: 'Admin@123456' },
+                { label: 'Dept Admin', icon: '⚙️', email: 'deptadmin@sbjit.edu.in', pass: 'Password123!' },
+              ].map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => {
+                    setEmail(item.email);
+                    setPassword(item.pass);
+                  }}
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.65)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(255, 255, 255, 0.5)',
+                  }}
+                  className="py-2 px-3 hover:bg-white/90 text-[#1e293b] rounded-lg text-xs font-semibold shadow-sm transition-all flex items-center justify-center gap-1.5"
+                >
+                  <span>{item.icon}</span> {item.label}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="mt-6 text-center text-xs text-ink-muted border-t border-border-subtle pt-4">
+          <div className="mt-6 text-center text-xs text-[#475569] font-medium border-t border-white/40 pt-4">
             Official college portal: <strong>@sbjit.edu.in</strong>
           </div>
         </div>
