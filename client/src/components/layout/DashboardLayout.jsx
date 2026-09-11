@@ -12,19 +12,19 @@ import Navbar from './Navbar';
  */
 export default function DashboardLayout({ title, children }) {
   return (
-    <div className="min-h-screen bg-canvas flex flex-col">
+    <div className="h-screen bg-canvas flex flex-col overflow-hidden">
       {/* Top Institute Header strip spanning full width */}
       <InstituteHeader />
 
       {/* Main app layout underneath top header */}
-      <div className="flex-1 flex relative items-start">
+      <div className="flex-1 flex relative overflow-hidden">
         <Sidebar />
 
         {/* Main content area */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
           <Navbar title={title} />
 
-          <main className="p-3 sm:p-5 md:p-8 max-w-7xl mx-auto w-full transition-all duration-150">
+          <main className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-8 max-w-7xl mx-auto w-full transition-all duration-150">
             {children}
           </main>
         </div>

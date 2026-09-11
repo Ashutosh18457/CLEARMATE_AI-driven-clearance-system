@@ -192,7 +192,7 @@ export default function Sidebar() {
 
       {/* Desktop sidebar */}
       <aside
-        className={`hidden md:flex flex-col sticky top-0 h-screen z-30 bg-surface border-r border-border-subtle transition-all duration-200 shrink-0 ${
+        className={`hidden md:flex flex-col h-full z-30 bg-surface border-r border-border-subtle transition-all duration-200 shrink-0 ${
           collapsed ? 'w-16' : 'w-60'
         }`}
       >
