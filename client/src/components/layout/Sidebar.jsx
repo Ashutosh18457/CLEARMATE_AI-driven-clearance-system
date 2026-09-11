@@ -111,7 +111,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation Links */}
-      <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto custom-scrollbar">
+      <nav className="flex-1 min-h-0 px-3 py-4 space-y-1.5 overflow-y-auto custom-scrollbar">
         {!collapsed && (
           <div className="px-3 pb-1">
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
