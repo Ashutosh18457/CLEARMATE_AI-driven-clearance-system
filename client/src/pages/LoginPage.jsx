@@ -285,7 +285,6 @@ export default function LoginPage() {
             <div className="grid grid-cols-2 gap-2">
               {[
                 { label: 'Super Admin', icon: '👑', email: 'admin@sbjit.edu.in', pass: 'Admin@123456' },
-                { label: 'Dept Admin', icon: '⚙️', email: 'deptadmin@sbjit.edu.in', pass: 'Password123!' },
               ].map((item) => (
                 <button
                   key={item.label}
