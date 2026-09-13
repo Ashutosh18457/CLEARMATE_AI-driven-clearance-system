@@ -277,35 +277,6 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* Quick Demo Login Chips */}
-          <div className="mt-6 pt-5 border-t border-white/40 space-y-2.5">
-            <div className="text-xs font-bold text-[#475569] uppercase tracking-wider text-center flex items-center justify-center gap-1.5">
-              <span>💡</span> QUICK DEMO LOGIN (@SBJIT.EDU.IN)
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { label: 'Super Admin', icon: '👑', email: 'admin@sbjit.edu.in', pass: 'Admin@123456' },
-              ].map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => {
-                    setEmail(item.email);
-                    setPassword(item.pass);
-                  }}
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.65)',
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                    border: '1px solid rgba(255, 255, 255, 0.5)',
-                  }}
-                  className="py-2 px-3 hover:bg-white/90 text-[#1e293b] rounded-lg text-xs font-semibold shadow-sm transition-all flex items-center justify-center gap-1.5"
-                >
-                  <span>{item.icon}</span> {item.label}
-                </button>
-              ))}
-            </div>
-          </div>
 
           <div className="mt-6 text-center text-xs text-[#475569] font-medium border-t border-white/40 pt-4">
             Official college portal: <strong>@sbjit.edu.in</strong>
