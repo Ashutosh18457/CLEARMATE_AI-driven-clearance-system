@@ -284,7 +284,6 @@ export default function LoginPage() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { label: 'Accounts Section', icon: '💳', email: 'accounts@sbjit.edu.in', pass: 'Password123!' },
                 { label: 'Library', icon: '📚', email: 'library@sbjit.edu.in', pass: 'Password123!' },
                 { label: 'Disciplinary', icon: '⚖️', email: 'disciplinary@sbjit.edu.in', pass: 'Password123!' },
                 { label: 'Bus / Transport', icon: '🚌', email: 'bus@sbjit.edu.in', pass: 'Password123!' },
